@@ -1,0 +1,66 @@
+.container {
+  width: 100%;
+  max-width: 800px;
+  padding: var(--space-4);
+}
+
+.branch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.children {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-8);
+  margin-top: var(--space-2);
+}
+
+/* Vertical connector line */
+.connector {
+  position: absolute;
+  left: var(--space-4);
+  top: 0;
+  bottom: var(--space-4);
+  width: var(--border-width);
+  background: var(--border-primary);
+}
+
+/* Horizontal branch connectors via pseudo-elements on branch */
+.children > .branch::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-4) * -1);
+  top: calc(var(--space-4) + 2px);
+  width: var(--space-4);
+  height: var(--border-width);
+  background: var(--border-primary);
+}
+
+.children > .branch {
+  position: relative;
+}
+
+/* Depth-based subtle indentation highlight */
+.branch {
+  transition: background-color var(--transition-fast);
+}
+
+/* Animation for new nodes */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.children > .branch {
+  animation: slideIn var(--transition-normal) ease-out;
+}

@@ -1,13 +1,21 @@
-import { useState } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
+import { QuestionTree } from './components/QuestionTree'
+import { useQuestionTree } from './hooks/useQuestionTree'
 
 function App() {
-  const [rootQuestion, setRootQuestion] = useState<string | null>(null)
+  const {
+    tree,
+    rootNode,
+    addRootQuestion,
+    addChildQuestion,
+    setActiveNode,
+    toggleNodeExpansion,
+    reset,
+  } = useQuestionTree()
 
   const handleQuestionSubmit = (question: string) => {
-    setRootQuestion(question)
-    console.log('Question submitted:', question)
+    addRootQuestion(question)
   }
 
   return (
@@ -16,20 +24,22 @@ function App() {
       <main
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           minHeight: '100vh',
           padding: 'var(--space-4)',
         }}
       >
-        {!rootQuestion ? (
+        {!rootNode ? (
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 'var(--space-8)',
               width: '100%',
+              flex: 1,
             }}
           >
             <header style={{ textAlign: 'center' }}>
@@ -60,38 +70,55 @@ function App() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 'var(--space-4)',
+              width: '100%',
+              paddingTop: 'var(--space-8)',
             }}
           >
-            <p
+            <header
               style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-lg)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              Exploring:
-            </p>
-            <h2
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-2xl)',
-                fontWeight: 600,
                 textAlign: 'center',
-                maxWidth: '600px',
+                marginBottom: 'var(--space-8)',
               }}
             >
-              {rootQuestion}
-            </h2>
+              <h1
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-lg)',
+                  fontWeight: 600,
+                  letterSpacing: 'var(--tracking-tight)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                Fractal
+              </h1>
+            </header>
+
+            <QuestionTree
+              tree={tree}
+              onSelectNode={setActiveNode}
+              onAddChild={addChildQuestion}
+              onToggleExpand={toggleNodeExpansion}
+            />
+
             <button
-              onClick={() => setRootQuestion(null)}
+              onClick={reset}
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--text-sm)',
                 color: 'var(--text-tertiary)',
-                marginTop: 'var(--space-4)',
-                textDecoration: 'underline',
-                textUnderlineOffset: '4px',
+                marginTop: 'var(--space-12)',
+                padding: 'var(--space-2) var(--space-4)',
+                border: 'var(--border-width) solid var(--border-primary)',
+                background: 'transparent',
+                transition: 'border-color 0.2s, color 0.2s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = 'var(--text-secondary)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-primary)'
+                e.currentTarget.style.color = 'var(--text-tertiary)'
               }}
             >
               ← Start over

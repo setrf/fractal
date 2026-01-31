@@ -25,9 +25,8 @@
  */
 
 import { useState, useCallback } from 'react'
+import type { QuestionTree, QuestionNode } from '../types/question'
 import {
-  QuestionTree,
-  QuestionNode,
   createEmptyTree,
   createQuestionNode,
   addNodeToTree,

@@ -230,3 +230,302 @@ export const chat = weave.op(
     return result
   }
 )
+
+// ============================================
+// CONCEPT EXTRACTION FUNCTIONALITY
+// ============================================
+
+/**
+ * Valid concept categories for classification.
+ */
+export type ConceptCategory =
+  | 'science'
+  | 'philosophy'
+  | 'psychology'
+  | 'technology'
+  | 'abstract'
+
+/**
+ * An extracted concept with position and metadata.
+ */
+export interface ExtractedConcept {
+  id: string
+  text: string
+  normalizedName: string
+  category: ConceptCategory
+  startIndex: number
+  endIndex: number
+}
+
+/**
+ * System prompt for concept extraction.
+ */
+const CONCEPT_EXTRACTION_PROMPT = `You are an expert at identifying key concepts in questions and text.
+
+Given a question or text, identify the key intellectual concepts that would benefit from explanation or exploration.
+
+For each concept, provide:
+1. "text": The exact text span as it appears in the source (case-sensitive)
+2. "normalizedName": A canonical/dictionary form of the concept (e.g., "evolutionary" → "evolution")
+3. "category": One of: "science", "philosophy", "psychology", "technology", "abstract"
+   - science: biology, physics, chemistry, mathematics, natural sciences
+   - philosophy: consciousness, epistemology, metaphysics, ethics, logic
+   - psychology: behavior, emotion, cognition, mental processes
+   - technology: computing, AI, engineering, systems, tools
+   - abstract: general concepts, relationships, meta-topics
+4. "startIndex": The character position where the concept starts (0-based)
+5. "endIndex": The character position where the concept ends (exclusive)
+
+Rules:
+- Extract 2-6 concepts maximum
+- Only extract meaningful intellectual concepts, not common words
+- Concepts should not overlap in the text
+- Be precise with start/end indices
+
+Respond with a JSON array of objects. Only output valid JSON, nothing else.
+
+Example for input "Why do we dream during sleep?":
+[
+  {"text": "dream", "normalizedName": "dreams", "category": "psychology", "startIndex": 10, "endIndex": 15},
+  {"text": "sleep", "normalizedName": "sleep", "category": "science", "startIndex": 23, "endIndex": 28}
+]`
+
+/**
+ * Response structure for concept extraction.
+ */
+export interface ConceptExtractionResult {
+  concepts: ExtractedConcept[]
+  sourceText: string
+  model: string
+  usage: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+}
+
+/**
+ * Generate unique concept ID.
+ */
+function generateConceptId(): string {
+  return `c_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+}
+
+/**
+ * Extract key concepts from question text.
+ * This function is wrapped with weave.op() for automatic tracing.
+ */
+export const extractConcepts = weave.op(
+  async function extractConcepts(
+    questionText: string,
+    model: string = config.defaultModel
+  ): Promise<ConceptExtractionResult> {
+    console.log(`[Concepts] Extracting concepts from: "${questionText.substring(0, 50)}..."`)
+    console.log(`[Concepts] Using model: ${model}`)
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: CONCEPT_EXTRACTION_PROMPT },
+        { role: 'user', content: questionText },
+      ],
+      temperature: 0.3, // Lower temperature for more consistent extraction
+      max_tokens: 500,
+    })
+
+    const content = response.choices[0]?.message?.content || '[]'
+    
+    // Parse the JSON response
+    let rawConcepts: Array<{
+      text: string
+      normalizedName: string
+      category: ConceptCategory
+      startIndex: number
+      endIndex: number
+    }> = []
+
+    try {
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed)) {
+        rawConcepts = parsed
+      }
+    } catch (error) {
+      console.error('[Concepts] Failed to parse JSON response:', error)
+      console.error('[Concepts] Raw content:', content)
+      // Return empty on parse failure
+    }
+
+    // Validate and add IDs to concepts
+    const validCategories = ['science', 'philosophy', 'psychology', 'technology', 'abstract']
+    const concepts: ExtractedConcept[] = rawConcepts
+      .filter((c) => {
+        // Validate required fields
+        if (!c.text || typeof c.text !== 'string') return false
+        if (!c.normalizedName || typeof c.normalizedName !== 'string') return false
+        if (!validCategories.includes(c.category)) return false
+        if (typeof c.startIndex !== 'number' || typeof c.endIndex !== 'number') return false
+        if (c.startIndex < 0 || c.endIndex <= c.startIndex) return false
+        if (c.endIndex > questionText.length) return false
+        return true
+      })
+      .map((c) => ({
+        id: generateConceptId(),
+        text: c.text,
+        normalizedName: c.normalizedName,
+        category: c.category,
+        startIndex: c.startIndex,
+        endIndex: c.endIndex,
+      }))
+      // Sort by start position and remove overlaps
+      .sort((a, b) => a.startIndex - b.startIndex)
+      .reduce<ExtractedConcept[]>((acc, concept) => {
+        // Skip if overlaps with previous concept
+        if (acc.length > 0 && concept.startIndex < acc[acc.length - 1].endIndex) {
+          return acc
+        }
+        return [...acc, concept]
+      }, [])
+
+    const result: ConceptExtractionResult = {
+      concepts,
+      sourceText: questionText,
+      model,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
+      },
+    }
+
+    console.log(`[Concepts] Extracted ${concepts.length} valid concepts`)
+    console.log(`[Concepts] Token usage: ${result.usage.totalTokens}`)
+
+    return result
+  }
+)
+
+// ============================================
+// CONCEPT EXPLANATION FUNCTIONALITY
+// ============================================
+
+/**
+ * System prompt for concept explanation.
+ */
+const CONCEPT_EXPLANATION_PROMPT = `You are an expert at explaining intellectual concepts clearly and concisely.
+
+Given a concept and the question context it appears in, provide:
+1. A brief, accessible explanation of the concept (2-3 sentences)
+2. How this concept relates to or illuminates the specific question
+3. Related concepts that could lead to further exploration
+
+Respond with a JSON object:
+{
+  "summary": "Brief standalone explanation of the concept",
+  "context": "How this concept relates to the user's specific question",
+  "relatedConcepts": ["concept1", "concept2", "concept3"]
+}
+
+Be concise but insightful. Avoid jargon unless explaining it.
+Only output valid JSON, nothing else.`
+
+/**
+ * Explanation for a concept.
+ */
+export interface ConceptExplanation {
+  conceptId: string
+  normalizedName: string
+  summary: string
+  context: string
+  relatedConcepts: string[]
+}
+
+/**
+ * Full response from concept explanation.
+ */
+export interface ConceptExplanationResult {
+  explanation: ConceptExplanation
+  model: string
+  usage: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+}
+
+/**
+ * Generate an explanation for a concept in context.
+ * This function is wrapped with weave.op() for automatic tracing.
+ */
+export const explainConcept = weave.op(
+  async function explainConcept(
+    conceptId: string,
+    conceptName: string,
+    questionContext: string,
+    model: string = config.defaultModel
+  ): Promise<ConceptExplanationResult> {
+    console.log(`[Concepts] Explaining concept: "${conceptName}"`)
+    console.log(`[Concepts] In context of: "${questionContext.substring(0, 50)}..."`)
+    console.log(`[Concepts] Using model: ${model}`)
+
+    const userMessage = `Concept to explain: "${conceptName}"
+    
+Question context: "${questionContext}"`
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: CONCEPT_EXPLANATION_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.5,
+      max_tokens: 400,
+    })
+
+    const content = response.choices[0]?.message?.content || '{}'
+    
+    // Parse the JSON response
+    let parsed: {
+      summary?: string
+      context?: string
+      relatedConcepts?: string[]
+    } = {}
+
+    try {
+      parsed = JSON.parse(content)
+    } catch (error) {
+      console.error('[Concepts] Failed to parse explanation JSON:', error)
+      console.error('[Concepts] Raw content:', content)
+      // Provide fallback
+      parsed = {
+        summary: `${conceptName} is a concept related to the question being explored.`,
+        context: 'This concept is relevant to understanding the question at hand.',
+        relatedConcepts: [],
+      }
+    }
+
+    const explanation: ConceptExplanation = {
+      conceptId,
+      normalizedName: conceptName,
+      summary: parsed.summary || `${conceptName} is a concept being explored.`,
+      context: parsed.context || 'This concept relates to the question.',
+      relatedConcepts: Array.isArray(parsed.relatedConcepts) 
+        ? parsed.relatedConcepts.slice(0, 5) // Limit to 5 related concepts
+        : [],
+    }
+
+    const result: ConceptExplanationResult = {
+      explanation,
+      model,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
+      },
+    }
+
+    console.log(`[Concepts] Generated explanation with ${explanation.relatedConcepts.length} related concepts`)
+    console.log(`[Concepts] Token usage: ${result.usage.totalTokens}`)
+
+    return result
+  }
+)

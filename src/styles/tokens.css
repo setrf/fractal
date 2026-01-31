@@ -1,0 +1,111 @@
+/**
+ * Fractal Design Tokens
+ * OKLCH Color System - Monochromatic with accent
+ */
+
+:root {
+  /* === Light Mode (Default) === */
+  --bg-primary: oklch(100% 0 0);
+  --bg-secondary: oklch(97% 0 0);
+  --bg-tertiary: oklch(94% 0 0);
+  
+  --text-primary: oklch(15% 0 0);
+  --text-secondary: oklch(40% 0 0);
+  --text-tertiary: oklch(55% 0 0);
+  
+  --border-primary: oklch(85% 0 0);
+  --border-strong: oklch(70% 0 0);
+  --border-focus: oklch(15% 0 0);
+  
+  /* === Accent (Error/Destructive Only) === */
+  --accent-error: oklch(55% 0.25 25);
+  --accent-error-bg: oklch(95% 0.05 25);
+  
+  /* === Chart Colors (Data Viz Only) === */
+  --chart-1: oklch(65% 0.2 250);
+  --chart-2: oklch(70% 0.2 150);
+  --chart-3: oklch(75% 0.2 85);
+  --chart-4: oklch(65% 0.2 310);
+  --chart-5: oklch(70% 0.2 50);
+  
+  /* === Typography === */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', monospace;
+  
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+  
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  
+  /* === Spacing === */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  
+  /* === Neobrutalist Borders === */
+  --border-width: 2px;
+  --border-width-strong: 3px;
+  --border-radius: 0;
+  
+  /* === Transitions === */
+  --transition-fast: 100ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+}
+
+/* === Dark Mode === */
+[data-theme="dark"] {
+  --bg-primary: oklch(12% 0 0);
+  --bg-secondary: oklch(18% 0 0);
+  --bg-tertiary: oklch(22% 0 0);
+  
+  --text-primary: oklch(92% 0 0);
+  --text-secondary: oklch(65% 0 0);
+  --text-tertiary: oklch(50% 0 0);
+  
+  --border-primary: oklch(25% 0 0);
+  --border-strong: oklch(35% 0 0);
+  --border-focus: oklch(92% 0 0);
+  
+  --accent-error-bg: oklch(20% 0.1 25);
+}
+
+/* System preference detection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-primary: oklch(12% 0 0);
+    --bg-secondary: oklch(18% 0 0);
+    --bg-tertiary: oklch(22% 0 0);
+    
+    --text-primary: oklch(92% 0 0);
+    --text-secondary: oklch(65% 0 0);
+    --text-tertiary: oklch(50% 0 0);
+    
+    --border-primary: oklch(25% 0 0);
+    --border-strong: oklch(35% 0 0);
+    --border-focus: oklch(92% 0 0);
+    
+    --accent-error-bg: oklch(20% 0.1 25);
+  }
+}

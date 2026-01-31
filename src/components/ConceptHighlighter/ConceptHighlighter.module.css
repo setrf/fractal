@@ -1,0 +1,130 @@
+/**
+ * ConceptHighlighter Styles
+ * =========================
+ * 
+ * Styles for the concept highlighting component.
+ * Uses design tokens for category-specific colors.
+ */
+
+/* Container maintains text flow */
+.container {
+  display: inline;
+}
+
+/* Plain text segments - no special styling */
+.plainText {
+  /* Inherit parent styles */
+}
+
+/* Base concept highlight styles */
+.concept {
+  position: relative;
+  display: inline;
+  padding: 0.1em 0.25em;
+  margin: 0 0.05em;
+  border-radius: 2px;
+  transition: 
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  
+  /* Subtle underline indicator */
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Interactive concepts have cursor and focus styles */
+.concept.interactive {
+  cursor: pointer;
+}
+
+.concept.interactive:hover {
+  text-decoration-style: solid;
+}
+
+.concept.interactive:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.concept.interactive:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.concept.interactive:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Category-specific colors */
+
+/* Science: Muted blue tint */
+.categoryScience {
+  background-color: var(--concept-science);
+  text-decoration-color: var(--concept-science-text);
+}
+
+.categoryScience.interactive:hover {
+  background-color: color-mix(in oklch, var(--concept-science) 80%, var(--text-primary) 20%);
+}
+
+/* Philosophy: Muted purple tint */
+.categoryPhilosophy {
+  background-color: var(--concept-philosophy);
+  text-decoration-color: var(--concept-philosophy-text);
+}
+
+.categoryPhilosophy.interactive:hover {
+  background-color: color-mix(in oklch, var(--concept-philosophy) 80%, var(--text-primary) 20%);
+}
+
+/* Psychology: Muted green tint */
+.categoryPsychology {
+  background-color: var(--concept-psychology);
+  text-decoration-color: var(--concept-psychology-text);
+}
+
+.categoryPsychology.interactive:hover {
+  background-color: color-mix(in oklch, var(--concept-psychology) 80%, var(--text-primary) 20%);
+}
+
+/* Technology: Muted orange tint */
+.categoryTechnology {
+  background-color: var(--concept-technology);
+  text-decoration-color: var(--concept-technology-text);
+}
+
+.categoryTechnology.interactive:hover {
+  background-color: color-mix(in oklch, var(--concept-technology) 80%, var(--text-primary) 20%);
+}
+
+/* Abstract: Near-gray, minimal tint */
+.categoryAbstract {
+  background-color: var(--concept-abstract);
+  text-decoration-color: var(--concept-abstract-text);
+}
+
+.categoryAbstract.interactive:hover {
+  background-color: color-mix(in oklch, var(--concept-abstract) 80%, var(--text-primary) 20%);
+}
+
+/* Active state (when popup is shown) */
+.concept[data-active="true"] {
+  text-decoration-style: solid;
+  box-shadow: 0 0 0 2px var(--border-strong);
+}
+
+/* Loading state */
+.concept[data-loading="true"] {
+  animation: conceptPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes conceptPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

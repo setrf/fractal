@@ -1,0 +1,30 @@
+.toggle {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width) solid var(--border-primary);
+  background: var(--bg-secondary);
+  transition: 
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+  z-index: 100;
+}
+
+.toggle:hover {
+  border-color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.toggle:active {
+  background: var(--border-primary);
+}
+
+.icon {
+  font-size: var(--text-xl);
+  line-height: 1;
+}

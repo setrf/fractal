@@ -14,6 +14,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Export/import functionality
 - Keyboard navigation enhancements
 - Model selection UI
+- Concept sub-trees (expand concepts into exploration branches)
+
+---
+
+## [0.3.0] - 2026-01-31
+
+### Added
+
+#### Intelligent Concept Extraction
+- **Concept Types** (`src/types/concept.ts`)
+  - `ExtractedConcept` interface with text, normalized name, category, and position
+  - `ConceptCategory` type: science, philosophy, psychology, technology, abstract
+  - `ConceptExplanation` interface with summary, context, and related concepts
+  - Utility functions for concept ID generation and validation
+
+- **Backend Concept Endpoints** (`server/src/routes.ts`)
+  - `POST /api/concepts/extract` - Extract concepts from question text
+  - `POST /api/concepts/explain` - Get LLM-generated explanation for a concept
+  
+- **Concept Extraction Function** (`server/src/inference.ts`)
+  - Uses W&B Inference for LLM-based concept identification
+  - Returns concept positions for accurate text highlighting
+  - Validates and filters overlapping/invalid concepts
+  - Full Weave tracing for observability
+
+- **Concept Explanation Function** (`server/src/inference.ts`)
+  - Generates contextual explanations tied to the specific question
+  - Returns related concepts for future exploration
+  - Full Weave tracing for observability
+
+#### Frontend Concept Components
+- **ConceptHighlighter Component** (`src/components/ConceptHighlighter/`)
+  - Renders text with highlighted concept spans
+  - Category-based color coding (5 muted colors)
+  - Hover, click, and keyboard interaction handlers
+  - Accessible with proper ARIA attributes
+
+- **ConceptPopup Component** (`src/components/ConceptPopup/`)
+  - Gwern-style popup for concept explanations
+  - Intelligent viewport positioning
+  - "Sticky" (pinnable) mode for persistent popups
+  - Loading and error states
+  - Related concepts for further exploration
+
+#### Concept Hooks
+- **useConceptExtraction Hook** (`src/hooks/useConceptExtraction.ts`)
+  - Manages concept extraction API calls
+  - In-memory caching per question text
+  - Loading/error state management
+  - Request deduplication
+
+- **useConceptExplanation Hook** (`src/hooks/useConceptExplanation.ts`)
+  - Manages concept explanation API calls
+  - localStorage caching with 24-hour expiration
+  - Loading/error state management
+
+#### Design System Updates
+- **Concept Highlight Colors** (`src/styles/tokens.css`)
+  - 5 muted category-specific colors (science, philosophy, psychology, technology, abstract)
+  - Light and dark mode variants
+  - Low chroma values to maintain monochromatic aesthetic
+
+#### Integration
+- **QuestionNode Integration**
+  - Concept highlighting in question text
+  - Popup display on hover/click
+  - Full prop forwarding for parent control
+
+- **ChatView Integration**
+  - Concept highlighting in question header
+  - Popup display on hover/click
+
+### Tests
+- `ConceptHighlighter.test.tsx` - Component rendering and interaction tests
+- `concepts.test.ts` - Backend extraction/explanation function tests
 
 ---
 
@@ -224,6 +299,7 @@ Storing nodes in a `Record<string, QuestionNode>` instead of nested objects prov
 
 ---
 
-[Unreleased]: https://github.com/setrf/fractal/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/setrf/fractal/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/setrf/fractal/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/setrf/fractal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/setrf/fractal/releases/tag/v0.1.0

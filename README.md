@@ -35,12 +35,15 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.2.0)
+### Current (v0.3.0)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
 - **Add Related Questions** — Click any node to add child questions
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
+- **Chat View** — Lock in on a question to have a deep conversational exploration with AI
+- **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
+- **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
 - **Expand/Collapse Branches** — Manage complexity by collapsing explored branches
 - **Light/Dark Mode** — Automatic system detection with manual toggle
 - **Keyboard Support** — Enter to submit, Escape to cancel
@@ -48,7 +51,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ### Planned
 
-- Mini hover previews with embedded content
+- Concept sub-trees — Expand concepts into their own exploration branches
 - Export/save question trees
 - Collaborative question exploration
 - Search within your question history
@@ -110,11 +113,16 @@ The color system uses **zero chromatic colors** in the core UI:
 
 ```
 App
-├── ThemeToggle          # Light/dark mode switch
-├── QuestionInput        # Initial question entry (shown when no root)
-└── QuestionTree         # Branching visualization (shown when root exists)
-    └── TreeBranch       # Recursive branch renderer
-        └── QuestionNode # Individual question with actions + AI generate
+├── ThemeToggle              # Light/dark mode switch
+├── QuestionInput            # Initial question entry (shown when no root)
+├── QuestionTree             # Branching visualization (shown when root exists)
+│   └── TreeBranch           # Recursive branch renderer
+│       └── QuestionNode     # Individual question with actions + AI generate
+│           ├── ConceptHighlighter  # Highlights concepts in question text
+│           └── ConceptPopup        # Gwern-style explanation popup
+└── ChatView                 # Deep conversational exploration of a question
+    ├── ConceptHighlighter   # Highlights concepts in question header
+    └── ConceptPopup         # Gwern-style explanation popup
 ```
 
 ### Backend Architecture
@@ -241,6 +249,18 @@ fractal/
 │   │   ├── client.ts         # API client for backend communication
 │   │   └── index.ts          # API exports
 │   ├── components/
+│   │   ├── ChatView/         # Deep exploration chat interface
+│   │   │   ├── ChatView.tsx
+│   │   │   ├── ChatView.module.css
+│   │   │   └── index.ts
+│   │   ├── ConceptHighlighter/ # Concept highlighting component
+│   │   │   ├── ConceptHighlighter.tsx
+│   │   │   ├── ConceptHighlighter.module.css
+│   │   │   └── index.ts
+│   │   ├── ConceptPopup/     # Gwern-style explanation popup
+│   │   │   ├── ConceptPopup.tsx
+│   │   │   ├── ConceptPopup.module.css
+│   │   │   └── index.ts
 │   │   ├── QuestionInput/    # Central text entry component
 │   │   │   ├── QuestionInput.tsx
 │   │   │   ├── QuestionInput.module.css
@@ -258,15 +278,18 @@ fractal/
 │   │       ├── ThemeToggle.module.css
 │   │       └── index.ts
 │   ├── hooks/
-│   │   ├── useAIQuestions.ts   # AI question generation hook
-│   │   ├── useQuestionTree.ts  # Question tree state management
-│   │   └── useTheme.ts         # Theme state and persistence
+│   │   ├── useAIQuestions.ts        # AI question generation hook
+│   │   ├── useConceptExtraction.ts  # Concept extraction with caching
+│   │   ├── useConceptExplanation.ts # Concept explanation with localStorage cache
+│   │   ├── useQuestionTree.ts       # Question tree state management
+│   │   └── useTheme.ts              # Theme state and persistence
 │   ├── styles/
 │   │   ├── tokens.css        # OKLCH design tokens
 │   │   ├── reset.css         # CSS reset with neobrutalist base
 │   │   └── global.css        # Global styles and utilities
 │   ├── types/
-│   │   └── question.ts       # TypeScript types and utilities
+│   │   ├── concept.ts        # Concept types (ExtractedConcept, ConceptExplanation)
+│   │   └── question.ts       # Question tree types and utilities
 │   ├── App.tsx               # Root application component
 │   └── main.tsx              # Application entry point
 ├── server/                   # Backend API server
@@ -419,21 +442,28 @@ npm run test:verbose
 
 ## Roadmap
 
-### v0.2.0 — Persistence
+### v0.3.0 — Intelligent Concepts (Current)
+- [x] Concept extraction from question text
+- [x] Color-coded concept highlighting by category
+- [x] Gwern-style popup explanations
+- [x] Chat view for deep exploration
+- [x] localStorage caching for explanations
+
+### v0.4.0 — Persistence
 - [ ] Save question trees to localStorage
 - [ ] Export as JSON/Markdown
 - [ ] Load previous sessions
+- [ ] Concept sub-trees (expand concepts into exploration branches)
 
-### v0.3.0 — Enhanced AI
-- [x] ~~Generate related questions via LLM~~ (Completed in v0.2.0)
+### v0.5.0 — Enhanced AI
 - [ ] Suggest tangents based on context
-- [ ] Optional answer previews (on-demand)
 - [ ] Model selection UI
+- [ ] Streaming responses
 
-### v0.4.0 — Enhanced Visualization
+### v0.6.0 — Enhanced Visualization
 - [ ] Zoom and pan navigation
 - [ ] Mini-map for large trees
-- [ ] Hover previews with embedded content
+- [ ] Keyboard shortcuts for tree navigation
 
 ### v1.0.0 — Full Release
 - [ ] User accounts and sync

@@ -7,6 +7,9 @@ Backend API server for the Fractal application.
 The Fractal server provides:
 
 - **AI Question Generation** via W&B Inference
+- **Intelligent Concept Extraction** via W&B Inference
+- **Contextual Concept Explanations** via W&B Inference
+- **Chat/Conversation API** for deep question exploration
 - **Tracing & Observability** via W&B Weave
 - **RESTful API** for the React frontend
 
@@ -131,6 +134,111 @@ Response:
       "deepseek-ai/DeepSeek-V3-0324",
       ...
     ]
+  }
+}
+```
+
+### Chat
+
+```
+POST /api/chat
+```
+
+Request:
+```json
+{
+  "rootQuestion": "What is consciousness?",
+  "messages": [
+    { "role": "user", "content": "Help me explore this." }
+  ],
+  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Consciousness is a fascinating topic...",
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "usage": {
+      "promptTokens": 200,
+      "completionTokens": 150,
+      "totalTokens": 350
+    }
+  }
+}
+```
+
+### Extract Concepts
+
+```
+POST /api/concepts/extract
+```
+
+Request:
+```json
+{
+  "text": "Why do dreams serve an evolutionary function?",
+  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "concepts": [
+      {
+        "id": "c_1706745600000_abc123",
+        "text": "dreams",
+        "normalizedName": "dreams",
+        "category": "psychology",
+        "startIndex": 7,
+        "endIndex": 13
+      },
+      {
+        "id": "c_1706745600001_def456",
+        "text": "evolutionary",
+        "normalizedName": "evolution",
+        "category": "science",
+        "startIndex": 23,
+        "endIndex": 35
+      }
+    ],
+    "sourceText": "Why do dreams serve an evolutionary function?"
+  }
+}
+```
+
+### Explain Concept
+
+```
+POST /api/concepts/explain
+```
+
+Request:
+```json
+{
+  "conceptId": "c_1706745600000_abc123",
+  "conceptName": "dreams",
+  "questionContext": "Why do dreams serve an evolutionary function?",
+  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "conceptId": "c_1706745600000_abc123",
+    "normalizedName": "dreams",
+    "summary": "Dreams are a series of images, ideas, and sensations occurring during sleep.",
+    "context": "In the context of evolutionary biology, dreams may have developed as...",
+    "relatedConcepts": ["REM sleep", "consciousness", "memory consolidation"]
   }
 }
 ```

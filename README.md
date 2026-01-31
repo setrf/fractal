@@ -35,18 +35,19 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.1.0)
+### Current (v0.2.0)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
 - **Add Related Questions** — Click any node to add child questions
+- **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
 - **Expand/Collapse Branches** — Manage complexity by collapsing explored branches
 - **Light/Dark Mode** — Automatic system detection with manual toggle
 - **Keyboard Support** — Enter to submit, Escape to cancel
+- **W&B Weave Integration** — Full observability and tracing for AI operations
 
 ### Planned
 
-- AI-generated related questions
 - Mini hover previews with embedded content
 - Export/save question trees
 - Collaborative question exploration
@@ -86,7 +87,26 @@ The color system uses **zero chromatic colors** in the core UI:
 
 ## Architecture
 
-### Component Hierarchy
+### System Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│  React Frontend │────▶│  Express Server │────▶│  W&B Inference  │
+│   (Vite + TS)   │     │   (Node.js)     │     │  (LLM Models)   │
+│                 │     │                 │     │                 │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                                 ▼
+                        ┌─────────────────┐
+                        │                 │
+                        │   W&B Weave     │
+                        │   (Tracing)     │
+                        │                 │
+                        └─────────────────┘
+```
+
+### Frontend Component Hierarchy
 
 ```
 App
@@ -94,7 +114,19 @@ App
 ├── QuestionInput        # Initial question entry (shown when no root)
 └── QuestionTree         # Branching visualization (shown when root exists)
     └── TreeBranch       # Recursive branch renderer
-        └── QuestionNode # Individual question with actions
+        └── QuestionNode # Individual question with actions + AI generate
+```
+
+### Backend Architecture
+
+```
+server/
+├── src/
+│   ├── index.ts        # Express server entry point
+│   ├── config.ts       # Environment configuration
+│   ├── routes.ts       # API endpoints
+│   ├── inference.ts    # W&B Inference integration
+│   └── weave-client.ts # W&B Weave initialization
 ```
 
 ### State Management
@@ -138,6 +170,7 @@ TreeBranch recursively renders nodes
 
 - Node.js 18+
 - npm 9+
+- W&B API Key (for AI features)
 
 ### Installation
 
@@ -146,20 +179,53 @@ TreeBranch recursively renders nodes
 git clone https://github.com/setrf/fractal.git
 cd fractal
 
-# Install dependencies
+# Install frontend dependencies
 npm install
 
-# Start development server
-npm run dev
+# Install server dependencies
+cd server
+npm install
+
+# Configure W&B API key
+cp .env.example .env
+# Edit .env and add your WANDB_API_KEY
+
+cd ..
 ```
 
-The app will be available at `http://localhost:5173`
+### Running the Application
+
+You need to run both the backend server and frontend:
+
+```bash
+# Terminal 1: Start the backend server
+cd server
+npm run dev
+# Server runs at http://localhost:3001
+
+# Terminal 2: Start the frontend
+cd fractal  # (or stay in root)
+npm run dev
+# Frontend runs at http://localhost:5173
+```
+
+### W&B Dashboard
+
+Once the server is running, view your traces at:
+- https://wandb.ai/your-username/fractal
 
 ### Build for Production
 
 ```bash
+# Build frontend
 npm run build
-npm run preview  # Preview production build locally
+
+# Build server
+cd server
+npm run build
+
+# Run production server
+npm start
 ```
 
 ---
@@ -171,6 +237,9 @@ fractal/
 ├── public/
 │   └── favicon.svg           # Question mark favicon
 ├── src/
+│   ├── api/
+│   │   ├── client.ts         # API client for backend communication
+│   │   └── index.ts          # API exports
 │   ├── components/
 │   │   ├── QuestionInput/    # Central text entry component
 │   │   │   ├── QuestionInput.tsx
@@ -189,6 +258,7 @@ fractal/
 │   │       ├── ThemeToggle.module.css
 │   │       └── index.ts
 │   ├── hooks/
+│   │   ├── useAIQuestions.ts   # AI question generation hook
 │   │   ├── useQuestionTree.ts  # Question tree state management
 │   │   └── useTheme.ts         # Theme state and persistence
 │   ├── styles/
@@ -199,6 +269,17 @@ fractal/
 │   │   └── question.ts       # TypeScript types and utilities
 │   ├── App.tsx               # Root application component
 │   └── main.tsx              # Application entry point
+├── server/                   # Backend API server
+│   ├── src/
+│   │   ├── index.ts          # Server entry point
+│   │   ├── config.ts         # Environment configuration
+│   │   ├── routes.ts         # API routes
+│   │   ├── inference.ts      # W&B Inference integration
+│   │   └── weave-client.ts   # W&B Weave tracing
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── .env.example          # Environment template
+│   └── .gitignore
 ├── index.html                # HTML template
 ├── package.json
 ├── tsconfig.json
@@ -343,10 +424,11 @@ npm run test:verbose
 - [ ] Export as JSON/Markdown
 - [ ] Load previous sessions
 
-### v0.3.0 — AI Integration
-- [ ] Generate related questions via LLM
+### v0.3.0 — Enhanced AI
+- [x] ~~Generate related questions via LLM~~ (Completed in v0.2.0)
 - [ ] Suggest tangents based on context
 - [ ] Optional answer previews (on-demand)
+- [ ] Model selection UI
 
 ### v0.4.0 — Enhanced Visualization
 - [ ] Zoom and pan navigation

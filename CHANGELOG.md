@@ -9,7 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Persistence layer (localStorage)
+- Export/import functionality
+- Keyboard navigation enhancements
+- Model selection UI
+
+---
+
+## [0.2.0] - 2026-01-31
+
 ### Added
+
+#### W&B Weave Integration
+- **Backend Server** (`server/`)
+  - Express.js server with TypeScript
+  - W&B Weave initialization for tracing
+  - Full observability of all LLM calls
+  - Traces viewable at https://wandb.ai/your-username/fractal
+
+#### W&B Inference Integration
+- **AI Question Generation** (`server/src/inference.ts`)
+  - Uses W&B Inference API (OpenAI-compatible)
+  - Default model: Llama 3.1 8B Instruct
+  - Generates 3-5 related questions per input
+  - Token usage tracking
+
+#### API Layer
+- **Backend Routes** (`server/src/routes.ts`)
+  - `GET /health` - Health check endpoint
+  - `POST /api/generate` - Generate related questions
+  - `GET /api/models` - List available models
+
+- **Frontend API Client** (`src/api/client.ts`)
+  - `generateQuestions()` - Call AI to generate related questions
+  - `checkHealth()` - Verify backend availability
+  - `isApiAvailable()` - Quick availability check
+
+#### New Hooks
+- **useAIQuestions Hook** (`src/hooks/useAIQuestions.ts`)
+  - `generate(question)` - Generate related questions
+  - `isLoading` - Loading state
+  - `error` - Error handling
+  - `isAvailable` - API availability status
+
+#### UI Enhancements
+- **AI Generate Button** on each QuestionNode
+  - Click ✦ to generate AI suggestions
+  - Spinning animation during generation
+  - Generated questions auto-added as children
+
+#### Testing Infrastructure (from v0.1.0-rc)
 - **Comprehensive Testing Infrastructure**
   - Vitest configuration with jsdom environment for React testing
   - Test setup with localStorage and matchMedia mocks
@@ -18,8 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 - **Unit Tests** (`src/types/question.test.ts`)
   - 34 tests covering all utility functions
-  - Tests for generateId, createEmptyTree, createQuestionNode
-  - Tests for addNodeToTree, getChildren, getPathToNode, getNodeDepth
   
 - **Hook Tests** 
   - `useQuestionTree.test.tsx` - 24 tests for tree state management
@@ -31,22 +79,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 - **Integration Tests** (`App.test.tsx`)
   - 24 tests covering complete user journeys
-  - Welcome view rendering
-  - Question submission flow
-  - Tree interaction (adding children)
-  - Reset functionality
-  - Theme persistence
 
 ### Fixed
 - Fixed ESM import error for TypeScript interfaces in `useQuestionTree.ts`
-  - Changed `import { QuestionTree, QuestionNode }` to `import type { ... }`
-  - This prevents Vite/esbuild from expecting runtime exports for type-only imports
 
-### Planned
-- Persistence layer (localStorage)
-- AI-generated related questions
-- Export/import functionality
-- Keyboard navigation enhancements
+### Technical Decisions
+
+#### Why W&B Weave?
+- Automatic tracing of all LLM calls
+- Token usage and cost tracking
+- Latency monitoring
+- Input/output logging for debugging
+- Centralized observability dashboard
+
+#### Why W&B Inference?
+- Access to open-source models (Llama, DeepSeek, Qwen)
+- OpenAI-compatible API for easy migration
+- Integrated with Weave for automatic tracing
+- No need for separate LLM provider accounts
 
 ---
 
@@ -174,5 +224,6 @@ Storing nodes in a `Record<string, QuestionNode>` instead of nested objects prov
 
 ---
 
-[Unreleased]: https://github.com/setrf/fractal/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/setrf/fractal/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/setrf/fractal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/setrf/fractal/releases/tag/v0.1.0

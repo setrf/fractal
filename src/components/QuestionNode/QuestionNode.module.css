@@ -135,6 +135,49 @@
   font-size: var(--text-lg);
 }
 
+/* AI generate button */
+.aiBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: var(--border-width) solid transparent;
+  background: transparent;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.aiBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.aiBtn:disabled {
+  cursor: not-allowed;
+}
+
+/* Spinning animation for generating state */
+.aiBtn.generating {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ============================================
  * ADD CHILD FORM
  * Inline form for creating child questions

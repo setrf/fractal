@@ -32,6 +32,10 @@ interface QuestionTreeProps {
   onAddChild: (parentId: string, question: string) => void
   /** Callback when toggling a node's expansion */
   onToggleExpand: (nodeId: string) => void
+  /** Callback to generate AI suggestions */
+  onGenerateAI?: (parentId: string, question: string) => Promise<void>
+  /** ID of the node currently generating AI suggestions */
+  generatingNodeId?: string | null
 }
 
 /**
@@ -50,6 +54,10 @@ interface TreeBranchProps {
   onAddChild: (parentId: string, question: string) => void
   /** Callback when toggling expansion */
   onToggleExpand: (nodeId: string) => void
+  /** Callback to generate AI suggestions */
+  onGenerateAI?: (parentId: string, question: string) => Promise<void>
+  /** ID of the node currently generating AI suggestions */
+  generatingNodeId?: string | null
 }
 
 /**
@@ -71,6 +79,8 @@ function TreeBranch({
   onSelectNode,
   onAddChild,
   onToggleExpand,
+  onGenerateAI,
+  generatingNodeId,
 }: TreeBranchProps) {
   // Get actual child node objects from IDs
   const children = node.childIds
@@ -94,6 +104,8 @@ function TreeBranch({
         onSelect={onSelectNode}
         onAddChild={onAddChild}
         onToggleExpand={onToggleExpand}
+        onGenerateAI={onGenerateAI}
+        isGenerating={generatingNodeId === node.id}
       />
 
       {/* Render children if any and expanded */}
@@ -112,6 +124,8 @@ function TreeBranch({
               onSelectNode={onSelectNode}
               onAddChild={onAddChild}
               onToggleExpand={onToggleExpand}
+              onGenerateAI={onGenerateAI}
+              generatingNodeId={generatingNodeId}
             />
           ))}
         </div>
@@ -141,6 +155,8 @@ export function QuestionTree({
   onSelectNode,
   onAddChild,
   onToggleExpand,
+  onGenerateAI,
+  generatingNodeId,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -160,6 +176,8 @@ export function QuestionTree({
         onSelectNode={onSelectNode}
         onAddChild={onAddChild}
         onToggleExpand={onToggleExpand}
+        onGenerateAI={onGenerateAI}
+        generatingNodeId={generatingNodeId}
       />
     </div>
   )

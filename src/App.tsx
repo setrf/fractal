@@ -7,13 +7,16 @@
  * - When a root question exists: Shows the QuestionTree visualization
  * 
  * The component acts as the orchestrator, connecting the useQuestionTree
- * hook to the UI components.
+ * hook to the UI components. It also integrates AI question generation
+ * via W&B Weave and Inference.
  */
 
+import { useState, useCallback } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { useQuestionTree } from './hooks/useQuestionTree'
+import { useAIQuestions } from './hooks/useAIQuestions'
 
 /**
  * Root application component.
@@ -36,6 +39,12 @@ function App() {
     reset,
   } = useQuestionTree()
 
+  // AI question generation
+  const { generate, isLoading: aiLoading, error: aiError } = useAIQuestions()
+  
+  // Track which node is currently generating
+  const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null)
+
   /**
    * Handles submission of the initial question.
    * Creates the root node and transitions to tree view.
@@ -43,6 +52,23 @@ function App() {
   const handleQuestionSubmit = (question: string) => {
     addRootQuestion(question)
   }
+
+  /**
+   * Generates AI suggestions for a node and adds them as children.
+   * Uses W&B Inference via the backend server.
+   */
+  const handleGenerateAI = useCallback(async (parentId: string, question: string) => {
+    setGeneratingNodeId(parentId)
+    try {
+      const suggestions = await generate(question)
+      // Add each generated question as a child
+      for (const suggestion of suggestions) {
+        addChildQuestion(parentId, suggestion)
+      }
+    } finally {
+      setGeneratingNodeId(null)
+    }
+  }, [generate, addChildQuestion])
 
   return (
     <>
@@ -135,13 +161,46 @@ function App() {
               </h1>
             </header>
 
+            {/* AI error message */}
+            {aiError && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--accent-error)',
+                  marginBottom: 'var(--space-4)',
+                  padding: 'var(--space-2) var(--space-4)',
+                  border: 'var(--border-width) solid var(--accent-error)',
+                  background: 'transparent',
+                }}
+              >
+                AI Error: {aiError}
+              </div>
+            )}
+
             {/* Question tree visualization */}
             <QuestionTree
               tree={tree}
               onSelectNode={setActiveNode}
               onAddChild={addChildQuestion}
               onToggleExpand={toggleNodeExpansion}
+              onGenerateAI={handleGenerateAI}
+              generatingNodeId={generatingNodeId}
             />
+
+            {/* AI loading indicator */}
+            {aiLoading && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--text-secondary)',
+                  marginTop: 'var(--space-4)',
+                }}
+              >
+                ◌ Generating questions...
+              </div>
+            )}
 
             {/* Reset button to start over */}
             <button

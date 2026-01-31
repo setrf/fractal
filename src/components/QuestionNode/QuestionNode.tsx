@@ -35,6 +35,10 @@ interface QuestionNodeProps {
   onAddChild?: (parentId: string, question: string) => void
   /** Callback when toggling expand/collapse */
   onToggleExpand?: (nodeId: string) => void
+  /** Callback to generate AI suggestions for this question */
+  onGenerateAI?: (parentId: string, question: string) => Promise<void>
+  /** Whether AI generation is in progress for this node */
+  isGenerating?: boolean
 }
 
 /**
@@ -65,6 +69,8 @@ export function QuestionNode({
   onSelect,
   onAddChild,
   onToggleExpand,
+  onGenerateAI,
+  isGenerating = false,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
@@ -92,6 +98,14 @@ export function QuestionNode({
   const handleAddChildClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsAddingChild(true)
+  }
+
+  /**
+   * Triggers AI generation of related questions.
+   */
+  const handleGenerateAI = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onGenerateAI?.(node.id, node.text)
   }
 
   /**
@@ -147,6 +161,19 @@ export function QuestionNode({
               aria-label={node.meta.isExpanded ? 'Collapse' : 'Expand'}
             >
               {node.meta.isExpanded ? '−' : '+'}
+            </button>
+          )}
+          
+          {/* AI generate button */}
+          {onGenerateAI && (
+            <button
+              className={`${styles.aiBtn} ${isGenerating ? styles.generating : ''}`}
+              onClick={handleGenerateAI}
+              disabled={isGenerating}
+              aria-label="Generate AI suggestions"
+              title="Generate related questions with AI"
+            >
+              {isGenerating ? '◌' : '✦'}
             </button>
           )}
           

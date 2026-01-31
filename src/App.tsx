@@ -222,6 +222,8 @@ function App() {
           onBack={handleBackToTree}
           onSendMessage={handleSendChatMessage}
           concepts={nodeConcepts[chatState.nodeId] || []}
+          conceptExplanations={allExplanations}
+          conceptLoadingStates={explanationLoadingStates}
           conceptExplanation={conceptExplanation}
           isConceptLoading={explanationLoading}
           conceptError={explanationError}

@@ -35,11 +35,15 @@ interface ChatViewProps {
   // Concept highlighting props
   /** Extracted concepts to highlight in the question text */
   concepts?: ExtractedConcept[]
-  /** Current concept explanation being displayed */
+  /** Map of concept IDs to their explanations (for multiple popups) */
+  conceptExplanations?: Record<string, ConceptExplanation>
+  /** Map of concept IDs to their loading states (for multiple popups) */
+  conceptLoadingStates?: Record<string, { isLoading: boolean; error: string | null }>
+  /** Legacy: Current concept explanation being displayed */
   conceptExplanation?: ConceptExplanation | null
-  /** Whether concept explanation is loading */
+  /** Legacy: Whether concept explanation is loading */
   isConceptLoading?: boolean
-  /** Error loading concept explanation */
+  /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
   onConceptHover?: (concept: ExtractedConcept) => void
@@ -75,6 +79,8 @@ export function ChatView({
   isLoading = false,
   // Concept props
   concepts = [],
+  conceptExplanations = {},
+  conceptLoadingStates = {},
   conceptExplanation,
   isConceptLoading = false,
   conceptError,
@@ -279,17 +285,26 @@ export function ChatView({
       </header>
 
       {/* Concept explanation popups - multiple can be open */}
-      {openPopups.map(popup => (
-        <ConceptPopup
-          key={popup.concept.id}
-          concept={popup.concept}
-          explanation={conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null}
-          isLoading={isConceptLoading}
-          error={conceptError}
-          position={popup.position}
-          onClose={() => handlePopupClose(popup.concept.id)}
-        />
-      ))}
+      {openPopups.map(popup => {
+        // Get explanation for this specific popup from the maps, or fall back to legacy props
+        const explanation = conceptExplanations[popup.concept.id] 
+          || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)
+        const loadingState = conceptLoadingStates[popup.concept.id]
+        const popupIsLoading = loadingState?.isLoading ?? (conceptExplanation?.conceptId === popup.concept.id ? isConceptLoading : false)
+        const popupError = loadingState?.error ?? (conceptExplanation?.conceptId === popup.concept.id ? conceptError : null)
+        
+        return (
+          <ConceptPopup
+            key={popup.concept.id}
+            concept={popup.concept}
+            explanation={explanation}
+            isLoading={popupIsLoading}
+            error={popupError}
+            position={popup.position}
+            onClose={() => handlePopupClose(popup.concept.id)}
+          />
+        )
+      })}
 
       {/* Messages area */}
       <div className={styles.messages}>

@@ -12,14 +12,16 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
-import { sendChatMessage, type ChatMessage } from './api'
+import { useConceptExtraction } from './hooks/useConceptExtraction'
+import { useConceptExplanation } from './hooks/useConceptExplanation'
+import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 
 /**
  * View type for the application.
@@ -59,14 +61,46 @@ function App() {
   // AI question generation
   const { generate, isLoading: aiLoading, error: aiError } = useAIQuestions()
   
+  // Concept extraction and explanation
+  const { 
+    concepts, 
+    isLoading: conceptsLoading, 
+    extract: extractConcepts 
+  } = useConceptExtraction()
+  
+  const {
+    explanation: conceptExplanation,
+    isLoading: explanationLoading,
+    error: explanationError,
+    fetchExplanation,
+    reset: resetExplanation,
+  } = useConceptExplanation()
+  
   // Track which node is currently generating
   const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null)
+  
+  // Track concepts per node (nodeId -> concepts)
+  const [nodeConcepts, setNodeConcepts] = useState<Record<string, ExtractedConcept[]>>({})
+  
+  // Track the currently hovered concept
+  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
 
   // View state for navigating between tree and chat
   const [chatState, setChatState] = useState<ChatState | null>(null)
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatState ? 'chat' : 'tree'
+  
+  // Extract concepts for root node when it changes
+  useEffect(() => {
+    if (rootNode && !nodeConcepts[rootNode.id]) {
+      extractConcepts(rootNode.text).then((extracted) => {
+        if (extracted.length > 0) {
+          setNodeConcepts(prev => ({ ...prev, [rootNode.id]: extracted }))
+        }
+      })
+    }
+  }, [rootNode, nodeConcepts, extractConcepts])
 
   /**
    * Handles submission of the initial question.
@@ -115,6 +149,37 @@ function App() {
     return sendChatMessage(chatState.question, messages)
   }, [chatState])
 
+  /**
+   * Handles concept hover - fetches explanation.
+   */
+  const handleConceptHover = useCallback((concept: ExtractedConcept) => {
+    setHoveredConcept(concept)
+    // Get the question context from the current view
+    const questionContext = chatState?.question || rootNode?.text || ''
+    if (questionContext) {
+      fetchExplanation(concept.id, concept.normalizedName, questionContext)
+    }
+  }, [chatState, rootNode, fetchExplanation])
+
+  /**
+   * Handles concept hover end.
+   */
+  const handleConceptLeave = useCallback(() => {
+    setHoveredConcept(null)
+    resetExplanation()
+  }, [resetExplanation])
+
+  /**
+   * Handles concept click - same as hover for now, but could trigger sticky.
+   */
+  const handleConceptClick = useCallback((concept: ExtractedConcept) => {
+    setHoveredConcept(concept)
+    const questionContext = chatState?.question || rootNode?.text || ''
+    if (questionContext) {
+      fetchExplanation(concept.id, concept.normalizedName, questionContext)
+    }
+  }, [chatState, rootNode, fetchExplanation])
+
   return (
     <>
       {/* Theme toggle - always visible (except in chat view which has its own layout) */}
@@ -129,6 +194,13 @@ function App() {
           question={chatState.question}
           onBack={handleBackToTree}
           onSendMessage={handleSendChatMessage}
+          concepts={nodeConcepts[chatState.nodeId] || []}
+          conceptExplanation={conceptExplanation}
+          isConceptLoading={explanationLoading}
+          conceptError={explanationError}
+          onConceptHover={handleConceptHover}
+          onConceptLeave={handleConceptLeave}
+          onConceptClick={handleConceptClick}
         />
       )}
 
@@ -246,6 +318,13 @@ function App() {
                 onGenerateAI={handleGenerateAI}
                 generatingNodeId={generatingNodeId}
                 onLockIn={handleLockIn}
+                nodeConcepts={nodeConcepts}
+                conceptExplanation={conceptExplanation}
+                isConceptLoading={explanationLoading}
+                conceptError={explanationError}
+                onConceptHover={handleConceptHover}
+                onConceptLeave={handleConceptLeave}
+                onConceptClick={handleConceptClick}
               />
 
               {/* AI loading indicator */}

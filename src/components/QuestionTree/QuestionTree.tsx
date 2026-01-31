@@ -17,6 +17,7 @@
  */
 
 import type { QuestionTree as QuestionTreeType, QuestionNode as QuestionNodeType } from '../../types/question'
+import type { ExtractedConcept, ConceptExplanation } from '../../api'
 import { QuestionNode } from '../QuestionNode'
 import styles from './QuestionTree.module.css'
 
@@ -38,6 +39,22 @@ interface QuestionTreeProps {
   generatingNodeId?: string | null
   /** Callback to "lock in" on a question and open chat view */
   onLockIn?: (nodeId: string, question: string) => void
+  
+  // Concept highlighting props
+  /** Concepts per node (nodeId -> concepts) */
+  nodeConcepts?: Record<string, ExtractedConcept[]>
+  /** Current concept explanation */
+  conceptExplanation?: ConceptExplanation | null
+  /** Whether concept explanation is loading */
+  isConceptLoading?: boolean
+  /** Error loading concept explanation */
+  conceptError?: string | null
+  /** Callback when a concept is hovered */
+  onConceptHover?: (concept: ExtractedConcept) => void
+  /** Callback when concept hover ends */
+  onConceptLeave?: () => void
+  /** Callback when a concept is clicked */
+  onConceptClick?: (concept: ExtractedConcept) => void
 }
 
 /**
@@ -62,6 +79,22 @@ interface TreeBranchProps {
   generatingNodeId?: string | null
   /** Callback to "lock in" on a question and open chat view */
   onLockIn?: (nodeId: string, question: string) => void
+  
+  // Concept highlighting props
+  /** Concepts for this node */
+  concepts?: ExtractedConcept[]
+  /** Current concept explanation */
+  conceptExplanation?: ConceptExplanation | null
+  /** Whether concept explanation is loading */
+  isConceptLoading?: boolean
+  /** Error loading concept explanation */
+  conceptError?: string | null
+  /** Callback when a concept is hovered */
+  onConceptHover?: (concept: ExtractedConcept) => void
+  /** Callback when concept hover ends */
+  onConceptLeave?: () => void
+  /** Callback when a concept is clicked */
+  onConceptClick?: (concept: ExtractedConcept) => void
 }
 
 /**
@@ -86,6 +119,13 @@ function TreeBranch({
   onGenerateAI,
   generatingNodeId,
   onLockIn,
+  concepts,
+  conceptExplanation,
+  isConceptLoading,
+  conceptError,
+  onConceptHover,
+  onConceptLeave,
+  onConceptClick,
 }: TreeBranchProps) {
   // Get actual child node objects from IDs
   const children = node.childIds
@@ -112,6 +152,13 @@ function TreeBranch({
         onGenerateAI={onGenerateAI}
         isGenerating={generatingNodeId === node.id}
         onLockIn={onLockIn}
+        concepts={concepts}
+        conceptExplanation={conceptExplanation}
+        isConceptLoading={isConceptLoading}
+        conceptError={conceptError}
+        onConceptHover={onConceptHover}
+        onConceptLeave={onConceptLeave}
+        onConceptClick={onConceptClick}
       />
 
       {/* Render children if any and expanded */}
@@ -133,6 +180,12 @@ function TreeBranch({
               onGenerateAI={onGenerateAI}
               generatingNodeId={generatingNodeId}
               onLockIn={onLockIn}
+              conceptExplanation={conceptExplanation}
+              isConceptLoading={isConceptLoading}
+              conceptError={conceptError}
+              onConceptHover={onConceptHover}
+              onConceptLeave={onConceptLeave}
+              onConceptClick={onConceptClick}
             />
           ))}
         </div>
@@ -165,6 +218,13 @@ export function QuestionTree({
   onGenerateAI,
   generatingNodeId,
   onLockIn,
+  nodeConcepts = {},
+  conceptExplanation,
+  isConceptLoading,
+  conceptError,
+  onConceptHover,
+  onConceptLeave,
+  onConceptClick,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -187,6 +247,13 @@ export function QuestionTree({
         onGenerateAI={onGenerateAI}
         generatingNodeId={generatingNodeId}
         onLockIn={onLockIn}
+        concepts={nodeConcepts[rootNode.id]}
+        conceptExplanation={conceptExplanation}
+        isConceptLoading={isConceptLoading}
+        conceptError={conceptError}
+        onConceptHover={onConceptHover}
+        onConceptLeave={onConceptLeave}
+        onConceptClick={onConceptClick}
       />
     </div>
   )

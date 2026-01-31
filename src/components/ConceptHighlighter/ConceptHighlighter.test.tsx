@@ -76,18 +76,20 @@ describe('ConceptHighlighter', () => {
     })
 
     it('should render multiple concepts in correct order', () => {
+      // Text: "Why do we dream during sleep?"
+      // Indices: dream = 10-15, sleep = 23-28
       const concepts: ExtractedConcept[] = [
         createConcept({
           id: 'c_1',
-          text: 'dreams',
+          text: 'dream',
           startIndex: 10,
-          endIndex: 16,
+          endIndex: 15,
         }),
         createConcept({
           id: 'c_2',
           text: 'sleep',
-          startIndex: 24,
-          endIndex: 29,
+          startIndex: 23,
+          endIndex: 28,
         }),
       ]
 

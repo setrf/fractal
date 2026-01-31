@@ -55,9 +55,10 @@ const DEFAULT_HEIGHT = 400
 
 /**
  * Minimized popup dimensions for stacking.
+ * Height is set to 'auto' to fit header content, so we use estimated height for stacking.
  */
-const MINIMIZED_WIDTH = 200
-const MINIMIZED_HEIGHT = 48
+const MINIMIZED_WIDTH = 220
+const MINIMIZED_ESTIMATED_HEIGHT = 70  // Approximate header height (includes padding + category badge)
 const STACK_MARGIN = 8
 const STACK_LEFT_OFFSET = 20
 const STACK_BOTTOM_OFFSET = 20
@@ -312,8 +313,8 @@ export function ConceptPopup({
   // Calculate stacked position for minimized popup
   const getMinimizedPosition = useCallback((): PopupPosition => {
     const viewportHeight = window.innerHeight
-    const y = viewportHeight - STACK_BOTTOM_OFFSET - MINIMIZED_HEIGHT - 
-              (minimizedStackIndex * (MINIMIZED_HEIGHT + STACK_MARGIN))
+    const y = viewportHeight - STACK_BOTTOM_OFFSET - MINIMIZED_ESTIMATED_HEIGHT - 
+              (minimizedStackIndex * (MINIMIZED_ESTIMATED_HEIGHT + STACK_MARGIN))
     return { x: STACK_LEFT_OFFSET, y }
   }, [minimizedStackIndex])
 
@@ -334,7 +335,7 @@ export function ConceptPopup({
       setPreMinimizeHeight(popupSize.height)
       // Move to stacked position in lower-left
       setPopupPosition(getMinimizedPosition())
-      setPopupSize({ width: MINIMIZED_WIDTH, height: MINIMIZED_HEIGHT })
+      setPopupSize({ width: MINIMIZED_WIDTH, height: MINIMIZED_ESTIMATED_HEIGHT })
       setIsMinimized(true)
       onMinimizeChange?.(concept?.id || '', true)
     }

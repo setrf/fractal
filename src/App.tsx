@@ -192,6 +192,17 @@ function App() {
     })
   }, [])
 
+  /**
+   * Handles removing a concept highlight.
+   */
+  const handleRemoveConcept = useCallback((nodeId: string, conceptId: string) => {
+    setNodeConcepts(prev => {
+      const existing = prev[nodeId] || []
+      const updated = existing.filter(c => c.id !== conceptId)
+      return { ...prev, [nodeId]: updated }
+    })
+  }, [])
+
   return (
     <>
       {/* Theme toggle - always visible (except in chat view which has its own layout) */}
@@ -338,6 +349,7 @@ function App() {
                 onConceptLeave={handleConceptLeave}
                 onConceptClick={handleConceptClick}
                 onAddUserConcept={handleAddUserConcept}
+                onRemoveConcept={handleRemoveConcept}
               />
 
               {/* AI loading indicator */}

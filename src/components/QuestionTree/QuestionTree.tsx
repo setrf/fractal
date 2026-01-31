@@ -57,6 +57,8 @@ interface QuestionTreeProps {
   onConceptClick?: (concept: ExtractedConcept) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
+  /** Callback when user removes a highlight */
+  onRemoveConcept?: (nodeId: string, conceptId: string) => void
 }
 
 /**
@@ -99,6 +101,8 @@ interface TreeBranchProps {
   onConceptClick?: (concept: ExtractedConcept) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
+  /** Callback when user removes a highlight */
+  onRemoveConcept?: (nodeId: string, conceptId: string) => void
 }
 
 /**
@@ -131,6 +135,7 @@ function TreeBranch({
   onConceptLeave,
   onConceptClick,
   onAddUserConcept,
+  onRemoveConcept,
 }: TreeBranchProps) {
   // Get actual child node objects from IDs
   const children = node.childIds
@@ -165,6 +170,7 @@ function TreeBranch({
         onConceptLeave={onConceptLeave}
         onConceptClick={onConceptClick}
         onAddUserConcept={onAddUserConcept}
+        onRemoveConcept={onRemoveConcept}
       />
 
       {/* Render children if any and expanded */}
@@ -193,6 +199,7 @@ function TreeBranch({
               onConceptLeave={onConceptLeave}
               onConceptClick={onConceptClick}
               onAddUserConcept={onAddUserConcept}
+              onRemoveConcept={onRemoveConcept}
             />
           ))}
         </div>
@@ -233,6 +240,7 @@ export function QuestionTree({
   onConceptLeave,
   onConceptClick,
   onAddUserConcept,
+  onRemoveConcept,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -263,6 +271,7 @@ export function QuestionTree({
         onConceptLeave={onConceptLeave}
         onConceptClick={onConceptClick}
         onAddUserConcept={onAddUserConcept}
+        onRemoveConcept={onRemoveConcept}
       />
     </div>
   )

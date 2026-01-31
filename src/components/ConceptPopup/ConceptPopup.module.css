@@ -110,7 +110,8 @@
 }
 
 .pinButton,
-.closeButton {
+.closeButton,
+.removeButton {
   width: 24px;
   height: 24px;
   display: flex;
@@ -130,6 +131,16 @@
   background-color: var(--bg-tertiary);
   border-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+.removeButton {
+  font-size: var(--text-sm);
+}
+
+.removeButton:hover {
+  background-color: var(--accent-error);
+  border-color: var(--accent-error);
+  color: var(--bg-primary);
 }
 
 .pinButton.pinned {

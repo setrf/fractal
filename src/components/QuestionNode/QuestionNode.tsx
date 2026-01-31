@@ -74,6 +74,8 @@ interface QuestionNodeProps {
   onConceptClick?: (concept: ExtractedConcept) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
+  /** Callback when user removes a highlight */
+  onRemoveConcept?: (nodeId: string, conceptId: string) => void
 }
 
 /**
@@ -116,6 +118,7 @@ export function QuestionNode({
   onConceptLeave,
   onConceptClick,
   onAddUserConcept,
+  onRemoveConcept,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
@@ -499,6 +502,7 @@ export function QuestionNode({
           isSticky={isPopupSticky}
           onClose={handlePopupClose}
           onStickyChange={handleStickyChange}
+          onRemove={onRemoveConcept ? (conceptId) => onRemoveConcept(node.id, conceptId) : undefined}
         />
       )}
     </div>

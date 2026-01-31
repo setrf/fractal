@@ -66,6 +66,9 @@ export interface ConceptPopupProps {
   
   /** Called when sticky state changes */
   onStickyChange?: (isSticky: boolean) => void
+  
+  /** Called when user wants to remove this highlight */
+  onRemove?: (conceptId: string) => void
 }
 
 /**
@@ -99,6 +102,7 @@ export function ConceptPopup({
   onClose,
   onRelatedConceptClick,
   onStickyChange,
+  onRemove,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const [adjustedPosition, setAdjustedPosition] = useState(position)
@@ -185,6 +189,14 @@ export function ConceptPopup({
     [onRelatedConceptClick]
   )
 
+  // Handle remove highlight
+  const handleRemove = useCallback(() => {
+    if (onRemove && concept) {
+      onRemove(concept.id)
+      onClose()
+    }
+  }, [onRemove, concept, onClose])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -210,6 +222,16 @@ export function ConceptPopup({
           </span>
         </div>
         <div className={styles.actions}>
+          {onRemove && (
+            <button
+              className={styles.removeButton}
+              onClick={handleRemove}
+              aria-label="Remove highlight"
+              title="Remove this highlight"
+            >
+              🗑
+            </button>
+          )}
           {onStickyChange && (
             <button
               className={`${styles.pinButton} ${isSticky ? styles.pinned : ''}`}

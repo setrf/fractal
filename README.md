@@ -275,6 +275,46 @@ Based on 0.25rem (4px) increments:
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run all tests once |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run test:verbose` | Run tests with detailed output |
+
+### Testing
+
+The project uses **Vitest** with **React Testing Library** for comprehensive testing.
+
+#### Test Structure
+
+| File | Coverage |
+|------|----------|
+| `src/types/question.test.ts` | Core utilities (34 tests) |
+| `src/hooks/useQuestionTree.test.tsx` | Tree state hook (24 tests) |
+| `src/hooks/useTheme.test.tsx` | Theme hook (14 tests) |
+| `src/components/QuestionInput/QuestionInput.test.tsx` | Input component (18 tests) |
+| `src/components/QuestionNode/QuestionNode.test.tsx` | Node component (22 tests) |
+| `src/App.test.tsx` | Integration tests (24 tests) |
+
+#### Running Tests for LLM Agents
+
+Tests are designed with detailed logging for LLM agent analysis:
+
+```bash
+# Run with verbose output (recommended for agents)
+npm run test:verbose
+
+# Output includes:
+# - [TEST] logs showing exact values and state
+# - Step-by-step journey logs for integration tests
+# - Clear PASS/FAIL indicators for each assertion
+```
+
+#### Test Philosophy
+
+1. **Detailed Output**: Every test logs its inputs, outputs, and assertions
+2. **Complete Coverage**: Unit tests, component tests, and integration tests
+3. **User-Centric**: Tests verify actual user behavior, not implementation details
+4. **Self-Documenting**: Test names describe expected behavior clearly
 
 ### Code Style
 

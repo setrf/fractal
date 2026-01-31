@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Testing Infrastructure**
+  - Vitest configuration with jsdom environment for React testing
+  - Test setup with localStorage and matchMedia mocks
+  - Custom render utilities with userEvent integration
+  - Detailed logging for LLM agent analysis
+  
+- **Unit Tests** (`src/types/question.test.ts`)
+  - 34 tests covering all utility functions
+  - Tests for generateId, createEmptyTree, createQuestionNode
+  - Tests for addNodeToTree, getChildren, getPathToNode, getNodeDepth
+  
+- **Hook Tests** 
+  - `useQuestionTree.test.tsx` - 24 tests for tree state management
+  - `useTheme.test.tsx` - 14 tests for theme switching and persistence
+  
+- **Component Tests**
+  - `QuestionInput.test.tsx` - 18 tests for input behavior
+  - `QuestionNode.test.tsx` - 22 tests for node display and interaction
+  
+- **Integration Tests** (`App.test.tsx`)
+  - 24 tests covering complete user journeys
+  - Welcome view rendering
+  - Question submission flow
+  - Tree interaction (adding children)
+  - Reset functionality
+  - Theme persistence
+
 ### Fixed
 - Fixed ESM import error for TypeScript interfaces in `useQuestionTree.ts`
   - Changed `import { QuestionTree, QuestionNode }` to `import type { ... }`

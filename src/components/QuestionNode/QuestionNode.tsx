@@ -39,6 +39,8 @@ interface QuestionNodeProps {
   onGenerateAI?: (parentId: string, question: string) => Promise<void>
   /** Whether AI generation is in progress for this node */
   isGenerating?: boolean
+  /** Callback to "lock in" on this question and open chat view */
+  onLockIn?: (nodeId: string, question: string) => void
 }
 
 /**
@@ -71,6 +73,7 @@ export function QuestionNode({
   onToggleExpand,
   onGenerateAI,
   isGenerating = false,
+  onLockIn,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
@@ -106,6 +109,14 @@ export function QuestionNode({
   const handleGenerateAI = (e: React.MouseEvent) => {
     e.stopPropagation()
     onGenerateAI?.(node.id, node.text)
+  }
+
+  /**
+   * Handles "lock in" to open chat view for this question.
+   */
+  const handleLockIn = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onLockIn?.(node.id, node.text)
   }
 
   /**
@@ -164,16 +175,28 @@ export function QuestionNode({
             </button>
           )}
           
-          {/* AI generate button */}
+          {/* AI generate button - branch into more questions */}
           {onGenerateAI && (
             <button
               className={`${styles.aiBtn} ${isGenerating ? styles.generating : ''}`}
               onClick={handleGenerateAI}
               disabled={isGenerating}
               aria-label="Generate AI suggestions"
-              title="Generate related questions with AI"
+              title="Branch: Generate related questions"
             >
               {isGenerating ? '◌' : '✦'}
+            </button>
+          )}
+
+          {/* Lock in button - explore this question deeply */}
+          {onLockIn && (
+            <button
+              className={styles.lockInBtn}
+              onClick={handleLockIn}
+              aria-label="Explore this question"
+              title="Explore: Dive deep into this question"
+            >
+              →
             </button>
           )}
           

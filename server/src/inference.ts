@@ -137,3 +137,96 @@ export async function checkInferenceHealth(): Promise<boolean> {
     return false
   }
 }
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+
+/**
+ * System prompt for exploring a specific question in depth.
+ */
+const CHAT_SYSTEM_PROMPT = `You are a thoughtful intellectual companion helping someone explore a question deeply.
+
+The user has "locked in" on a specific question they want to understand better. Your role is to:
+1. Provide clear, insightful responses that illuminate the topic
+2. Offer multiple perspectives when relevant
+3. Use examples and analogies to make abstract concepts concrete
+4. Ask clarifying questions when needed
+5. Acknowledge uncertainty and the limits of knowledge
+6. Encourage deeper thinking rather than just giving "answers"
+
+Be conversational but substantive. Avoid being preachy or overly verbose.`
+
+/**
+ * Message type for chat conversations.
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+/**
+ * Response from the chat endpoint.
+ */
+export interface ChatResponse {
+  message: string
+  model: string
+  usage: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+}
+
+/**
+ * Send a chat message and get a response.
+ * The rootQuestion provides context for the entire conversation.
+ * 
+ * @param rootQuestion - The original question being explored
+ * @param messages - Conversation history
+ * @param model - LLM model to use
+ */
+export const chat = weave.op(
+  async function chat(
+    rootQuestion: string,
+    messages: ChatMessage[],
+    model: string = config.defaultModel
+  ): Promise<ChatResponse> {
+    console.log(`[Chat] Processing message for question: "${rootQuestion.substring(0, 50)}..."`)
+    console.log(`[Chat] Conversation length: ${messages.length} messages`)
+    console.log(`[Chat] Using model: ${model}`)
+
+    // Build the full message array with system context
+    const fullMessages: ChatMessage[] = [
+      { 
+        role: 'system', 
+        content: `${CHAT_SYSTEM_PROMPT}\n\nThe question being explored is: "${rootQuestion}"` 
+      },
+      ...messages,
+    ]
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: fullMessages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    })
+
+    const content = response.choices[0]?.message?.content || ''
+
+    const result: ChatResponse = {
+      message: content,
+      model,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
+      },
+    }
+
+    console.log(`[Chat] Response length: ${content.length} chars`)
+    console.log(`[Chat] Token usage: ${result.usage.totalTokens}`)
+
+    return result
+  }
+)

@@ -7,14 +7,17 @@
  * Endpoints:
  * - GET  /health           - Health check
  * - POST /api/generate     - Generate related questions
+ * - POST /api/chat         - Chat about a specific question
  * - GET  /api/models       - List available models
  */
 
 import { Router, Request, Response } from 'express'
 import {
   generateRelatedQuestions,
+  chat,
   listModels,
   checkInferenceHealth,
+  type ChatMessage,
 } from './inference.js'
 
 export const router = Router()
@@ -78,6 +81,68 @@ router.post('/api/generate', async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('[API] Error generating questions:', error)
+    
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Chat endpoint for exploring a specific question.
+ * 
+ * Request body:
+ * - rootQuestion: string (required) - The question being explored
+ * - messages: ChatMessage[] (required) - Conversation history
+ * - model: string (optional) - Model to use
+ * 
+ * Response:
+ * - message: string - AI response
+ * - model: string - Model used
+ * - usage: object - Token usage statistics
+ */
+router.post('/api/chat', async (req: Request, res: Response) => {
+  try {
+    const { rootQuestion, messages, model } = req.body
+
+    if (!rootQuestion || typeof rootQuestion !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'rootQuestion is required and must be a string',
+      })
+      return
+    }
+
+    if (!messages || !Array.isArray(messages)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'messages is required and must be an array',
+      })
+      return
+    }
+
+    // Validate message format
+    for (const msg of messages) {
+      if (!msg.role || !msg.content) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: 'Each message must have role and content',
+        })
+        return
+      }
+    }
+
+    console.log(`[API] POST /api/chat - Question: "${rootQuestion.substring(0, 50)}..."`)
+
+    const result = await chat(rootQuestion, messages as ChatMessage[], model)
+
+    res.json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    console.error('[API] Error in chat:', error)
     
     res.status(500).json({
       error: 'Internal Server Error',

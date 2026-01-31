@@ -101,3 +101,70 @@ export async function isApiAvailable(): Promise<boolean> {
     return false
   }
 }
+
+// ============================================
+// CHAT API
+// ============================================
+
+/**
+ * Message in a chat conversation.
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/**
+ * Response from the chat endpoint.
+ */
+export interface ChatApiResponse {
+  success: boolean
+  data: {
+    message: string
+    model: string
+    usage: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
+  }
+}
+
+/**
+ * Send a chat message and get a response.
+ * 
+ * @param rootQuestion - The question being explored (provides context)
+ * @param messages - Conversation history
+ * @param model - Optional model override
+ * @returns The AI response message
+ * 
+ * @example
+ * ```ts
+ * const response = await sendChatMessage(
+ *   "What is consciousness?",
+ *   [{ role: 'user', content: 'Can you explain the hard problem?' }]
+ * )
+ * console.log(response) // "The hard problem of consciousness..."
+ * ```
+ */
+export async function sendChatMessage(
+  rootQuestion: string,
+  messages: ChatMessage[],
+  model?: string
+): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ rootQuestion, messages, model }),
+  })
+
+  if (!response.ok) {
+    const error: ApiError = await response.json()
+    throw new Error(error.message || 'Failed to send chat message')
+  }
+
+  const data: ChatApiResponse = await response.json()
+  return data.data.message
+}

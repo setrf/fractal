@@ -36,6 +36,8 @@ interface QuestionTreeProps {
   onGenerateAI?: (parentId: string, question: string) => Promise<void>
   /** ID of the node currently generating AI suggestions */
   generatingNodeId?: string | null
+  /** Callback to "lock in" on a question and open chat view */
+  onLockIn?: (nodeId: string, question: string) => void
 }
 
 /**
@@ -58,6 +60,8 @@ interface TreeBranchProps {
   onGenerateAI?: (parentId: string, question: string) => Promise<void>
   /** ID of the node currently generating AI suggestions */
   generatingNodeId?: string | null
+  /** Callback to "lock in" on a question and open chat view */
+  onLockIn?: (nodeId: string, question: string) => void
 }
 
 /**
@@ -81,6 +85,7 @@ function TreeBranch({
   onToggleExpand,
   onGenerateAI,
   generatingNodeId,
+  onLockIn,
 }: TreeBranchProps) {
   // Get actual child node objects from IDs
   const children = node.childIds
@@ -106,6 +111,7 @@ function TreeBranch({
         onToggleExpand={onToggleExpand}
         onGenerateAI={onGenerateAI}
         isGenerating={generatingNodeId === node.id}
+        onLockIn={onLockIn}
       />
 
       {/* Render children if any and expanded */}
@@ -126,6 +132,7 @@ function TreeBranch({
               onToggleExpand={onToggleExpand}
               onGenerateAI={onGenerateAI}
               generatingNodeId={generatingNodeId}
+              onLockIn={onLockIn}
             />
           ))}
         </div>
@@ -157,6 +164,7 @@ export function QuestionTree({
   onToggleExpand,
   onGenerateAI,
   generatingNodeId,
+  onLockIn,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -178,6 +186,7 @@ export function QuestionTree({
         onToggleExpand={onToggleExpand}
         onGenerateAI={onGenerateAI}
         generatingNodeId={generatingNodeId}
+        onLockIn={onLockIn}
       />
     </div>
   )

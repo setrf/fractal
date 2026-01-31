@@ -178,6 +178,31 @@
   }
 }
 
+/* Lock-in button - explore question deeply */
+.lockInBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: var(--border-width) solid transparent;
+  background: transparent;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.lockInBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
 /* ============================================
  * ADD CHILD FORM
  * Inline form for creating child questions

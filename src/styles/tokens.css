@@ -60,6 +60,23 @@
   --chart-5: oklch(70% 0.2 50);       /* Orange - Quinary data */
   
   /* ============================================
+   * CONCEPT HIGHLIGHT COLORS
+   * Subtle, monochrome-adjacent colors for 
+   * semantic concept highlighting. Low chroma
+   * to maintain professional aesthetic.
+   * ============================================ */
+  --concept-science: oklch(92% 0.04 250);       /* Muted blue tint */
+  --concept-science-text: oklch(35% 0.08 250);  /* Darker blue for text */
+  --concept-philosophy: oklch(92% 0.04 310);    /* Muted purple tint */
+  --concept-philosophy-text: oklch(35% 0.08 310);
+  --concept-psychology: oklch(92% 0.04 150);    /* Muted green tint */
+  --concept-psychology-text: oklch(35% 0.08 150);
+  --concept-technology: oklch(92% 0.04 50);     /* Muted orange tint */
+  --concept-technology-text: oklch(35% 0.08 50);
+  --concept-abstract: oklch(93% 0.02 0);        /* Near-gray, minimal tint */
+  --concept-abstract-text: oklch(40% 0 0);
+  
+  /* ============================================
    * TYPOGRAPHY
    * Monospace-first with sans-serif fallback
    * ============================================ */
@@ -144,6 +161,18 @@
   
   /* Adjusted accent background for dark mode */
   --accent-error-bg: oklch(20% 0.1 25);
+  
+  /* Concept highlight colors - darker backgrounds for dark mode */
+  --concept-science: oklch(22% 0.06 250);
+  --concept-science-text: oklch(75% 0.08 250);
+  --concept-philosophy: oklch(22% 0.06 310);
+  --concept-philosophy-text: oklch(75% 0.08 310);
+  --concept-psychology: oklch(22% 0.06 150);
+  --concept-psychology-text: oklch(75% 0.08 150);
+  --concept-technology: oklch(22% 0.06 50);
+  --concept-technology-text: oklch(75% 0.08 50);
+  --concept-abstract: oklch(20% 0.02 0);
+  --concept-abstract-text: oklch(70% 0 0);
 }
 
 /* ============================================
@@ -167,5 +196,17 @@
     --border-focus: oklch(92% 0 0);
     
     --accent-error-bg: oklch(20% 0.1 25);
+    
+    /* Concept highlight colors - darker backgrounds for dark mode */
+    --concept-science: oklch(22% 0.06 250);
+    --concept-science-text: oklch(75% 0.08 250);
+    --concept-philosophy: oklch(22% 0.06 310);
+    --concept-philosophy-text: oklch(75% 0.08 310);
+    --concept-psychology: oklch(22% 0.06 150);
+    --concept-psychology-text: oklch(75% 0.08 150);
+    --concept-technology: oklch(22% 0.06 50);
+    --concept-technology-text: oklch(75% 0.08 50);
+    --concept-abstract: oklch(20% 0.02 0);
+    --concept-abstract-text: oklch(70% 0 0);
   }
 }

@@ -38,6 +38,7 @@ interface TextSelection {
 interface OpenPopup {
   concept: ExtractedConcept
   position: PopupPosition
+  isMinimized: boolean
 }
 
 /**
@@ -198,6 +199,7 @@ export function QuestionNode({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptHover?.(concept)
@@ -226,10 +228,21 @@ export function QuestionNode({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
   }, [openPopups, onConceptClick])
+
+  /**
+   * Handles popup minimize state change.
+   * Updates the popup's isMinimized state for stack index calculation.
+   */
+  const handlePopupMinimizeChange = useCallback((conceptId: string, isMinimized: boolean) => {
+    setOpenPopups(prev => prev.map(p => 
+      p.concept.id === conceptId ? { ...p, isMinimized } : p
+    ))
+  }, [])
 
   /**
    * Handles popup close for a specific concept.
@@ -510,13 +523,18 @@ export function QuestionNode({
       )}
 
       {/* Concept explanation popups - multiple can be open */}
-      {openPopups.map(popup => {
+      {openPopups.map((popup, _index) => {
         // Get explanation for this specific popup from the maps, or fall back to legacy props
         const explanation = conceptExplanations[popup.concept.id] 
           || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)
         const loadingState = conceptLoadingStates[popup.concept.id]
         const isLoading = loadingState?.isLoading ?? (conceptExplanation?.conceptId === popup.concept.id ? isConceptLoading : false)
         const error = loadingState?.error ?? (conceptExplanation?.conceptId === popup.concept.id ? conceptError : null)
+        
+        // Calculate stack index for minimized popups (count how many minimized popups are before this one)
+        const minimizedStackIndex = openPopups
+          .filter((p, i) => p.isMinimized && i < openPopups.indexOf(popup))
+          .length
         
         return (
           <ConceptPopup
@@ -527,6 +545,8 @@ export function QuestionNode({
             error={error}
             position={popup.position}
             onClose={() => handlePopupClose(popup.concept.id)}
+            onMinimizeChange={handlePopupMinimizeChange}
+            minimizedStackIndex={minimizedStackIndex}
           />
         )
       })}

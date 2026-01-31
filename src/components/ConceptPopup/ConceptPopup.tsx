@@ -54,6 +54,15 @@ const DEFAULT_WIDTH = 320
 const DEFAULT_HEIGHT = 400
 
 /**
+ * Minimized popup dimensions for stacking.
+ */
+const MINIMIZED_WIDTH = 200
+const MINIMIZED_HEIGHT = 48
+const STACK_MARGIN = 8
+const STACK_LEFT_OFFSET = 20
+const STACK_BOTTOM_OFFSET = 20
+
+/**
  * Props for the ConceptPopup component.
  */
 export interface ConceptPopupProps {
@@ -77,6 +86,12 @@ export interface ConceptPopupProps {
   
   /** Called when a related concept is clicked */
   onRelatedConceptClick?: (conceptName: string) => void
+  
+  /** Called when minimize state changes (for stacking management) */
+  onMinimizeChange?: (conceptId: string, isMinimized: boolean) => void
+  
+  /** Stack index when minimized (0 = bottom, 1 = above, etc.) */
+  minimizedStackIndex?: number
 }
 
 /**
@@ -110,6 +125,8 @@ export function ConceptPopup({
   position,
   onClose,
   onRelatedConceptClick,
+  onMinimizeChange,
+  minimizedStackIndex = 0,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -118,9 +135,11 @@ export function ConceptPopup({
   const [popupPosition, setPopupPosition] = useState(position)
   const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT })
   
-  // Minimize state - stores previous height when minimized
+  // Minimize state - stores previous height and position when minimized
   const [isMinimized, setIsMinimized] = useState(false)
   const [preMinimizeHeight, setPreMinimizeHeight] = useState(DEFAULT_HEIGHT)
+  const [preMinimizePosition, setPreMinimizePosition] = useState<PopupPosition | null>(null)
+  const [preMinimizeWidth, setPreMinimizeWidth] = useState(DEFAULT_WIDTH)
   
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
@@ -290,17 +309,43 @@ export function ConceptPopup({
     [onRelatedConceptClick]
   )
 
+  // Calculate stacked position for minimized popup
+  const getMinimizedPosition = useCallback((): PopupPosition => {
+    const viewportHeight = window.innerHeight
+    const y = viewportHeight - STACK_BOTTOM_OFFSET - MINIMIZED_HEIGHT - 
+              (minimizedStackIndex * (MINIMIZED_HEIGHT + STACK_MARGIN))
+    return { x: STACK_LEFT_OFFSET, y }
+  }, [minimizedStackIndex])
+
   // Handle minimize toggle
   const handleMinimizeToggle = useCallback(() => {
     if (isMinimized) {
-      // Restore previous height
-      setPopupSize(prev => ({ ...prev, height: preMinimizeHeight }))
+      // Restore previous position and size
+      if (preMinimizePosition) {
+        setPopupPosition(preMinimizePosition)
+      }
+      setPopupSize({ width: preMinimizeWidth, height: preMinimizeHeight })
+      setIsMinimized(false)
+      onMinimizeChange?.(concept?.id || '', false)
     } else {
-      // Save current height before minimizing
+      // Save current position and size before minimizing
+      setPreMinimizePosition(popupPosition)
+      setPreMinimizeWidth(popupSize.width)
       setPreMinimizeHeight(popupSize.height)
+      // Move to stacked position in lower-left
+      setPopupPosition(getMinimizedPosition())
+      setPopupSize({ width: MINIMIZED_WIDTH, height: MINIMIZED_HEIGHT })
+      setIsMinimized(true)
+      onMinimizeChange?.(concept?.id || '', true)
     }
-    setIsMinimized(prev => !prev)
-  }, [isMinimized, preMinimizeHeight, popupSize.height])
+  }, [isMinimized, preMinimizePosition, preMinimizeWidth, preMinimizeHeight, popupPosition, popupSize, getMinimizedPosition, onMinimizeChange, concept?.id])
+
+  // Update minimized position when stack index changes
+  useEffect(() => {
+    if (isMinimized) {
+      setPopupPosition(getMinimizedPosition())
+    }
+  }, [isMinimized, minimizedStackIndex, getMinimizedPosition])
 
   // Don't render if no concept
   if (!concept) return null

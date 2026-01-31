@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Multiple popups** - open popups for multiple concepts simultaneously
   - **Draggable** - move popup by dragging header
   - **Resizable** - resize by dragging edges/corners with visual indicators
-  - **Minimizable** - collapse popup to header-only with minimize button (Gwern-style)
+  - **Minimizable with stacking** - collapse popup to header-only, minimized popups stack in lower-left corner (Gwern-style), expand to restore original position
   - **Persistent** - stays open until user clicks close button (no auto-dismiss)
   - Intelligent viewport positioning for initial display
   - Loading and error states

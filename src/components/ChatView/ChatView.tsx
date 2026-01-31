@@ -101,6 +101,7 @@ export function ChatView({
   interface OpenPopup {
     concept: ExtractedConcept
     position: PopupPosition
+    isMinimized: boolean
   }
   
   // State for concept popups (supports multiple open popups)
@@ -212,6 +213,7 @@ export function ChatView({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptHover?.(concept)
@@ -240,6 +242,7 @@ export function ChatView({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
@@ -252,6 +255,16 @@ export function ChatView({
    */
   const handlePopupClose = useCallback((conceptId: string) => {
     setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
+  }, [])
+
+  /**
+   * Handles popup minimize state change.
+   * Updates the popup's isMinimized state for stack index calculation.
+   */
+  const handlePopupMinimizeChange = useCallback((conceptId: string, isMinimized: boolean) => {
+    setOpenPopups(prev => prev.map(p => 
+      p.concept.id === conceptId ? { ...p, isMinimized } : p
+    ))
   }, [])
 
   const isDisabled = sending || isLoading
@@ -285,13 +298,18 @@ export function ChatView({
       </header>
 
       {/* Concept explanation popups - multiple can be open */}
-      {openPopups.map(popup => {
+      {openPopups.map((popup, _index) => {
         // Get explanation for this specific popup from the maps, or fall back to legacy props
         const explanation = conceptExplanations[popup.concept.id] 
           || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)
         const loadingState = conceptLoadingStates[popup.concept.id]
         const popupIsLoading = loadingState?.isLoading ?? (conceptExplanation?.conceptId === popup.concept.id ? isConceptLoading : false)
         const popupError = loadingState?.error ?? (conceptExplanation?.conceptId === popup.concept.id ? conceptError : null)
+        
+        // Calculate stack index for minimized popups (count how many minimized popups are before this one)
+        const minimizedStackIndex = openPopups
+          .filter((p, i) => p.isMinimized && i < openPopups.indexOf(popup))
+          .length
         
         return (
           <ConceptPopup
@@ -302,6 +320,8 @@ export function ChatView({
             error={popupError}
             position={popup.position}
             onClose={() => handlePopupClose(popup.concept.id)}
+            onMinimizeChange={handlePopupMinimizeChange}
+            minimizedStackIndex={minimizedStackIndex}
           />
         )
       })}

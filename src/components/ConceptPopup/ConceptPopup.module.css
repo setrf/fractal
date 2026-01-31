@@ -40,7 +40,9 @@
 
 .popup.minimized {
   min-height: auto;
-  height: auto !important;
+  min-width: auto;
+  /* Stacked in lower-left corner when minimized */
+  transition: left 200ms ease-out, top 200ms ease-out, width 200ms ease-out;
 }
 
 @keyframes popupEnter {

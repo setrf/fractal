@@ -62,11 +62,7 @@ function App() {
   const { generate, isLoading: aiLoading, error: aiError } = useAIQuestions()
   
   // Concept extraction and explanation
-  const { 
-    concepts, 
-    isLoading: conceptsLoading, 
-    extract: extractConcepts 
-  } = useConceptExtraction()
+  const { extract: extractConcepts } = useConceptExtraction()
   
   const {
     explanation: conceptExplanation,
@@ -85,9 +81,6 @@ function App() {
   
   // Track concepts per node (nodeId -> concepts)
   const [nodeConcepts, setNodeConcepts] = useState<Record<string, ExtractedConcept[]>>({})
-  
-  // Track the currently hovered concept
-  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
 
   // View state for navigating between tree and chat
   const [chatState, setChatState] = useState<ChatState | null>(null)
@@ -157,7 +150,6 @@ function App() {
    * Handles concept hover - fetches explanation.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept) => {
-    setHoveredConcept(concept)
     // Get the question context from the current view
     const questionContext = chatState?.question || rootNode?.text || ''
     if (questionContext) {
@@ -169,7 +161,6 @@ function App() {
    * Handles concept click - same as hover for now, but could trigger sticky.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept) => {
-    setHoveredConcept(concept)
     const questionContext = chatState?.question || rootNode?.text || ''
     if (questionContext) {
       fetchExplanation(concept.id, concept.normalizedName, questionContext)
@@ -198,6 +189,16 @@ function App() {
       return { ...prev, [nodeId]: updated }
     })
   }, [])
+
+  /**
+   * Handles full reset - clears tree and all associated state.
+   */
+  const handleReset = useCallback(() => {
+    reset()
+    setNodeConcepts({})
+    setChatState(null)
+    resetExplanation()
+  }, [reset, resetExplanation])
 
   return (
     <>
@@ -366,7 +367,7 @@ function App() {
 
               {/* Reset button to start over */}
               <button
-                onClick={reset}
+                onClick={handleReset}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--text-sm)',

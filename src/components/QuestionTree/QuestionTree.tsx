@@ -89,6 +89,8 @@ interface TreeBranchProps {
   onLockIn?: (nodeId: string, question: string) => void
   
   // Concept highlighting props
+  /** Concepts per node (nodeId -> concepts) - needed for recursive rendering */
+  nodeConcepts?: Record<string, ExtractedConcept[]>
   /** Concepts for this node */
   concepts?: ExtractedConcept[]
   /** Map of concept IDs to their explanations (for multiple popups) */
@@ -135,6 +137,7 @@ function TreeBranch({
   onGenerateAI,
   generatingNodeId,
   onLockIn,
+  nodeConcepts,
   concepts,
   conceptExplanations,
   conceptLoadingStates,
@@ -204,6 +207,8 @@ function TreeBranch({
               onGenerateAI={onGenerateAI}
               generatingNodeId={generatingNodeId}
               onLockIn={onLockIn}
+              nodeConcepts={nodeConcepts}
+              concepts={nodeConcepts?.[child.id]}
               conceptExplanations={conceptExplanations}
               conceptLoadingStates={conceptLoadingStates}
               conceptExplanation={conceptExplanation}
@@ -279,6 +284,7 @@ export function QuestionTree({
         onGenerateAI={onGenerateAI}
         generatingNodeId={generatingNodeId}
         onLockIn={onLockIn}
+        nodeConcepts={nodeConcepts}
         concepts={nodeConcepts[rootNode.id]}
         conceptExplanations={conceptExplanations}
         conceptLoadingStates={conceptLoadingStates}

@@ -1,0 +1,263 @@
+/**
+ * ConceptPopup Styles
+ * ===================
+ * 
+ * Neobrutalist styling for the Gwern-style concept popup.
+ * Features hard edges, bold borders, and monochrome palette.
+ */
+
+/* Main popup container */
+.popup {
+  position: fixed;
+  z-index: 1000;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  max-height: 400px;
+  overflow-y: auto;
+  
+  background-color: var(--bg-primary);
+  border: var(--border-width-strong) solid var(--text-primary);
+  box-shadow: 4px 4px 0 var(--border-strong);
+  
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  
+  /* Smooth entrance */
+  animation: popupEnter 150ms ease-out;
+}
+
+.popup.sticky {
+  border-color: var(--text-primary);
+  box-shadow: 6px 6px 0 var(--text-secondary);
+}
+
+@keyframes popupEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header section */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-bottom: var(--border-width) solid var(--border-primary);
+  background-color: var(--bg-secondary);
+}
+
+.titleRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.conceptName {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: lowercase;
+}
+
+.category {
+  display: inline-block;
+  padding: 0.15em 0.4em;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  border: 1px solid currentColor;
+}
+
+/* Category-specific colors */
+.categoryScience {
+  color: var(--concept-science-text);
+  background-color: var(--concept-science);
+}
+
+.categoryPhilosophy {
+  color: var(--concept-philosophy-text);
+  background-color: var(--concept-philosophy);
+}
+
+.categoryPsychology {
+  color: var(--concept-psychology-text);
+  background-color: var(--concept-psychology);
+}
+
+.categoryTechnology {
+  color: var(--concept-technology-text);
+  background-color: var(--concept-technology);
+}
+
+.categoryAbstract {
+  color: var(--concept-abstract-text);
+  background-color: var(--concept-abstract);
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.pinButton,
+.closeButton {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  background: none;
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pinButton:hover,
+.closeButton:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.pinButton.pinned {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+.closeButton {
+  font-size: var(--text-lg);
+  font-weight: 300;
+}
+
+/* Content section */
+.content {
+  padding: var(--space-3);
+}
+
+.section {
+  margin-bottom: var(--space-3);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+}
+
+.summary {
+  margin: 0;
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.context {
+  margin: 0;
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Related concepts */
+.relatedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.relatedConcept {
+  padding: var(--space-1) var(--space-2);
+  
+  background: none;
+  border: 1px solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.relatedConcept:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+}
+
+.loadingDot {
+  display: inline-block;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Error state */
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background-color: var(--accent-error-bg);
+  color: var(--accent-error);
+  font-size: var(--text-xs);
+}
+
+.errorIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling */
+.popup::-webkit-scrollbar {
+  width: 6px;
+}
+
+.popup::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.popup::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+}
+
+.popup::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}

@@ -381,6 +381,7 @@ export function QuestionNode({
               onConceptHover={handleConceptHover}
               onConceptLeave={handleConceptLeave}
               onConceptClick={handleConceptClick}
+              onConceptRemove={onRemoveConcept ? (conceptId) => onRemoveConcept(node.id, conceptId) : undefined}
             />
           ) : (
             <span className={styles.text}>{node.text}</span>
@@ -525,10 +526,6 @@ export function QuestionNode({
             error={error}
             position={popup.position}
             onClose={() => handlePopupClose(popup.concept.id)}
-            onRemove={onRemoveConcept ? (conceptId) => {
-              onRemoveConcept(node.id, conceptId)
-              handlePopupClose(conceptId)
-            } : undefined}
           />
         )
       })}

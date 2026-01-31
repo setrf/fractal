@@ -107,16 +107,6 @@ describe('ConceptPopup', () => {
       render(<ConceptPopup {...defaultProps} />)
       expect(screen.getByLabelText('Close popup')).toBeInTheDocument()
     })
-
-    it('should render remove button when onRemove provided', () => {
-      render(
-        <ConceptPopup
-          {...defaultProps}
-          onRemove={vi.fn()}
-        />
-      )
-      expect(screen.getByLabelText('Remove highlight')).toBeInTheDocument()
-    })
   })
 
   describe('interactions', () => {
@@ -134,22 +124,6 @@ describe('ConceptPopup', () => {
       
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onRemove when remove button clicked', () => {
-      const onRemove = vi.fn()
-      const onClose = vi.fn()
-      render(
-        <ConceptPopup
-          {...defaultProps}
-          onRemove={onRemove}
-          onClose={onClose}
-        />
-      )
-      
-      fireEvent.click(screen.getByLabelText('Remove highlight'))
-      expect(onRemove).toHaveBeenCalledWith('c_test_123')
-      expect(onClose).toHaveBeenCalled()
     })
 
     it('should call onRelatedConceptClick when related concept clicked', () => {

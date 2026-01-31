@@ -213,8 +213,7 @@
   flex-shrink: 0;
 }
 
-.closeButton,
-.removeButton {
+.closeButton {
   width: 24px;
   height: 24px;
   display: flex;
@@ -224,7 +223,8 @@
   background: none;
   border: var(--border-width) solid var(--border-primary);
   color: var(--text-secondary);
-  font-size: var(--text-base);
+  font-size: var(--text-lg);
+  font-weight: 300;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -233,21 +233,6 @@
   background-color: var(--bg-tertiary);
   border-color: var(--text-primary);
   color: var(--text-primary);
-}
-
-.removeButton {
-  font-size: var(--text-sm);
-}
-
-.removeButton:hover {
-  background-color: var(--accent-error);
-  border-color: var(--accent-error);
-  color: var(--bg-primary);
-}
-
-.closeButton {
-  font-size: var(--text-lg);
-  font-weight: 300;
 }
 
 /* Content section */

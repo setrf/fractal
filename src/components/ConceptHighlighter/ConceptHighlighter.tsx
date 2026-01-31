@@ -41,6 +41,9 @@ export interface ConceptHighlighterProps {
   /** Called when a concept is clicked */
   onConceptClick?: (concept: ExtractedConcept, event: React.MouseEvent) => void
   
+  /** Called when a concept's remove button is clicked */
+  onConceptRemove?: (conceptId: string) => void
+  
   /** Additional CSS class for the container */
   className?: string
   
@@ -137,6 +140,7 @@ export function ConceptHighlighter({
   onConceptHover,
   onConceptLeave,
   onConceptClick,
+  onConceptRemove,
   className = '',
   interactive = true,
 }: ConceptHighlighterProps) {
@@ -186,6 +190,17 @@ export function ConceptHighlighter({
     [interactive, onConceptClick]
   )
 
+  const handleRemove = useCallback(
+    (conceptId: string, event: React.MouseEvent) => {
+      event.stopPropagation()
+      event.preventDefault()
+      if (onConceptRemove) {
+        onConceptRemove(conceptId)
+      }
+    },
+    [onConceptRemove]
+  )
+
   return (
     <span className={`${styles.container} ${className}`.trim()}>
       {segments.map((segment, index) => {
@@ -216,6 +231,16 @@ export function ConceptHighlighter({
             onKeyDown={(e) => handleKeyDown(concept, e)}
           >
             {segment.content}
+            {onConceptRemove && (
+              <button
+                className={styles.removeBtn}
+                onClick={(e) => handleRemove(concept.id, e)}
+                aria-label={`Remove highlight: ${concept.normalizedName}`}
+                title="Remove"
+              >
+                ×
+              </button>
+            )}
           </span>
         )
       })}

@@ -77,9 +77,6 @@ export interface ConceptPopupProps {
   
   /** Called when a related concept is clicked */
   onRelatedConceptClick?: (conceptName: string) => void
-  
-  /** Called when user wants to remove this highlight */
-  onRemove?: (conceptId: string) => void
 }
 
 /**
@@ -113,7 +110,6 @@ export function ConceptPopup({
   position,
   onClose,
   onRelatedConceptClick,
-  onRemove,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -290,14 +286,6 @@ export function ConceptPopup({
     [onRelatedConceptClick]
   )
 
-  // Handle remove highlight
-  const handleRemove = useCallback(() => {
-    if (onRemove && concept) {
-      onRemove(concept.id)
-      onClose()
-    }
-  }, [onRemove, concept, onClose])
-
   // Don't render if no concept
   if (!concept) return null
 
@@ -340,16 +328,6 @@ export function ConceptPopup({
           </span>
         </div>
         <div className={styles.actions}>
-          {onRemove && (
-            <button
-              className={styles.removeButton}
-              onClick={handleRemove}
-              aria-label="Remove highlight"
-              title="Remove this highlight"
-            >
-              🗑
-            </button>
-          )}
           <button
             className={styles.closeButton}
             onClick={onClose}

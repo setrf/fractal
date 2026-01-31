@@ -233,11 +233,12 @@ export function QuestionNode({
 
   /**
    * Handles popup close for a specific concept.
+   * Note: We don't call onConceptLeave here because that would reset ALL explanations.
+   * Each popup manages its own lifecycle independently.
    */
   const handlePopupClose = useCallback((conceptId: string) => {
     setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
-    onConceptLeave?.()
-  }, [onConceptLeave])
+  }, [])
 
   /**
    * Handles text selection for user-created highlights.

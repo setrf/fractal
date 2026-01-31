@@ -168,7 +168,7 @@ describe('App Integration Tests', () => {
       await user.keyboard('{Enter}')
       
       // Click add child button
-      const addButton = await screen.findByRole('button', { name: /add related question/i })
+      const addButton = await screen.findByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       // Fill in child question
@@ -193,7 +193,7 @@ describe('App Integration Tests', () => {
       await user.keyboard('{Enter}')
       
       // Add first child
-      let addButton = await screen.findByRole('button', { name: /add related question/i })
+      let addButton = await screen.findByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       let childInput = screen.getByPlaceholderText(/what comes next/i)
       await user.type(childInput, 'Child 1')
@@ -202,7 +202,7 @@ describe('App Integration Tests', () => {
       // Add second child (need to find the add button for root again)
       await waitFor(async () => {
         // Get all add buttons, first one should be for root
-        const addButtons = screen.getAllByRole('button', { name: /add related question/i })
+        const addButtons = screen.getAllByRole('button', { name: /customize with your own question/i })
         await user.click(addButtons[0])
       })
       
@@ -255,7 +255,7 @@ describe('App Integration Tests', () => {
       await user.keyboard('{Enter}')
       
       // Add a child
-      const addButton = await screen.findByRole('button', { name: /add related question/i })
+      const addButton = await screen.findByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       const childInput = screen.getByPlaceholderText(/what comes next/i)
       await user.type(childInput, 'Child to be cleared')
@@ -341,7 +341,7 @@ describe('App Integration Tests', () => {
       
       // Step 2: Add a child question
       console.log('[STEP 2] Adding child question...')
-      const addButton1 = await screen.findByRole('button', { name: /add related question/i })
+      const addButton1 = await screen.findByRole('button', { name: /customize with your own question/i })
       await user.click(addButton1)
       const childInput1 = screen.getByPlaceholderText(/what comes next/i)
       await user.type(childInput1, 'What happens in REM sleep?')
@@ -354,7 +354,7 @@ describe('App Integration Tests', () => {
       // Step 3: Add another child to root
       console.log('[STEP 3] Adding second child to root...')
       await waitFor(async () => {
-        const addButtons = screen.getAllByRole('button', { name: /add related question/i })
+        const addButtons = screen.getAllByRole('button', { name: /customize with your own question/i })
         await user.click(addButtons[0]) // First add button is for root
       })
       const childInput2 = screen.getByPlaceholderText(/what comes next/i)

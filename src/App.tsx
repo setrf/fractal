@@ -180,6 +180,18 @@ function App() {
     }
   }, [chatState, rootNode, fetchExplanation])
 
+  /**
+   * Handles user-created concept highlights.
+   */
+  const handleAddUserConcept = useCallback((nodeId: string, concept: ExtractedConcept) => {
+    setNodeConcepts(prev => {
+      const existing = prev[nodeId] || []
+      // Add the new concept and sort by position
+      const updated = [...existing, concept].sort((a, b) => a.startIndex - b.startIndex)
+      return { ...prev, [nodeId]: updated }
+    })
+  }, [])
+
   return (
     <>
       {/* Theme toggle - always visible (except in chat view which has its own layout) */}
@@ -325,6 +337,7 @@ function App() {
                 onConceptHover={handleConceptHover}
                 onConceptLeave={handleConceptLeave}
                 onConceptClick={handleConceptClick}
+                onAddUserConcept={handleAddUserConcept}
               />
 
               {/* AI loading indicator */}

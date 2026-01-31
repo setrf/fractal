@@ -64,7 +64,7 @@ describe('QuestionNode Component', () => {
     it('should render the add child button', () => {
       render(<QuestionNode node={testNode} />)
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       
       console.log(`[TEST] Add button found: ${!!addButton}`)
       console.log(`[TEST] Add button text: ${addButton.textContent}`)
@@ -227,7 +227,7 @@ describe('QuestionNode Component', () => {
     it('should show add child form when clicking add button', async () => {
       const { user } = render(<QuestionNode node={testNode} />)
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const childInput = screen.getByPlaceholderText(/what comes next/i)
@@ -240,7 +240,7 @@ describe('QuestionNode Component', () => {
     it('should show branch connector in add form', async () => {
       const { user } = render(<QuestionNode node={testNode} />)
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const connector = screen.getByText('├─')
@@ -255,7 +255,7 @@ describe('QuestionNode Component', () => {
         <QuestionNode node={testNode} onAddChild={mockOnAddChild} />
       )
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const childInput = screen.getByPlaceholderText(/what comes next/i)
@@ -274,7 +274,7 @@ describe('QuestionNode Component', () => {
         <QuestionNode node={testNode} onAddChild={mockOnAddChild} />
       )
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const childInput = screen.getByPlaceholderText(/what comes next/i)
@@ -291,7 +291,7 @@ describe('QuestionNode Component', () => {
     it('should close add form when pressing Escape', async () => {
       const { user } = render(<QuestionNode node={testNode} />)
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const childInput = screen.getByPlaceholderText(/what comes next/i)
@@ -307,7 +307,7 @@ describe('QuestionNode Component', () => {
     it('should close add form when clicking cancel', async () => {
       const { user } = render(<QuestionNode node={testNode} />)
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const cancelButton = screen.getByText('×')
@@ -325,7 +325,7 @@ describe('QuestionNode Component', () => {
         <QuestionNode node={testNode} onAddChild={mockOnAddChild} />
       )
       
-      const addButton = screen.getByRole('button', { name: /add related question/i })
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
       const childInput = screen.getByPlaceholderText(/what comes next/i)

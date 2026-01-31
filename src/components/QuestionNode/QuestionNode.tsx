@@ -15,12 +15,22 @@
  * - Gwern-style concept popups for highlighted terms
  */
 
-import { useState, useCallback, KeyboardEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, KeyboardEvent } from 'react'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
-import type { ExtractedConcept, ConceptExplanation } from '../../api'
+import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition } from '../ConceptPopup'
 import styles from './QuestionNode.module.css'
+
+/**
+ * Selection state for user-created highlights.
+ */
+interface TextSelection {
+  text: string
+  startIndex: number
+  endIndex: number
+  position: { x: number; y: number }
+}
 
 /**
  * Props for the QuestionNode component.
@@ -62,6 +72,8 @@ interface QuestionNodeProps {
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
   onConceptClick?: (concept: ExtractedConcept) => void
+  /** Callback when user creates a highlight by selecting text */
+  onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
 }
 
 /**
@@ -103,6 +115,7 @@ export function QuestionNode({
   onConceptHover,
   onConceptLeave,
   onConceptClick,
+  onAddUserConcept,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
@@ -112,6 +125,10 @@ export function QuestionNode({
   const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
   const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: 0, y: 0 })
   const [isPopupSticky, setIsPopupSticky] = useState(false)
+  
+  // State for user text selection (to create custom highlights)
+  const [textSelection, setTextSelection] = useState<TextSelection | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   /**
    * Handles click on the node body to select it.
@@ -204,6 +221,96 @@ export function QuestionNode({
   }, [])
 
   /**
+   * Handles text selection for user-created highlights.
+   */
+  const handleTextSelect = useCallback(() => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !contentRef.current) {
+      setTextSelection(null)
+      return
+    }
+
+    const selectedText = selection.toString().trim()
+    if (!selectedText || selectedText.length < 2) {
+      setTextSelection(null)
+      return
+    }
+
+    // Check if selection is within our content area
+    const range = selection.getRangeAt(0)
+    if (!contentRef.current.contains(range.commonAncestorContainer)) {
+      setTextSelection(null)
+      return
+    }
+
+    // Find the position of the selected text in the source
+    const startIndex = node.text.indexOf(selectedText)
+    if (startIndex === -1) {
+      setTextSelection(null)
+      return
+    }
+
+    // Check if this overlaps with an existing concept
+    const endIndex = startIndex + selectedText.length
+    const overlapsExisting = concepts.some(
+      c => (startIndex < c.endIndex && endIndex > c.startIndex)
+    )
+    if (overlapsExisting) {
+      setTextSelection(null)
+      return
+    }
+
+    // Get position for the highlight button
+    const rect = range.getBoundingClientRect()
+    setTextSelection({
+      text: selectedText,
+      startIndex,
+      endIndex,
+      position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
+    })
+  }, [node.text, concepts])
+
+  /**
+   * Creates a user highlight from the current selection.
+   */
+  const handleCreateHighlight = useCallback((category: ConceptCategory = 'abstract') => {
+    if (!textSelection || !onAddUserConcept) return
+
+    const newConcept: ExtractedConcept = {
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      text: textSelection.text,
+      normalizedName: textSelection.text.toLowerCase(),
+      category,
+      startIndex: textSelection.startIndex,
+      endIndex: textSelection.endIndex,
+    }
+
+    onAddUserConcept(node.id, newConcept)
+    setTextSelection(null)
+    window.getSelection()?.removeAllRanges()
+  }, [textSelection, onAddUserConcept, node.id])
+
+  /**
+   * Dismiss the highlight tooltip.
+   */
+  const handleDismissHighlight = useCallback(() => {
+    setTextSelection(null)
+    window.getSelection()?.removeAllRanges()
+  }, [])
+
+  // Listen for clicks outside to dismiss the highlight tooltip
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (textSelection && !(e.target as HTMLElement).closest(`.${styles.highlightTooltip}`)) {
+        // Small delay to allow button clicks to register
+        setTimeout(() => setTextSelection(null), 100)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [textSelection])
+
+  /**
    * Submits the new child question.
    */
   const handleSubmitChild = () => {
@@ -241,7 +348,11 @@ export function QuestionNode({
         aria-expanded={hasChildren ? node.meta.isExpanded : undefined}
       >
         {/* Question content with prefix */}
-        <div className={styles.content}>
+        <div 
+          ref={contentRef}
+          className={styles.content}
+          onMouseUp={onAddUserConcept ? handleTextSelect : undefined}
+        >
           <span className={styles.prefix}>?</span>
           {concepts.length > 0 ? (
             <ConceptHighlighter
@@ -256,6 +367,34 @@ export function QuestionNode({
             <span className={styles.text}>{node.text}</span>
           )}
         </div>
+
+        {/* Highlight tooltip - shown when user selects text */}
+        {textSelection && onAddUserConcept && (
+          <div 
+            className={styles.highlightTooltip}
+            style={{
+              position: 'fixed',
+              left: textSelection.position.x,
+              top: textSelection.position.y,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            <button
+              className={styles.highlightBtn}
+              onClick={() => handleCreateHighlight('abstract')}
+              title="Create highlight"
+            >
+              ✦ Highlight
+            </button>
+            <button
+              className={styles.highlightDismiss}
+              onClick={handleDismissHighlight}
+              title="Cancel"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className={styles.actions}>

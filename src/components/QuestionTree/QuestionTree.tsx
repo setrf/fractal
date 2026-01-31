@@ -55,6 +55,8 @@ interface QuestionTreeProps {
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
   onConceptClick?: (concept: ExtractedConcept) => void
+  /** Callback when user creates a highlight by selecting text */
+  onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
 }
 
 /**
@@ -95,6 +97,8 @@ interface TreeBranchProps {
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
   onConceptClick?: (concept: ExtractedConcept) => void
+  /** Callback when user creates a highlight by selecting text */
+  onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
 }
 
 /**
@@ -126,6 +130,7 @@ function TreeBranch({
   onConceptHover,
   onConceptLeave,
   onConceptClick,
+  onAddUserConcept,
 }: TreeBranchProps) {
   // Get actual child node objects from IDs
   const children = node.childIds
@@ -159,6 +164,7 @@ function TreeBranch({
         onConceptHover={onConceptHover}
         onConceptLeave={onConceptLeave}
         onConceptClick={onConceptClick}
+        onAddUserConcept={onAddUserConcept}
       />
 
       {/* Render children if any and expanded */}
@@ -186,6 +192,7 @@ function TreeBranch({
               onConceptHover={onConceptHover}
               onConceptLeave={onConceptLeave}
               onConceptClick={onConceptClick}
+              onAddUserConcept={onAddUserConcept}
             />
           ))}
         </div>
@@ -225,6 +232,7 @@ export function QuestionTree({
   onConceptHover,
   onConceptLeave,
   onConceptClick,
+  onAddUserConcept,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -254,6 +262,7 @@ export function QuestionTree({
         onConceptHover={onConceptHover}
         onConceptLeave={onConceptLeave}
         onConceptClick={onConceptClick}
+        onAddUserConcept={onAddUserConcept}
       />
     </div>
   )

@@ -166,14 +166,6 @@ function App() {
   }, [chatState, rootNode, fetchExplanation])
 
   /**
-   * Handles concept hover end.
-   */
-  const handleConceptLeave = useCallback(() => {
-    setHoveredConcept(null)
-    resetExplanation()
-  }, [resetExplanation])
-
-  /**
    * Handles concept click - same as hover for now, but could trigger sticky.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept) => {
@@ -228,7 +220,6 @@ function App() {
           isConceptLoading={explanationLoading}
           conceptError={explanationError}
           onConceptHover={handleConceptHover}
-          onConceptLeave={handleConceptLeave}
           onConceptClick={handleConceptClick}
         />
       )}
@@ -354,7 +345,6 @@ function App() {
                 isConceptLoading={explanationLoading}
                 conceptError={explanationError}
                 onConceptHover={handleConceptHover}
-                onConceptLeave={handleConceptLeave}
                 onConceptClick={handleConceptClick}
                 onAddUserConcept={handleAddUserConcept}
                 onRemoveConcept={handleRemoveConcept}

@@ -85,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Concept highlighting in question text
   - Popup display on hover/click
   - Full prop forwarding for parent control
+  - **Auto-extraction on selection** - Concepts are automatically extracted when a node is selected
 
 - **ChatView Integration**
   - Concept highlighting in question header

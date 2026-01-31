@@ -100,6 +100,24 @@ function App() {
   }, [rootNode, nodeConcepts, extractConcepts])
 
   /**
+   * Handles node selection - wraps setActiveNode to also trigger concept extraction.
+   * When a node is selected, we automatically extract concepts if not already done.
+   */
+  const handleSelectNode = useCallback((nodeId: string) => {
+    setActiveNode(nodeId)
+    
+    // Auto-extract concepts for the selected node if not already done
+    const node = tree.nodes[nodeId]
+    if (node && !nodeConcepts[nodeId]) {
+      extractConcepts(node.text).then((extracted) => {
+        if (extracted.length > 0) {
+          setNodeConcepts(prev => ({ ...prev, [nodeId]: extracted }))
+        }
+      })
+    }
+  }, [tree.nodes, nodeConcepts, extractConcepts, setActiveNode])
+
+  /**
    * Handles submission of the initial question.
    * Creates the root node and transitions to tree view.
    */
@@ -333,7 +351,7 @@ function App() {
               {/* Question tree visualization */}
               <QuestionTree
                 tree={tree}
-                onSelectNode={setActiveNode}
+                onSelectNode={handleSelectNode}
                 onAddChild={addChildQuestion}
                 onToggleExpand={toggleNodeExpansion}
                 onGenerateAI={handleGenerateAI}

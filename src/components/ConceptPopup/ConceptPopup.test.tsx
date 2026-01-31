@@ -313,4 +313,82 @@ describe('ConceptPopup', () => {
     })
   })
 
+  describe('minimize', () => {
+    it('should render minimize button', () => {
+      render(<ConceptPopup {...defaultProps} />)
+      expect(screen.getByLabelText('Minimize popup')).toBeInTheDocument()
+    })
+
+    it('should hide content when minimized', () => {
+      const explanation = createExplanation()
+      render(
+        <ConceptPopup {...defaultProps} explanation={explanation} />
+      )
+      
+      // Content should be visible initially
+      expect(screen.getByText(explanation.summary)).toBeInTheDocument()
+      
+      // Click minimize
+      fireEvent.click(screen.getByLabelText('Minimize popup'))
+      
+      // Content should be hidden
+      expect(screen.queryByText(explanation.summary)).not.toBeInTheDocument()
+    })
+
+    it('should show expand button when minimized', () => {
+      render(<ConceptPopup {...defaultProps} />)
+      
+      // Initially shows minimize button
+      expect(screen.getByLabelText('Minimize popup')).toBeInTheDocument()
+      
+      // Click minimize
+      fireEvent.click(screen.getByLabelText('Minimize popup'))
+      
+      // Now shows expand button
+      expect(screen.getByLabelText('Expand popup')).toBeInTheDocument()
+    })
+
+    it('should restore content when expanded', () => {
+      const explanation = createExplanation()
+      render(
+        <ConceptPopup {...defaultProps} explanation={explanation} />
+      )
+      
+      // Minimize
+      fireEvent.click(screen.getByLabelText('Minimize popup'))
+      expect(screen.queryByText(explanation.summary)).not.toBeInTheDocument()
+      
+      // Expand
+      fireEvent.click(screen.getByLabelText('Expand popup'))
+      expect(screen.getByText(explanation.summary)).toBeInTheDocument()
+    })
+
+    it('should hide resize handles when minimized', () => {
+      const { container } = render(<ConceptPopup {...defaultProps} />)
+      
+      // Resize handles visible initially
+      expect(container.querySelector('[class*="resizeSE"]')).toBeInTheDocument()
+      
+      // Minimize
+      fireEvent.click(screen.getByLabelText('Minimize popup'))
+      
+      // Resize handles should be hidden
+      expect(container.querySelector('[class*="resizeSE"]')).not.toBeInTheDocument()
+    })
+
+    it('should apply minimized class when minimized', () => {
+      const { container } = render(<ConceptPopup {...defaultProps} />)
+      const popup = container.querySelector('[class*="popup"]')!
+      
+      // Initially not minimized
+      expect(popup.className).not.toContain('minimized')
+      
+      // Minimize
+      fireEvent.click(screen.getByLabelText('Minimize popup'))
+      
+      // Should have minimized class
+      expect(popup.className).toContain('minimized')
+    })
+  })
+
 })

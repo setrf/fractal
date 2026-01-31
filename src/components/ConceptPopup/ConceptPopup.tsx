@@ -118,6 +118,10 @@ export function ConceptPopup({
   const [popupPosition, setPopupPosition] = useState(position)
   const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT })
   
+  // Minimize state - stores previous height when minimized
+  const [isMinimized, setIsMinimized] = useState(false)
+  const [preMinimizeHeight, setPreMinimizeHeight] = useState(DEFAULT_HEIGHT)
+  
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -286,6 +290,18 @@ export function ConceptPopup({
     [onRelatedConceptClick]
   )
 
+  // Handle minimize toggle
+  const handleMinimizeToggle = useCallback(() => {
+    if (isMinimized) {
+      // Restore previous height
+      setPopupSize(prev => ({ ...prev, height: preMinimizeHeight }))
+    } else {
+      // Save current height before minimizing
+      setPreMinimizeHeight(popupSize.height)
+    }
+    setIsMinimized(prev => !prev)
+  }, [isMinimized, preMinimizeHeight, popupSize.height])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -294,26 +310,30 @@ export function ConceptPopup({
   return (
     <div
       ref={popupRef}
-      className={`${styles.popup} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''}`}
+      className={`${styles.popup} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''} ${isMinimized ? styles.minimized : ''}`}
       style={{
         left: popupPosition.x,
         top: popupPosition.y,
         width: popupSize.width,
-        height: popupSize.height,
+        height: isMinimized ? 'auto' : popupSize.height,
       }}
       role="dialog"
       aria-label={`Concept explanation: ${concept.normalizedName}`}
       aria-live="polite"
     >
-      {/* Resize handles */}
-      <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={(e) => handleResizeStart(e, 'n')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={(e) => handleResizeStart(e, 's')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeE}`} onMouseDown={(e) => handleResizeStart(e, 'e')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeW}`} onMouseDown={(e) => handleResizeStart(e, 'w')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onMouseDown={(e) => handleResizeStart(e, 'ne')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onMouseDown={(e) => handleResizeStart(e, 'nw')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onMouseDown={(e) => handleResizeStart(e, 'se')} />
-      <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onMouseDown={(e) => handleResizeStart(e, 'sw')} />
+      {/* Resize handles - only show when not minimized */}
+      {!isMinimized && (
+        <>
+          <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={(e) => handleResizeStart(e, 'n')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={(e) => handleResizeStart(e, 's')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeE}`} onMouseDown={(e) => handleResizeStart(e, 'e')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeW}`} onMouseDown={(e) => handleResizeStart(e, 'w')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onMouseDown={(e) => handleResizeStart(e, 'ne')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onMouseDown={(e) => handleResizeStart(e, 'nw')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onMouseDown={(e) => handleResizeStart(e, 'se')} />
+          <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onMouseDown={(e) => handleResizeStart(e, 'sw')} />
+        </>
+      )}
       
       {/* Header - draggable area */}
       <div 
@@ -329,6 +349,14 @@ export function ConceptPopup({
         </div>
         <div className={styles.actions}>
           <button
+            className={styles.minimizeButton}
+            onClick={handleMinimizeToggle}
+            aria-label={isMinimized ? "Expand popup" : "Minimize popup"}
+            title={isMinimized ? "Expand" : "Minimize"}
+          >
+            {isMinimized ? '□' : '−'}
+          </button>
+          <button
             className={styles.closeButton}
             onClick={onClose}
             aria-label="Close popup"
@@ -338,7 +366,8 @@ export function ConceptPopup({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - hidden when minimized */}
+      {!isMinimized && (
       <div className={styles.content}>
         {isLoading && (
           <div className={styles.loading}>
@@ -388,6 +417,7 @@ export function ConceptPopup({
           </>
         )}
       </div>
+      )}
     </div>
   )
 }

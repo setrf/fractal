@@ -38,6 +38,11 @@
   user-select: none;
 }
 
+.popup.minimized {
+  min-height: auto;
+  height: auto !important;
+}
+
 @keyframes popupEnter {
   from {
     opacity: 0;
@@ -213,6 +218,7 @@
   flex-shrink: 0;
 }
 
+.minimizeButton,
 .closeButton {
   width: 24px;
   height: 24px;
@@ -229,10 +235,16 @@
   transition: all var(--transition-fast);
 }
 
+.minimizeButton:hover,
 .closeButton:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+.minimizeButton {
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 
 /* Content section */

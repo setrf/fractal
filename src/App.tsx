@@ -70,9 +70,13 @@ function App() {
   
   const {
     explanation: conceptExplanation,
+    explanations: allExplanations,
+    loadingStates: explanationLoadingStates,
     isLoading: explanationLoading,
     error: explanationError,
     fetchExplanation,
+    getExplanation,
+    getLoadingState,
     reset: resetExplanation,
   } = useConceptExplanation()
   
@@ -342,6 +346,8 @@ function App() {
                 generatingNodeId={generatingNodeId}
                 onLockIn={handleLockIn}
                 nodeConcepts={nodeConcepts}
+                conceptExplanations={allExplanations}
+                conceptLoadingStates={explanationLoadingStates}
                 conceptExplanation={conceptExplanation}
                 isConceptLoading={explanationLoading}
                 conceptError={explanationError}

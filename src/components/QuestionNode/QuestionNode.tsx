@@ -33,6 +33,15 @@ interface TextSelection {
 }
 
 /**
+ * State for an open popup.
+ */
+interface OpenPopup {
+  concept: ExtractedConcept
+  position: PopupPosition
+  isSticky: boolean
+}
+
+/**
  * Props for the QuestionNode component.
  */
 interface QuestionNodeProps {
@@ -60,11 +69,15 @@ interface QuestionNodeProps {
   // Concept highlighting props
   /** Extracted concepts to highlight in the question text */
   concepts?: ExtractedConcept[]
-  /** Current concept explanation being displayed */
+  /** Map of concept IDs to their explanations (for multiple popups) */
+  conceptExplanations?: Record<string, ConceptExplanation>
+  /** Map of concept IDs to their loading states (for multiple popups) */
+  conceptLoadingStates?: Record<string, { isLoading: boolean; error: string | null }>
+  /** Legacy: Current concept explanation being displayed */
   conceptExplanation?: ConceptExplanation | null
-  /** Whether concept explanation is loading */
+  /** Legacy: Whether concept explanation is loading */
   isConceptLoading?: boolean
-  /** Error loading concept explanation */
+  /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
   onConceptHover?: (concept: ExtractedConcept) => void
@@ -111,6 +124,8 @@ export function QuestionNode({
   onLockIn,
   // Concept props
   concepts = [],
+  conceptExplanations = {},
+  conceptLoadingStates = {},
   conceptExplanation,
   isConceptLoading = false,
   conceptError,
@@ -124,10 +139,8 @@ export function QuestionNode({
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [newQuestion, setNewQuestion] = useState('')
   
-  // State for concept popup
-  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
-  const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: 0, y: 0 })
-  const [isPopupSticky, setIsPopupSticky] = useState(false)
+  // State for concept popups (supports multiple open popups)
+  const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
   
   // State for user text selection (to create custom highlights)
   const [textSelection, setTextSelection] = useState<TextSelection | null>(null)
@@ -174,18 +187,23 @@ export function QuestionNode({
   }
 
   /**
-   * Handles concept hover - shows popup and makes it sticky.
-   * Popup only closes when user clicks the close button.
+   * Handles concept hover - opens a new popup.
+   * Multiple popups can be open at the same time.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
-    // Only show new popup if no popup is currently displayed
-    if (!hoveredConcept) {
-      setHoveredConcept(concept)
-      setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
-      setIsPopupSticky(true)  // Make sticky immediately so it doesn't disappear
-      onConceptHover?.(concept)
+    // Check if this concept already has an open popup
+    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    if (existingPopup) return
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept,
+      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isSticky: true,  // Make sticky immediately so it doesn't disappear
     }
-  }, [hoveredConcept, onConceptHover])
+    setOpenPopups(prev => [...prev, newPopup])
+    onConceptHover?.(concept)
+  }, [openPopups, onConceptHover])
 
   /**
    * Handles concept hover end - no-op since popups are sticky by default.
@@ -197,30 +215,40 @@ export function QuestionNode({
   }, [])
 
   /**
-   * Handles concept click - makes popup sticky.
+   * Handles concept click - opens popup if not already open.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
-    setHoveredConcept(concept)
-    setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
-    setIsPopupSticky(true)
+    
+    // Check if this concept already has an open popup
+    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    if (existingPopup) return
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept,
+      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isSticky: true,
+    }
+    setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
-  }, [onConceptClick])
+  }, [openPopups, onConceptClick])
 
   /**
-   * Handles popup close.
+   * Handles popup close for a specific concept.
    */
-  const handlePopupClose = useCallback(() => {
-    setHoveredConcept(null)
-    setIsPopupSticky(false)
+  const handlePopupClose = useCallback((conceptId: string) => {
+    setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
     onConceptLeave?.()
   }, [onConceptLeave])
 
   /**
-   * Handles popup sticky state change.
+   * Handles popup sticky state change for a specific concept.
    */
-  const handleStickyChange = useCallback((sticky: boolean) => {
-    setIsPopupSticky(sticky)
+  const handleStickyChange = useCallback((conceptId: string, sticky: boolean) => {
+    setOpenPopups(prev => prev.map(p => 
+      p.concept.id === conceptId ? { ...p, isSticky: sticky } : p
+    ))
   }, [])
 
   /**
@@ -491,20 +519,33 @@ export function QuestionNode({
         </div>
       )}
 
-      {/* Concept explanation popup */}
-      {hoveredConcept && (
-        <ConceptPopup
-          concept={hoveredConcept}
-          explanation={conceptExplanation || null}
-          isLoading={isConceptLoading}
-          error={conceptError}
-          position={popupPosition}
-          isSticky={isPopupSticky}
-          onClose={handlePopupClose}
-          onStickyChange={handleStickyChange}
-          onRemove={onRemoveConcept ? (conceptId) => onRemoveConcept(node.id, conceptId) : undefined}
-        />
-      )}
+      {/* Concept explanation popups - multiple can be open */}
+      {openPopups.map(popup => {
+        // Get explanation for this specific popup from the maps, or fall back to legacy props
+        const explanation = conceptExplanations[popup.concept.id] 
+          || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)
+        const loadingState = conceptLoadingStates[popup.concept.id]
+        const isLoading = loadingState?.isLoading ?? (conceptExplanation?.conceptId === popup.concept.id ? isConceptLoading : false)
+        const error = loadingState?.error ?? (conceptExplanation?.conceptId === popup.concept.id ? conceptError : null)
+        
+        return (
+          <ConceptPopup
+            key={popup.concept.id}
+            concept={popup.concept}
+            explanation={explanation}
+            isLoading={isLoading}
+            error={error}
+            position={popup.position}
+            isSticky={popup.isSticky}
+            onClose={() => handlePopupClose(popup.concept.id)}
+            onStickyChange={(sticky) => handleStickyChange(popup.concept.id, sticky)}
+            onRemove={onRemoveConcept ? (conceptId) => {
+              onRemoveConcept(node.id, conceptId)
+              handlePopupClose(conceptId)
+            } : undefined}
+          />
+        )
+      })}
     </div>
   )
 }

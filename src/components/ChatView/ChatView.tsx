@@ -89,10 +89,17 @@ export function ChatView({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   
-  // State for concept popup
-  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
-  const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: 0, y: 0 })
-  const [isPopupSticky, setIsPopupSticky] = useState(false)
+  /**
+   * State for an open popup.
+   */
+  interface OpenPopup {
+    concept: ExtractedConcept
+    position: PopupPosition
+    isSticky: boolean
+  }
+  
+  // State for concept popups (supports multiple open popups)
+  const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -188,18 +195,23 @@ export function ChatView({
   }
 
   /**
-   * Handles concept hover - shows popup and makes it sticky.
-   * Popup only closes when user clicks the close button.
+   * Handles concept hover - opens a new popup.
+   * Multiple popups can be open at the same time.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
-    // Only show new popup if no popup is currently displayed
-    if (!hoveredConcept) {
-      setHoveredConcept(concept)
-      setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
-      setIsPopupSticky(true)  // Make sticky immediately so it doesn't disappear
-      onConceptHover?.(concept)
+    // Check if this concept already has an open popup
+    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    if (existingPopup) return
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept,
+      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isSticky: true,  // Make sticky immediately so it doesn't disappear
     }
-  }, [hoveredConcept, onConceptHover])
+    setOpenPopups(prev => [...prev, newPopup])
+    onConceptHover?.(concept)
+  }, [openPopups, onConceptHover])
 
   /**
    * Handles concept hover end - no-op since popups are sticky by default.
@@ -211,30 +223,40 @@ export function ChatView({
   }, [])
 
   /**
-   * Handles concept click - makes popup sticky.
+   * Handles concept click - opens popup if not already open.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
-    setHoveredConcept(concept)
-    setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
-    setIsPopupSticky(true)
+    
+    // Check if this concept already has an open popup
+    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    if (existingPopup) return
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept,
+      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      isSticky: true,
+    }
+    setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
-  }, [onConceptClick])
+  }, [openPopups, onConceptClick])
 
   /**
-   * Handles popup close.
+   * Handles popup close for a specific concept.
    */
-  const handlePopupClose = useCallback(() => {
-    setHoveredConcept(null)
-    setIsPopupSticky(false)
+  const handlePopupClose = useCallback((conceptId: string) => {
+    setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
     onConceptLeave?.()
   }, [onConceptLeave])
 
   /**
-   * Handles popup sticky state change.
+   * Handles popup sticky state change for a specific concept.
    */
-  const handleStickyChange = useCallback((sticky: boolean) => {
-    setIsPopupSticky(sticky)
+  const handleStickyChange = useCallback((conceptId: string, sticky: boolean) => {
+    setOpenPopups(prev => prev.map(p => 
+      p.concept.id === conceptId ? { ...p, isSticky: sticky } : p
+    ))
   }, [])
 
   const isDisabled = sending || isLoading
@@ -267,19 +289,20 @@ export function ChatView({
         </div>
       </header>
 
-      {/* Concept explanation popup */}
-      {hoveredConcept && (
+      {/* Concept explanation popups - multiple can be open */}
+      {openPopups.map(popup => (
         <ConceptPopup
-          concept={hoveredConcept}
-          explanation={conceptExplanation || null}
+          key={popup.concept.id}
+          concept={popup.concept}
+          explanation={conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null}
           isLoading={isConceptLoading}
           error={conceptError}
-          position={popupPosition}
-          isSticky={isPopupSticky}
-          onClose={handlePopupClose}
-          onStickyChange={handleStickyChange}
+          position={popup.position}
+          isSticky={popup.isSticky}
+          onClose={() => handlePopupClose(popup.concept.id)}
+          onStickyChange={(sticky) => handleStickyChange(popup.concept.id, sticky)}
         />
-      )}
+      ))}
 
       {/* Messages area */}
       <div className={styles.messages}>

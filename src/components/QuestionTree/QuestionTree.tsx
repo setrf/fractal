@@ -43,11 +43,15 @@ interface QuestionTreeProps {
   // Concept highlighting props
   /** Concepts per node (nodeId -> concepts) */
   nodeConcepts?: Record<string, ExtractedConcept[]>
-  /** Current concept explanation */
+  /** Map of concept IDs to their explanations (for multiple popups) */
+  conceptExplanations?: Record<string, ConceptExplanation>
+  /** Map of concept IDs to their loading states (for multiple popups) */
+  conceptLoadingStates?: Record<string, { isLoading: boolean; error: string | null }>
+  /** Legacy: Current concept explanation */
   conceptExplanation?: ConceptExplanation | null
-  /** Whether concept explanation is loading */
+  /** Legacy: Whether concept explanation is loading */
   isConceptLoading?: boolean
-  /** Error loading concept explanation */
+  /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
   onConceptHover?: (concept: ExtractedConcept) => void
@@ -87,11 +91,15 @@ interface TreeBranchProps {
   // Concept highlighting props
   /** Concepts for this node */
   concepts?: ExtractedConcept[]
-  /** Current concept explanation */
+  /** Map of concept IDs to their explanations (for multiple popups) */
+  conceptExplanations?: Record<string, ConceptExplanation>
+  /** Map of concept IDs to their loading states (for multiple popups) */
+  conceptLoadingStates?: Record<string, { isLoading: boolean; error: string | null }>
+  /** Legacy: Current concept explanation */
   conceptExplanation?: ConceptExplanation | null
-  /** Whether concept explanation is loading */
+  /** Legacy: Whether concept explanation is loading */
   isConceptLoading?: boolean
-  /** Error loading concept explanation */
+  /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
   onConceptHover?: (concept: ExtractedConcept) => void
@@ -128,6 +136,8 @@ function TreeBranch({
   generatingNodeId,
   onLockIn,
   concepts,
+  conceptExplanations,
+  conceptLoadingStates,
   conceptExplanation,
   isConceptLoading,
   conceptError,
@@ -163,6 +173,8 @@ function TreeBranch({
         isGenerating={generatingNodeId === node.id}
         onLockIn={onLockIn}
         concepts={concepts}
+        conceptExplanations={conceptExplanations}
+        conceptLoadingStates={conceptLoadingStates}
         conceptExplanation={conceptExplanation}
         isConceptLoading={isConceptLoading}
         conceptError={conceptError}
@@ -192,6 +204,8 @@ function TreeBranch({
               onGenerateAI={onGenerateAI}
               generatingNodeId={generatingNodeId}
               onLockIn={onLockIn}
+              conceptExplanations={conceptExplanations}
+              conceptLoadingStates={conceptLoadingStates}
               conceptExplanation={conceptExplanation}
               isConceptLoading={isConceptLoading}
               conceptError={conceptError}
@@ -233,6 +247,8 @@ export function QuestionTree({
   generatingNodeId,
   onLockIn,
   nodeConcepts = {},
+  conceptExplanations,
+  conceptLoadingStates,
   conceptExplanation,
   isConceptLoading,
   conceptError,
@@ -264,6 +280,8 @@ export function QuestionTree({
         generatingNodeId={generatingNodeId}
         onLockIn={onLockIn}
         concepts={nodeConcepts[rootNode.id]}
+        conceptExplanations={conceptExplanations}
+        conceptLoadingStates={conceptLoadingStates}
         conceptExplanation={conceptExplanation}
         isConceptLoading={isConceptLoading}
         conceptError={conceptError}

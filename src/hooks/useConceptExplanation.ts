@@ -104,16 +104,28 @@ function setCachedExplanation(
 }
 
 /**
+ * Loading state for a specific concept.
+ */
+export interface ConceptLoadingState {
+  isLoading: boolean
+  error: string | null
+}
+
+/**
  * State returned by the useConceptExplanation hook.
  */
 export interface UseConceptExplanationState {
-  /** Current explanation being displayed */
+  /** Map of concept IDs to their explanations */
+  explanations: Record<string, ConceptExplanation>
+  /** Map of concept IDs to their loading states */
+  loadingStates: Record<string, ConceptLoadingState>
+  /** Legacy: Current explanation being displayed (last fetched) */
   explanation: ConceptExplanation | null
-  /** True when fetching an explanation */
+  /** Legacy: True when fetching an explanation */
   isLoading: boolean
-  /** Error message if fetch failed */
+  /** Legacy: Error message if fetch failed */
   error: string | null
-  /** The concept ID being explained */
+  /** Legacy: The concept ID being explained */
   currentConceptId: string | null
 }
 
@@ -127,6 +139,10 @@ export interface UseConceptExplanationActions {
     conceptName: string,
     questionContext: string
   ) => Promise<ConceptExplanation | null>
+  /** Get explanation for a specific concept ID */
+  getExplanation: (conceptId: string) => ConceptExplanation | null
+  /** Get loading state for a specific concept ID */
+  getLoadingState: (conceptId: string) => ConceptLoadingState
   /** Clear the current explanation */
   reset: () => void
   /** Clear all cached explanations from localStorage */
@@ -142,34 +158,67 @@ export type UseConceptExplanationReturn = UseConceptExplanationState & UseConcep
  * Hook for fetching concept explanations.
  * 
  * Features:
+ * - Supports multiple simultaneous explanations for multiple popups
  * - localStorage caching with 24-hour expiration
- * - Loading state management
- * - Error handling
+ * - Loading state management per concept
+ * - Error handling per concept
  * - Request deduplication
  */
 export function useConceptExplanation(): UseConceptExplanationReturn {
+  // Multiple explanations keyed by concept ID
+  const [explanations, setExplanations] = useState<Record<string, ConceptExplanation>>({})
+  const [loadingStates, setLoadingStates] = useState<Record<string, ConceptLoadingState>>({})
+  
+  // Legacy single-explanation state for backwards compatibility
   const [explanation, setExplanation] = useState<ConceptExplanation | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentConceptId, setCurrentConceptId] = useState<string | null>(null)
   
   // Track in-flight requests to prevent duplicates
-  const pendingRequest = useRef<string | null>(null)
+  const pendingRequests = useRef<Set<string>>(new Set())
+
+  /**
+   * Get explanation for a specific concept ID.
+   */
+  const getExplanation = useCallback((conceptId: string): ConceptExplanation | null => {
+    return explanations[conceptId] || null
+  }, [explanations])
+
+  /**
+   * Get loading state for a specific concept ID.
+   */
+  const getLoadingState = useCallback((conceptId: string): ConceptLoadingState => {
+    return loadingStates[conceptId] || { isLoading: false, error: null }
+  }, [loadingStates])
 
   /**
    * Fetch explanation for a concept.
    * Returns cached result if available.
+   * Supports fetching multiple explanations simultaneously.
    */
   const fetchExplanation = useCallback(async (
     conceptId: string,
     conceptName: string,
     questionContext: string
   ): Promise<ConceptExplanation | null> => {
-    // Check cache first
+    // Check if we already have this explanation
+    const existing = explanations[conceptId]
+    if (existing) {
+      // Update legacy state too
+      setExplanation(existing)
+      setCurrentConceptId(conceptId)
+      setError(null)
+      return existing
+    }
+
+    // Check cache
     const cached = getCachedExplanation(conceptName, questionContext)
     if (cached) {
       // Update the conceptId in case it changed
       const updatedCached = { ...cached, conceptId }
+      setExplanations(prev => ({ ...prev, [conceptId]: updatedCached }))
+      // Update legacy state too
       setExplanation(updatedCached)
       setCurrentConceptId(conceptId)
       setError(null)
@@ -178,43 +227,64 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
 
     // Prevent duplicate requests
     const requestKey = `${conceptId}_${conceptName}`
-    if (pendingRequest.current === requestKey) {
+    if (pendingRequests.current.has(requestKey)) {
       return null
     }
 
     try {
+      // Set loading state for this concept
+      setLoadingStates(prev => ({
+        ...prev,
+        [conceptId]: { isLoading: true, error: null }
+      }))
+      // Legacy state
       setIsLoading(true)
       setError(null)
       setCurrentConceptId(conceptId)
-      pendingRequest.current = requestKey
+      pendingRequests.current.add(requestKey)
 
       const result = await explainConceptApi(conceptId, conceptName, questionContext)
       
       // Cache the result
       setCachedExplanation(conceptName, questionContext, result)
       
+      // Update explanations map
+      setExplanations(prev => ({ ...prev, [conceptId]: result }))
+      setLoadingStates(prev => ({
+        ...prev,
+        [conceptId]: { isLoading: false, error: null }
+      }))
+      
+      // Legacy state
       setExplanation(result)
       
       return result
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch explanation'
+      setLoadingStates(prev => ({
+        ...prev,
+        [conceptId]: { isLoading: false, error: errorMessage }
+      }))
+      // Legacy state
       setError(errorMessage)
       setExplanation(null)
       return null
     } finally {
       setIsLoading(false)
-      pendingRequest.current = null
+      pendingRequests.current.delete(requestKey)
     }
-  }, [])
+  }, [explanations])
 
   /**
-   * Clear current explanation and error state.
+   * Clear all explanations and error states.
    */
   const reset = useCallback(() => {
+    setExplanations({})
+    setLoadingStates({})
     setExplanation(null)
     setError(null)
     setCurrentConceptId(null)
-    pendingRequest.current = null
+    pendingRequests.current.clear()
   }, [])
 
   /**
@@ -238,6 +308,12 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
   }, [])
 
   return {
+    // New multi-explanation support
+    explanations,
+    loadingStates,
+    getExplanation,
+    getLoadingState,
+    // Legacy single-explanation support
     explanation,
     isLoading,
     error,

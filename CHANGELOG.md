@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **ConceptPopup Component** (`src/components/ConceptPopup/`)
   - Gwern-style popup for concept explanations
+  - **Multiple popups** - open popups for multiple concepts simultaneously
   - **Draggable** - move popup by dragging header
   - **Resizable** - resize by dragging edges/corners with visual indicators
   - **Persistent** - stays open until user closes (no auto-dismiss)

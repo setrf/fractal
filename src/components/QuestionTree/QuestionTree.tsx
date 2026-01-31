@@ -179,13 +179,28 @@ function TreeBranch({
     connectorRef.current.style.height = `${connectorHeight}px`
   }, [])
 
-  // Update connector height when children change
+  // Use ResizeObserver to update connector when container size changes
+  // This handles nested children being added/removed
   useEffect(() => {
-    if (hasChildren && isExpanded) {
-      // Small delay to ensure DOM is updated
-      requestAnimationFrame(updateConnectorHeight)
+    if (!hasChildren || !isExpanded || !childrenRef.current) return
+    
+    // Initial update
+    requestAnimationFrame(updateConnectorHeight)
+    
+    // Watch for size changes (e.g., when grandchildren are added)
+    // Guard against environments without ResizeObserver (e.g., test environment)
+    if (typeof ResizeObserver === 'undefined') return
+    
+    const resizeObserver = new ResizeObserver(() => {
+      updateConnectorHeight()
+    })
+    
+    resizeObserver.observe(childrenRef.current)
+    
+    return () => {
+      resizeObserver.disconnect()
     }
-  }, [hasChildren, isExpanded, children.length, updateConnectorHeight])
+  }, [hasChildren, isExpanded, updateConnectorHeight])
 
   return (
     <div 

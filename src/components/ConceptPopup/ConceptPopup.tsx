@@ -72,17 +72,11 @@ export interface ConceptPopupProps {
   /** Position to display the popup */
   position: PopupPosition
   
-  /** Whether the popup is "stickied" (pinned) */
-  isSticky?: boolean
-  
   /** Called when popup should close */
   onClose: () => void
   
   /** Called when a related concept is clicked */
   onRelatedConceptClick?: (conceptName: string) => void
-  
-  /** Called when sticky state changes */
-  onStickyChange?: (isSticky: boolean) => void
   
   /** Called when user wants to remove this highlight */
   onRemove?: (conceptId: string) => void
@@ -117,10 +111,8 @@ export function ConceptPopup({
   isLoading,
   error,
   position,
-  isSticky = false,
   onClose,
   onRelatedConceptClick,
-  onStickyChange,
   onRemove,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
@@ -288,13 +280,6 @@ export function ConceptPopup({
     }
   }, [isResizing, resizeEdge])
 
-  // Toggle sticky state
-  const handlePinClick = useCallback(() => {
-    if (onStickyChange) {
-      onStickyChange(!isSticky)
-    }
-  }, [isSticky, onStickyChange])
-
   // Handle related concept click
   const handleRelatedClick = useCallback(
     (name: string) => {
@@ -321,7 +306,7 @@ export function ConceptPopup({
   return (
     <div
       ref={popupRef}
-      className={`${styles.popup} ${isSticky ? styles.sticky : ''} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''}`}
+      className={`${styles.popup} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''}`}
       style={{
         left: popupPosition.x,
         top: popupPosition.y,
@@ -363,16 +348,6 @@ export function ConceptPopup({
               title="Remove this highlight"
             >
               🗑
-            </button>
-          )}
-          {onStickyChange && (
-            <button
-              className={`${styles.pinButton} ${isSticky ? styles.pinned : ''}`}
-              onClick={handlePinClick}
-              aria-label={isSticky ? 'Unpin popup' : 'Pin popup'}
-              title={isSticky ? 'Unpin' : 'Pin'}
-            >
-              {isSticky ? '◉' : '○'}
             </button>
           )}
           <button

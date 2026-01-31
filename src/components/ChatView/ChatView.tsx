@@ -95,7 +95,6 @@ export function ChatView({
   interface OpenPopup {
     concept: ExtractedConcept
     position: PopupPosition
-    isSticky: boolean
   }
   
   // State for concept popups (supports multiple open popups)
@@ -207,14 +206,13 @@ export function ChatView({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
-      isSticky: true,  // Make sticky immediately so it doesn't disappear
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptHover?.(concept)
   }, [openPopups, onConceptHover])
 
   /**
-   * Handles concept hover end - no-op since popups are sticky by default.
+   * Handles concept hover end - no-op since popups are persistent.
    * Popup only closes when user explicitly clicks close button.
    */
   const handleConceptLeave = useCallback(() => {
@@ -236,7 +234,6 @@ export function ChatView({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
-      isSticky: true,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
@@ -249,15 +246,6 @@ export function ChatView({
     setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
     onConceptLeave?.()
   }, [onConceptLeave])
-
-  /**
-   * Handles popup sticky state change for a specific concept.
-   */
-  const handleStickyChange = useCallback((conceptId: string, sticky: boolean) => {
-    setOpenPopups(prev => prev.map(p => 
-      p.concept.id === conceptId ? { ...p, isSticky: sticky } : p
-    ))
-  }, [])
 
   const isDisabled = sending || isLoading
 
@@ -298,9 +286,7 @@ export function ChatView({
           isLoading={isConceptLoading}
           error={conceptError}
           position={popup.position}
-          isSticky={popup.isSticky}
           onClose={() => handlePopupClose(popup.concept.id)}
-          onStickyChange={(sticky) => handleStickyChange(popup.concept.id, sticky)}
         />
       ))}
 

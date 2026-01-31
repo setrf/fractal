@@ -108,16 +108,6 @@ describe('ConceptPopup', () => {
       expect(screen.getByLabelText('Close popup')).toBeInTheDocument()
     })
 
-    it('should render pin button when onStickyChange provided', () => {
-      render(
-        <ConceptPopup
-          {...defaultProps}
-          onStickyChange={vi.fn()}
-        />
-      )
-      expect(screen.getByLabelText('Pin popup')).toBeInTheDocument()
-    })
-
     it('should render remove button when onRemove provided', () => {
       render(
         <ConceptPopup
@@ -144,20 +134,6 @@ describe('ConceptPopup', () => {
       
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onStickyChange when pin button clicked', () => {
-      const onStickyChange = vi.fn()
-      render(
-        <ConceptPopup
-          {...defaultProps}
-          isSticky={false}
-          onStickyChange={onStickyChange}
-        />
-      )
-      
-      fireEvent.click(screen.getByLabelText('Pin popup'))
-      expect(onStickyChange).toHaveBeenCalledWith(true)
     })
 
     it('should call onRemove when remove button clicked', () => {
@@ -363,26 +339,4 @@ describe('ConceptPopup', () => {
     })
   })
 
-  describe('sticky state', () => {
-    it('should apply sticky class when isSticky is true', () => {
-      const { container } = render(
-        <ConceptPopup {...defaultProps} isSticky={true} />
-      )
-      
-      const popup = container.querySelector('[class*="popup"]')
-      expect(popup?.className).toContain('sticky')
-    })
-
-    it('should show pinned indicator when sticky', () => {
-      render(
-        <ConceptPopup
-          {...defaultProps}
-          isSticky={true}
-          onStickyChange={vi.fn()}
-        />
-      )
-      
-      expect(screen.getByLabelText('Unpin popup')).toBeInTheDocument()
-    })
-  })
 })

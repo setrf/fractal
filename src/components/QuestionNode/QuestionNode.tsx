@@ -38,7 +38,6 @@ interface TextSelection {
 interface OpenPopup {
   concept: ExtractedConcept
   position: PopupPosition
-  isSticky: boolean
 }
 
 /**
@@ -199,14 +198,13 @@ export function QuestionNode({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
-      isSticky: true,  // Make sticky immediately so it doesn't disappear
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptHover?.(concept)
   }, [openPopups, onConceptHover])
 
   /**
-   * Handles concept hover end - no-op since popups are sticky by default.
+   * Handles concept hover end - no-op since popups are persistent.
    * Popup only closes when user explicitly clicks close button.
    */
   const handleConceptLeave = useCallback(() => {
@@ -228,7 +226,6 @@ export function QuestionNode({
     const newPopup: OpenPopup = {
       concept,
       position: { x: event.clientX + 10, y: event.clientY + 10 },
-      isSticky: true,
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
@@ -241,15 +238,6 @@ export function QuestionNode({
     setOpenPopups(prev => prev.filter(p => p.concept.id !== conceptId))
     onConceptLeave?.()
   }, [onConceptLeave])
-
-  /**
-   * Handles popup sticky state change for a specific concept.
-   */
-  const handleStickyChange = useCallback((conceptId: string, sticky: boolean) => {
-    setOpenPopups(prev => prev.map(p => 
-      p.concept.id === conceptId ? { ...p, isSticky: sticky } : p
-    ))
-  }, [])
 
   /**
    * Handles text selection for user-created highlights.
@@ -536,9 +524,7 @@ export function QuestionNode({
             isLoading={isLoading}
             error={error}
             position={popup.position}
-            isSticky={popup.isSticky}
             onClose={() => handlePopupClose(popup.concept.id)}
-            onStickyChange={(sticky) => handleStickyChange(popup.concept.id, sticky)}
             onRemove={onRemoveConcept ? (conceptId) => {
               onRemoveConcept(node.id, conceptId)
               handlePopupClose(conceptId)

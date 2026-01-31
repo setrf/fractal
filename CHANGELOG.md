@@ -56,9 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Multiple popups** - open popups for multiple concepts simultaneously
   - **Draggable** - move popup by dragging header
   - **Resizable** - resize by dragging edges/corners with visual indicators
-  - **Persistent** - stays open until user closes (no auto-dismiss)
+  - **Persistent** - stays open until user clicks close button (no auto-dismiss)
   - Intelligent viewport positioning for initial display
-  - "Sticky" (pinnable) mode for persistent popups
   - Loading and error states
   - Related concepts for further exploration
   - Remove highlight button for user control

@@ -28,11 +28,6 @@
   animation: popupEnter 150ms ease-out;
 }
 
-.popup.sticky {
-  border-color: var(--text-primary);
-  box-shadow: 6px 6px 0 var(--text-secondary);
-}
-
 .popup.dragging {
   cursor: grabbing;
   user-select: none;
@@ -218,7 +213,6 @@
   flex-shrink: 0;
 }
 
-.pinButton,
 .closeButton,
 .removeButton {
   width: 24px;
@@ -235,7 +229,6 @@
   transition: all var(--transition-fast);
 }
 
-.pinButton:hover,
 .closeButton:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--text-primary);
@@ -250,12 +243,6 @@
   background-color: var(--accent-error);
   border-color: var(--accent-error);
   color: var(--bg-primary);
-}
-
-.pinButton.pinned {
-  background-color: var(--text-primary);
-  color: var(--bg-primary);
-  border-color: var(--text-primary);
 }
 
 .closeButton {

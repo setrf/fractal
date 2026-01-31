@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed ESM import error for TypeScript interfaces in `useQuestionTree.ts`
+  - Changed `import { QuestionTree, QuestionNode }` to `import type { ... }`
+  - This prevents Vite/esbuild from expecting runtime exports for type-only imports
+
 ### Planned
 - Persistence layer (localStorage)
 - AI-generated related questions

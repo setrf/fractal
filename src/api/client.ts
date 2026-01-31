@@ -168,3 +168,139 @@ export async function sendChatMessage(
   const data: ChatApiResponse = await response.json()
   return data.data.message
 }
+
+// ============================================
+// CONCEPT EXTRACTION API
+// ============================================
+
+/**
+ * Valid concept categories for classification.
+ */
+export type ConceptCategory =
+  | 'science'
+  | 'philosophy'
+  | 'psychology'
+  | 'technology'
+  | 'abstract'
+
+/**
+ * An extracted concept with position and metadata.
+ */
+export interface ExtractedConcept {
+  id: string
+  text: string
+  normalizedName: string
+  category: ConceptCategory
+  startIndex: number
+  endIndex: number
+}
+
+/**
+ * Response from the concept extraction endpoint.
+ */
+export interface ConceptExtractionResponse {
+  success: boolean
+  data: {
+    concepts: ExtractedConcept[]
+    sourceText: string
+  }
+}
+
+/**
+ * Explanation for a concept.
+ */
+export interface ConceptExplanation {
+  conceptId: string
+  normalizedName: string
+  summary: string
+  context: string
+  relatedConcepts: string[]
+}
+
+/**
+ * Response from the concept explanation endpoint.
+ */
+export interface ConceptExplanationResponse {
+  success: boolean
+  data: ConceptExplanation
+}
+
+/**
+ * Extract key concepts from question text.
+ * 
+ * @param text - The text to extract concepts from
+ * @param model - Optional model override
+ * @returns Array of extracted concepts with positions and metadata
+ * 
+ * @example
+ * ```ts
+ * const concepts = await extractConcepts("Why do we dream during sleep?")
+ * // [
+ * //   { text: 'dream', normalizedName: 'dreams', category: 'psychology', ... },
+ * //   { text: 'sleep', normalizedName: 'sleep', category: 'science', ... }
+ * // ]
+ * ```
+ */
+export async function extractConcepts(
+  text: string,
+  model?: string
+): Promise<ExtractedConcept[]> {
+  const response = await fetch(`${API_BASE_URL}/api/concepts/extract`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text, model }),
+  })
+
+  if (!response.ok) {
+    const error: ApiError = await response.json()
+    throw new Error(error.message || 'Failed to extract concepts')
+  }
+
+  const data: ConceptExtractionResponse = await response.json()
+  return data.data.concepts
+}
+
+/**
+ * Get an explanation for a concept in context.
+ * 
+ * @param conceptId - ID of the concept
+ * @param conceptName - The normalized name of the concept
+ * @param questionContext - The question context for the concept
+ * @param model - Optional model override
+ * @returns Explanation with summary, context, and related concepts
+ * 
+ * @example
+ * ```ts
+ * const explanation = await explainConcept(
+ *   'c_123',
+ *   'dreams',
+ *   'Why do we dream during sleep?'
+ * )
+ * console.log(explanation.summary)
+ * // "Dreams are mental experiences during sleep..."
+ * ```
+ */
+export async function explainConcept(
+  conceptId: string,
+  conceptName: string,
+  questionContext: string,
+  model?: string
+): Promise<ConceptExplanation> {
+  const response = await fetch(`${API_BASE_URL}/api/concepts/explain`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ conceptId, conceptName, questionContext, model }),
+  })
+
+  if (!response.ok) {
+    const error: ApiError = await response.json()
+    throw new Error(error.message || 'Failed to explain concept')
+  }
+
+  const data: ConceptExplanationResponse = await response.json()
+  return data.data
+}

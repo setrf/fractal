@@ -10,10 +10,12 @@
 .popup {
   position: fixed;
   z-index: 1000;
-  width: 320px;
+  min-width: 280px;
+  min-height: 200px;
   max-width: calc(100vw - 40px);
-  max-height: 400px;
-  overflow-y: auto;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   
   background-color: var(--bg-primary);
   border: var(--border-width-strong) solid var(--text-primary);
@@ -31,6 +33,16 @@
   box-shadow: 6px 6px 0 var(--text-secondary);
 }
 
+.popup.dragging {
+  cursor: grabbing;
+  user-select: none;
+  box-shadow: 8px 8px 0 var(--text-tertiary);
+}
+
+.popup.resizing {
+  user-select: none;
+}
+
 @keyframes popupEnter {
   from {
     opacity: 0;
@@ -42,6 +54,94 @@
   }
 }
 
+/* Resize handles */
+.resizeHandle {
+  position: absolute;
+  z-index: 10;
+}
+
+.resizeN {
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: n-resize;
+}
+
+.resizeS {
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: s-resize;
+}
+
+.resizeE {
+  top: 8px;
+  right: 0;
+  bottom: 8px;
+  width: 6px;
+  cursor: e-resize;
+}
+
+.resizeW {
+  top: 8px;
+  left: 0;
+  bottom: 8px;
+  width: 6px;
+  cursor: w-resize;
+}
+
+.resizeNE {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+}
+
+.resizeNW {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+}
+
+.resizeSE {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+}
+
+.resizeSW {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
+}
+
+/* Visual resize indicator on hover */
+.resizeSE::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--border-primary);
+  border-bottom: 2px solid var(--border-primary);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.popup:hover .resizeSE::after {
+  opacity: 1;
+}
+
 /* Header section */
 .header {
   display: flex;
@@ -50,6 +150,15 @@
   padding: var(--space-3);
   border-bottom: var(--border-width) solid var(--border-primary);
   background-color: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.draggableHeader {
+  cursor: grab;
+}
+
+.draggableHeader:active {
+  cursor: grabbing;
 }
 
 .titleRow {
@@ -157,6 +266,8 @@
 /* Content section */
 .content {
   padding: var(--space-3);
+  flex: 1;
+  overflow-y: auto;
 }
 
 .section {
@@ -257,18 +368,18 @@
 }
 
 /* Scrollbar styling */
-.popup::-webkit-scrollbar {
+.content::-webkit-scrollbar {
   width: 6px;
 }
 
-.popup::-webkit-scrollbar-track {
+.content::-webkit-scrollbar-track {
   background: var(--bg-secondary);
 }
 
-.popup::-webkit-scrollbar-thumb {
+.content::-webkit-scrollbar-thumb {
   background: var(--border-strong);
 }
 
-.popup::-webkit-scrollbar-thumb:hover {
+.content::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
 }

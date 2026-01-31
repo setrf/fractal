@@ -3,11 +3,12 @@
  * ======================
  * 
  * A Gwern-style popup for displaying concept explanations.
- * Appears on hover/click and can be "stickied" (pinned) by clicking.
+ * Moveable, resizable, and stays open until explicitly closed.
  * 
- * Inspired by Gwern.net's popup paradigm:
- * - Appears on hover with slight delay
- * - Can be pinned by clicking
+ * Features:
+ * - Draggable by header - move anywhere on screen
+ * - Resizable by edges/corners - adjust to preferred size
+ * - Stays open until close button clicked (persistent)
  * - Positioned intelligently to avoid viewport edges
  * - Contains contextual explanations with related concepts
  * 
@@ -35,6 +36,22 @@ export interface PopupPosition {
   x: number
   y: number
 }
+
+/**
+ * Size for the popup.
+ */
+export interface PopupSize {
+  width: number
+  height: number
+}
+
+/**
+ * Minimum popup dimensions.
+ */
+const MIN_WIDTH = 280
+const MIN_HEIGHT = 200
+const DEFAULT_WIDTH = 320
+const DEFAULT_HEIGHT = 400
 
 /**
  * Props for the ConceptPopup component.
@@ -86,9 +103,11 @@ const categoryLabels: Record<ConceptCategory, string> = {
  * ConceptPopup displays contextual explanations for highlighted concepts.
  * 
  * Features:
- * - Intelligent positioning to stay within viewport
+ * - Draggable by header
+ * - Resizable by edges and corners
+ * - Stays open until explicitly closed
+ * - Intelligent initial positioning
  * - Loading and error states
- * - Sticky/pin functionality
  * - Related concepts for further exploration
  * - Keyboard accessible (Escape to close)
  */
@@ -105,14 +124,25 @@ export function ConceptPopup({
   onRemove,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
-  const [adjustedPosition, setAdjustedPosition] = useState(position)
+  const headerRef = useRef<HTMLDivElement>(null)
+  
+  // Position and size state
+  const [popupPosition, setPopupPosition] = useState(position)
+  const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT })
+  
+  // Drag state
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false)
+  const [resizeEdge, setResizeEdge] = useState<string | null>(null)
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 })
 
-  // Adjust position to stay within viewport
+  // Initial position adjustment to stay within viewport
   useEffect(() => {
     if (!popupRef.current || !concept) return
 
-    const popup = popupRef.current
-    const rect = popup.getBoundingClientRect()
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
 
@@ -120,24 +150,23 @@ export function ConceptPopup({
     let newY = position.y
 
     // Horizontal adjustment
-    if (position.x + rect.width > viewportWidth - 20) {
-      newX = viewportWidth - rect.width - 20
+    if (position.x + popupSize.width > viewportWidth - 20) {
+      newX = viewportWidth - popupSize.width - 20
     }
     if (newX < 20) {
       newX = 20
     }
 
-    // Vertical adjustment - prefer below, but flip if needed
-    if (position.y + rect.height > viewportHeight - 20) {
-      // Try positioning above
-      newY = position.y - rect.height - 10
+    // Vertical adjustment
+    if (position.y + popupSize.height > viewportHeight - 20) {
+      newY = position.y - popupSize.height - 10
     }
     if (newY < 20) {
       newY = 20
     }
 
-    setAdjustedPosition({ x: newX, y: newY })
-  }, [position, concept])
+    setPopupPosition({ x: newX, y: newY })
+  }, [position, concept, popupSize.width, popupSize.height])
 
   // Handle Escape key to close
   useEffect(() => {
@@ -151,26 +180,113 @@ export function ConceptPopup({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Handle click outside to close (only when sticky)
+  // ===== DRAG HANDLERS =====
+  
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    // Only drag from header, not from buttons
+    if ((e.target as HTMLElement).closest('button')) return
+    
+    e.preventDefault()
+    setIsDragging(true)
+    setDragOffset({
+      x: e.clientX - popupPosition.x,
+      y: e.clientY - popupPosition.y,
+    })
+  }, [popupPosition])
+
   useEffect(() => {
-    if (!isSticky) return
+    if (!isDragging) return
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose()
-      }
+    const handleMouseMove = (e: MouseEvent) => {
+      const newX = Math.max(0, Math.min(e.clientX - dragOffset.x, window.innerWidth - popupSize.width))
+      const newY = Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - 50))
+      setPopupPosition({ x: newX, y: newY })
     }
 
-    // Delay to prevent immediate closing
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside)
-    }, 100)
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
 
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
     return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isSticky, onClose])
+  }, [isDragging, dragOffset, popupSize.width])
+
+  // ===== RESIZE HANDLERS =====
+
+  const handleResizeStart = useCallback((e: React.MouseEvent, edge: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizing(true)
+    setResizeEdge(edge)
+    resizeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      width: popupSize.width,
+      height: popupSize.height,
+      left: popupPosition.x,
+      top: popupPosition.y,
+    }
+  }, [popupSize, popupPosition])
+
+  useEffect(() => {
+    if (!isResizing || !resizeEdge) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const start = resizeStartRef.current
+      const deltaX = e.clientX - start.x
+      const deltaY = e.clientY - start.y
+
+      let newWidth = start.width
+      let newHeight = start.height
+      let newLeft = start.left
+      let newTop = start.top
+
+      // Handle horizontal resizing
+      if (resizeEdge.includes('e')) {
+        newWidth = Math.max(MIN_WIDTH, start.width + deltaX)
+      }
+      if (resizeEdge.includes('w')) {
+        const potentialWidth = start.width - deltaX
+        if (potentialWidth >= MIN_WIDTH) {
+          newWidth = potentialWidth
+          newLeft = start.left + deltaX
+        }
+      }
+
+      // Handle vertical resizing
+      if (resizeEdge.includes('s')) {
+        newHeight = Math.max(MIN_HEIGHT, start.height + deltaY)
+      }
+      if (resizeEdge.includes('n')) {
+        const potentialHeight = start.height - deltaY
+        if (potentialHeight >= MIN_HEIGHT) {
+          newHeight = potentialHeight
+          newTop = start.top + deltaY
+        }
+      }
+
+      setPopupSize({ width: newWidth, height: newHeight })
+      setPopupPosition({ x: newLeft, y: newTop })
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      setResizeEdge(null)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, resizeEdge])
 
   // Toggle sticky state
   const handlePinClick = useCallback(() => {
@@ -205,16 +321,33 @@ export function ConceptPopup({
   return (
     <div
       ref={popupRef}
-      className={`${styles.popup} ${isSticky ? styles.sticky : ''}`}
+      className={`${styles.popup} ${isSticky ? styles.sticky : ''} ${isDragging ? styles.dragging : ''} ${isResizing ? styles.resizing : ''}`}
       style={{
-        left: adjustedPosition.x,
-        top: adjustedPosition.y,
+        left: popupPosition.x,
+        top: popupPosition.y,
+        width: popupSize.width,
+        height: popupSize.height,
       }}
-      role="tooltip"
+      role="dialog"
+      aria-label={`Concept explanation: ${concept.normalizedName}`}
       aria-live="polite"
     >
-      {/* Header */}
-      <div className={styles.header}>
+      {/* Resize handles */}
+      <div className={`${styles.resizeHandle} ${styles.resizeN}`} onMouseDown={(e) => handleResizeStart(e, 'n')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeS}`} onMouseDown={(e) => handleResizeStart(e, 's')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeE}`} onMouseDown={(e) => handleResizeStart(e, 'e')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeW}`} onMouseDown={(e) => handleResizeStart(e, 'w')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onMouseDown={(e) => handleResizeStart(e, 'ne')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onMouseDown={(e) => handleResizeStart(e, 'nw')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onMouseDown={(e) => handleResizeStart(e, 'se')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onMouseDown={(e) => handleResizeStart(e, 'sw')} />
+      
+      {/* Header - draggable area */}
+      <div 
+        ref={headerRef}
+        className={`${styles.header} ${styles.draggableHeader}`}
+        onMouseDown={handleDragStart}
+      >
         <div className={styles.titleRow}>
           <span className={styles.conceptName}>{concept.normalizedName}</span>
           <span className={`${styles.category} ${styles[`category${concept.category.charAt(0).toUpperCase() + concept.category.slice(1)}`]}`}>

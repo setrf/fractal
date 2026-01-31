@@ -53,10 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **ConceptPopup Component** (`src/components/ConceptPopup/`)
   - Gwern-style popup for concept explanations
-  - Intelligent viewport positioning
+  - **Draggable** - move popup by dragging header
+  - **Resizable** - resize by dragging edges/corners with visual indicators
+  - **Persistent** - stays open until user closes (no auto-dismiss)
+  - Intelligent viewport positioning for initial display
   - "Sticky" (pinnable) mode for persistent popups
   - Loading and error states
   - Related concepts for further exploration
+  - Remove highlight button for user control
 
 #### Concept Hooks
 - **useConceptExtraction Hook** (`src/hooks/useConceptExtraction.ts`)
@@ -88,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 - `ConceptHighlighter.test.tsx` - Component rendering and interaction tests
+- `ConceptPopup.test.tsx` - Popup rendering, dragging, resizing, and interaction tests
 - `concepts.test.ts` - Backend extraction/explanation function tests
 
 ---

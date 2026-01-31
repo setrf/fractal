@@ -5,10 +5,12 @@
  * Express router for the Fractal API.
  * 
  * Endpoints:
- * - GET  /health           - Health check
- * - POST /api/generate     - Generate related questions
- * - POST /api/chat         - Chat about a specific question
- * - GET  /api/models       - List available models
+ * - GET  /health                  - Health check
+ * - POST /api/generate            - Generate related questions
+ * - POST /api/chat                - Chat about a specific question
+ * - GET  /api/models              - List available models
+ * - POST /api/concepts/extract    - Extract concepts from text
+ * - POST /api/concepts/explain    - Get explanation for a concept
  */
 
 import { Router, Request, Response } from 'express'
@@ -17,6 +19,8 @@ import {
   chat,
   listModels,
   checkInferenceHealth,
+  extractConcepts,
+  explainConcept,
   type ChatMessage,
 } from './inference.js'
 
@@ -166,6 +170,124 @@ router.get('/api/models', async (_req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('[API] Error listing models:', error)
+    
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+// ============================================
+// CONCEPT EXTRACTION ENDPOINTS
+// ============================================
+
+/**
+ * Extract concepts from question text.
+ * 
+ * Request body:
+ * - text: string (required) - The text to extract concepts from
+ * - model: string (optional) - Model to use for extraction
+ * 
+ * Response:
+ * - concepts: ExtractedConcept[] - Array of extracted concepts
+ * - sourceText: string - The original text
+ * - model: string - Model used
+ * - usage: object - Token usage statistics
+ */
+router.post('/api/concepts/extract', async (req: Request, res: Response) => {
+  try {
+    const { text, model } = req.body
+
+    if (!text || typeof text !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'text is required and must be a string',
+      })
+      return
+    }
+
+    if (text.trim().length === 0) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'text cannot be empty',
+      })
+      return
+    }
+
+    console.log(`[API] POST /api/concepts/extract - Text: "${text.substring(0, 50)}..."`)
+
+    const result = await extractConcepts(text, model)
+
+    res.json({
+      success: true,
+      data: {
+        concepts: result.concepts,
+        sourceText: result.sourceText,
+      },
+    })
+  } catch (error) {
+    console.error('[API] Error extracting concepts:', error)
+    
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Get explanation for a concept in context.
+ * 
+ * Request body:
+ * - conceptId: string (required) - ID of the concept
+ * - conceptName: string (required) - Name/normalized name of the concept
+ * - questionContext: string (required) - The question context for the concept
+ * - model: string (optional) - Model to use for explanation
+ * 
+ * Response:
+ * - explanation: ConceptExplanation - The generated explanation
+ * - model: string - Model used
+ * - usage: object - Token usage statistics
+ */
+router.post('/api/concepts/explain', async (req: Request, res: Response) => {
+  try {
+    const { conceptId, conceptName, questionContext, model } = req.body
+
+    if (!conceptId || typeof conceptId !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'conceptId is required and must be a string',
+      })
+      return
+    }
+
+    if (!conceptName || typeof conceptName !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'conceptName is required and must be a string',
+      })
+      return
+    }
+
+    if (!questionContext || typeof questionContext !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'questionContext is required and must be a string',
+      })
+      return
+    }
+
+    console.log(`[API] POST /api/concepts/explain - Concept: "${conceptName}"`)
+
+    const result = await explainConcept(conceptId, conceptName, questionContext, model)
+
+    res.json({
+      success: true,
+      data: result.explanation,
+    })
+  } catch (error) {
+    console.error('[API] Error explaining concept:', error)
     
     res.status(500).json({
       error: 'Internal Server Error',

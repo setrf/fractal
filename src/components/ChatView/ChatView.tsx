@@ -58,6 +58,7 @@ export function ChatView({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [initialQuerySent, setInitialQuerySent] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -70,6 +71,45 @@ export function ChatView({
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  // Automatically query for an answer when entering the chat view
+  useEffect(() => {
+    if (initialQuerySent) return
+    
+    const sendInitialQuery = async () => {
+      setInitialQuerySent(true)
+      setSending(true)
+      
+      // The initial "message" is just asking about the question itself
+      const initialMessage: ChatMessage = { 
+        role: 'user', 
+        content: 'Help me explore and understand this question.' 
+      }
+      
+      try {
+        const response = await onSendMessage([initialMessage])
+        
+        // Add both the implicit query and the response
+        setMessages([
+          initialMessage,
+          { role: 'assistant', content: response }
+        ])
+      } catch (error) {
+        setMessages([
+          initialMessage,
+          { 
+            role: 'assistant', 
+            content: `Error: ${error instanceof Error ? error.message : 'Failed to get response'}` 
+          }
+        ])
+      } finally {
+        setSending(false)
+        inputRef.current?.focus()
+      }
+    }
+
+    sendInitialQuery()
+  }, [initialQuerySent, onSendMessage])
 
   /**
    * Handle sending a message.
@@ -136,12 +176,21 @@ export function ChatView({
 
       {/* Messages area */}
       <div className={styles.messages}>
-        {messages.length === 0 ? (
+        {messages.length === 0 && !sending ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyTitle}>Explore this question</p>
             <p className={styles.emptyHint}>
               Start a conversation to dive deep into this topic.
               The AI will help you think through different aspects.
+            </p>
+          </div>
+        ) : messages.length === 0 && sending ? (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyTitle}>
+              <span className={styles.thinking}>◌ Exploring...</span>
+            </p>
+            <p className={styles.emptyHint}>
+              Getting an initial exploration of this question...
             </p>
           </div>
         ) : (

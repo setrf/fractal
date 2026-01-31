@@ -356,26 +356,52 @@ export const extractConcepts = weave.op(
     }
 
     // Validate and add IDs to concepts
+    // IMPORTANT: We compute actual positions using indexOf() instead of trusting LLM indices
     const validCategories = ['science', 'philosophy', 'psychology', 'technology', 'abstract']
+    const usedRanges: Array<{ start: number; end: number }> = []
+    
     const concepts: ExtractedConcept[] = rawConcepts
       .filter((c) => {
-        // Validate required fields
+        // Validate required fields (but NOT indices - we'll compute those)
         if (!c.text || typeof c.text !== 'string') return false
         if (!c.normalizedName || typeof c.normalizedName !== 'string') return false
         if (!validCategories.includes(c.category)) return false
-        if (typeof c.startIndex !== 'number' || typeof c.endIndex !== 'number') return false
-        if (c.startIndex < 0 || c.endIndex <= c.startIndex) return false
-        if (c.endIndex > questionText.length) return false
         return true
       })
-      .map((c) => ({
-        id: generateConceptId(),
-        text: c.text,
-        normalizedName: c.normalizedName,
-        category: c.category,
-        startIndex: c.startIndex,
-        endIndex: c.endIndex,
-      }))
+      .map((c) => {
+        // Find the actual position of the text in the source
+        // Try case-sensitive first, then case-insensitive
+        let startIndex = questionText.indexOf(c.text)
+        
+        if (startIndex === -1) {
+          // Try case-insensitive search
+          const lowerText = questionText.toLowerCase()
+          const lowerConcept = c.text.toLowerCase()
+          startIndex = lowerText.indexOf(lowerConcept)
+          
+          // If found, use the actual text from the source
+          if (startIndex !== -1) {
+            c.text = questionText.slice(startIndex, startIndex + c.text.length)
+          }
+        }
+        
+        if (startIndex === -1) {
+          // Concept text not found in source - skip it
+          return null
+        }
+        
+        const endIndex = startIndex + c.text.length
+        
+        return {
+          id: generateConceptId(),
+          text: c.text,
+          normalizedName: c.normalizedName,
+          category: c.category,
+          startIndex,
+          endIndex,
+        }
+      })
+      .filter((c): c is ExtractedConcept => c !== null)
       // Sort by start position and remove overlaps
       .sort((a, b) => a.startIndex - b.startIndex)
       .reduce<ExtractedConcept[]>((acc, concept) => {

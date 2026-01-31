@@ -4,23 +4,33 @@
  * 
  * Tests for the concept extraction and explanation functionality.
  * Uses mocked LLM responses to test the parsing and validation logic.
+ * 
+ * NOTE: The concept extraction now computes indices using indexOf()
+ * rather than trusting LLM-provided indices. Tests verify that:
+ * 1. Concepts are found in the source text
+ * 2. Categories are validated
+ * 3. Overlapping concepts are removed
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Create mock functions first
+const mockCreate = vi.fn()
+const mockListModels = vi.fn().mockResolvedValue({ data: [{ id: 'test-model' }] })
+
 // Mock the OpenAI client before importing inference
 vi.mock('openai', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
+    default: class MockOpenAI {
+      chat = {
         completions: {
-          create: vi.fn(),
+          create: mockCreate,
         },
-      },
-      models: {
-        list: vi.fn().mockResolvedValue({ data: [{ id: 'test-model' }] }),
-      },
-    })),
+      }
+      models = {
+        list: mockListModels,
+      }
+    },
   }
 })
 
@@ -40,38 +50,31 @@ vi.mock('./config.js', () => ({
   },
 }))
 
-import OpenAI from 'openai'
-
 describe('Concept Extraction', () => {
-  let mockCreate: ReturnType<typeof vi.fn>
-
   beforeEach(() => {
     vi.clearAllMocks()
-    // Get reference to the mocked create function
-    const MockOpenAI = OpenAI as unknown as ReturnType<typeof vi.fn>
-    const instance = new MockOpenAI()
-    mockCreate = instance.chat.completions.create
   })
 
   describe('extractConcepts', () => {
     it('should parse valid JSON response with concepts', async () => {
+      // Note: LLM-provided indices are ignored - we use indexOf()
       const mockResponse = {
         choices: [{
           message: {
             content: JSON.stringify([
               {
-                text: 'dreams',
+                text: 'dream',  // Must match text in source
                 normalizedName: 'dreams',
                 category: 'psychology',
-                startIndex: 10,
-                endIndex: 16,
+                startIndex: 0,  // Ignored - we compute via indexOf()
+                endIndex: 100,  // Ignored
               },
               {
                 text: 'sleep',
                 normalizedName: 'sleep',
                 category: 'science',
-                startIndex: 24,
-                endIndex: 29,
+                startIndex: 0,  // Ignored
+                endIndex: 100,  // Ignored
               },
             ]),
           },
@@ -91,10 +94,14 @@ describe('Concept Extraction', () => {
       const result = await extractConcepts('Why do we dream during sleep?')
       
       expect(result.concepts).toHaveLength(2)
-      expect(result.concepts[0].text).toBe('dreams')
+      expect(result.concepts[0].text).toBe('dream')
       expect(result.concepts[0].category).toBe('psychology')
+      // Verify computed indices
+      expect(result.concepts[0].startIndex).toBe(10)  // "dream" starts at index 10
+      expect(result.concepts[0].endIndex).toBe(15)    // "dream" ends at index 15
       expect(result.concepts[1].text).toBe('sleep')
       expect(result.concepts[1].category).toBe('science')
+      expect(result.concepts[1].startIndex).toBe(23)  // "sleep" starts at index 23
       expect(result.sourceText).toBe('Why do we dream during sleep?')
     })
 
@@ -104,18 +111,14 @@ describe('Concept Extraction', () => {
           message: {
             content: JSON.stringify([
               {
-                text: 'dreams',
+                text: 'dream',
                 normalizedName: 'dreams',
-                category: 'invalid_category', // Invalid
-                startIndex: 10,
-                endIndex: 16,
+                category: 'invalid_category', // Invalid - will be filtered
               },
               {
                 text: 'sleep',
                 normalizedName: 'sleep',
                 category: 'science', // Valid
-                startIndex: 24,
-                endIndex: 29,
               },
             ]),
           },
@@ -133,6 +136,8 @@ describe('Concept Extraction', () => {
     })
 
     it('should remove overlapping concepts', async () => {
+      // "ionary" is a substring within "evolutionary" so indexOf() will find
+      // overlapping positions - the second should be removed
       const mockResponse = {
         choices: [{
           message: {
@@ -141,22 +146,16 @@ describe('Concept Extraction', () => {
                 text: 'evolutionary',
                 normalizedName: 'evolution',
                 category: 'science',
-                startIndex: 10,
-                endIndex: 22,
               },
               {
-                text: 'ionary', // Overlaps with previous
+                text: 'ionary', // Overlaps (substring of evolutionary)
                 normalizedName: 'evolution',
                 category: 'science',
-                startIndex: 16,
-                endIndex: 22,
               },
               {
                 text: 'byproduct',
                 normalizedName: 'byproduct',
                 category: 'abstract',
-                startIndex: 23,
-                endIndex: 32,
               },
             ]),
           },
@@ -206,7 +205,9 @@ describe('Concept Extraction', () => {
       expect(result.concepts).toHaveLength(0)
     })
 
-    it('should filter concepts with invalid indices', async () => {
+    it('should filter concepts not found in source text', async () => {
+      // LLM indices are now ignored; concepts are found via indexOf()
+      // Concepts that don't exist in source text are filtered out
       const mockResponse = {
         choices: [{
           message: {
@@ -215,22 +216,16 @@ describe('Concept Extraction', () => {
                 text: 'valid',
                 normalizedName: 'valid',
                 category: 'abstract',
-                startIndex: 0,
-                endIndex: 5,
               },
               {
-                text: 'negative',
-                normalizedName: 'negative',
+                text: 'nonexistent', // Not in source text
+                normalizedName: 'nonexistent',
                 category: 'abstract',
-                startIndex: -1, // Invalid
-                endIndex: 5,
               },
               {
-                text: 'overflow',
-                normalizedName: 'overflow',
+                text: 'missing', // Not in source text
+                normalizedName: 'missing',
                 category: 'abstract',
-                startIndex: 0,
-                endIndex: 1000, // Beyond text length
               },
             ]),
           },
@@ -250,13 +245,8 @@ describe('Concept Extraction', () => {
 })
 
 describe('Concept Explanation', () => {
-  let mockCreate: ReturnType<typeof vi.fn>
-
   beforeEach(() => {
     vi.clearAllMocks()
-    const MockOpenAI = OpenAI as unknown as ReturnType<typeof vi.fn>
-    const instance = new MockOpenAI()
-    mockCreate = instance.chat.completions.create
   })
 
   describe('explainConcept', () => {

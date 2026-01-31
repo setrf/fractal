@@ -44,15 +44,29 @@
  * ============================================ */
 
 /* Vertical connector - height is set dynamically via JS
- * to stop at the last child's horizontal connector position */
+ * Starts from top of children container (connecting to parent)
+ * and extends down to last child's horizontal connector */
 .connector {
   position: absolute;
   left: var(--space-4);
-  top: calc(var(--space-4) + 2px);
+  /* Start from very top to connect to parent */
+  top: 0;
   width: var(--border-width);
   background: var(--border-primary);
-  /* Default height - overridden by JS with --connector-height */
-  height: var(--connector-height, calc(100% - var(--space-4) - 2px));
+  /* Height is set by JS - from top to last child's horizontal line */
+  height: var(--connector-height, 100%);
+}
+
+/* Connection from parent node down to children - uses ::before on .children */
+.children::before {
+  content: '';
+  position: absolute;
+  left: var(--space-4);
+  /* Extend upward from top of children into the gap to meet parent */
+  top: calc(var(--space-2) * -1);
+  width: var(--border-width);
+  height: var(--space-2);
+  background: var(--border-primary);
 }
 
 /* Horizontal branch connectors - drawn via pseudo-elements

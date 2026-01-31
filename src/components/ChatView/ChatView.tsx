@@ -10,10 +10,13 @@
  * - Message bubbles with clear user/assistant distinction
  * - Fixed input at bottom
  * - Auto-scroll to latest message
+ * - Concept highlighting in question header with popups
  */
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
-import type { ChatMessage } from '../../api'
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import type { ChatMessage, ExtractedConcept, ConceptExplanation } from '../../api'
+import { ConceptHighlighter } from '../ConceptHighlighter'
+import { ConceptPopup, type PopupPosition } from '../ConceptPopup'
 import styles from './ChatView.module.css'
 
 /**
@@ -28,6 +31,22 @@ interface ChatViewProps {
   onSendMessage: (messages: ChatMessage[]) => Promise<string>
   /** Whether a message is currently being sent */
   isLoading?: boolean
+  
+  // Concept highlighting props
+  /** Extracted concepts to highlight in the question text */
+  concepts?: ExtractedConcept[]
+  /** Current concept explanation being displayed */
+  conceptExplanation?: ConceptExplanation | null
+  /** Whether concept explanation is loading */
+  isConceptLoading?: boolean
+  /** Error loading concept explanation */
+  conceptError?: string | null
+  /** Callback when a concept is hovered */
+  onConceptHover?: (concept: ExtractedConcept) => void
+  /** Callback when concept hover ends */
+  onConceptLeave?: () => void
+  /** Callback when a concept is clicked */
+  onConceptClick?: (concept: ExtractedConcept) => void
 }
 
 /**
@@ -54,6 +73,14 @@ export function ChatView({
   onBack,
   onSendMessage,
   isLoading = false,
+  // Concept props
+  concepts = [],
+  conceptExplanation,
+  isConceptLoading = false,
+  conceptError,
+  onConceptHover,
+  onConceptLeave,
+  onConceptClick,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -61,6 +88,11 @@ export function ChatView({
   const [initialQuerySent, setInitialQuerySent] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  
+  // State for concept popup
+  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
+  const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: 0, y: 0 })
+  const [isPopupSticky, setIsPopupSticky] = useState(false)
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -155,6 +187,54 @@ export function ChatView({
     }
   }
 
+  /**
+   * Handles concept hover - shows popup.
+   */
+  const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
+    if (!isPopupSticky) {
+      setHoveredConcept(concept)
+      setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
+      onConceptHover?.(concept)
+    }
+  }, [isPopupSticky, onConceptHover])
+
+  /**
+   * Handles concept hover end - hides popup unless sticky.
+   */
+  const handleConceptLeave = useCallback(() => {
+    if (!isPopupSticky) {
+      setHoveredConcept(null)
+      onConceptLeave?.()
+    }
+  }, [isPopupSticky, onConceptLeave])
+
+  /**
+   * Handles concept click - makes popup sticky.
+   */
+  const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
+    event.stopPropagation()
+    setHoveredConcept(concept)
+    setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
+    setIsPopupSticky(true)
+    onConceptClick?.(concept)
+  }, [onConceptClick])
+
+  /**
+   * Handles popup close.
+   */
+  const handlePopupClose = useCallback(() => {
+    setHoveredConcept(null)
+    setIsPopupSticky(false)
+    onConceptLeave?.()
+  }, [onConceptLeave])
+
+  /**
+   * Handles popup sticky state change.
+   */
+  const handleStickyChange = useCallback((sticky: boolean) => {
+    setIsPopupSticky(sticky)
+  }, [])
+
   const isDisabled = sending || isLoading
 
   return (
@@ -170,9 +250,34 @@ export function ChatView({
         </button>
         <div className={styles.questionContext}>
           <span className={styles.prefix}>?</span>
-          <span className={styles.questionText}>{question}</span>
+          {concepts.length > 0 ? (
+            <ConceptHighlighter
+              text={question}
+              concepts={concepts}
+              className={styles.questionText}
+              onConceptHover={handleConceptHover}
+              onConceptLeave={handleConceptLeave}
+              onConceptClick={handleConceptClick}
+            />
+          ) : (
+            <span className={styles.questionText}>{question}</span>
+          )}
         </div>
       </header>
+
+      {/* Concept explanation popup */}
+      {hoveredConcept && (
+        <ConceptPopup
+          concept={hoveredConcept}
+          explanation={conceptExplanation || null}
+          isLoading={isConceptLoading}
+          error={conceptError}
+          position={popupPosition}
+          isSticky={isPopupSticky}
+          onClose={handlePopupClose}
+          onStickyChange={handleStickyChange}
+        />
+      )}
 
       {/* Messages area */}
       <div className={styles.messages}>

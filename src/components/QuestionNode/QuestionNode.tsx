@@ -5,16 +5,21 @@
  * - Click to select/focus the node
  * - Expand/collapse button for nodes with children
  * - Add child button to create branching questions
+ * - Concept highlighting with interactive popups
  * 
  * Design:
  * - Neobrutalist styling with hard edges and bold borders
  * - Root nodes have thicker borders
  * - Active nodes show offset shadow
  * - Inline form for adding children without modal
+ * - Gwern-style concept popups for highlighted terms
  */
 
-import { useState, KeyboardEvent } from 'react'
+import { useState, useCallback, KeyboardEvent } from 'react'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
+import type { ExtractedConcept, ConceptExplanation } from '../../api'
+import { ConceptHighlighter } from '../ConceptHighlighter'
+import { ConceptPopup, type PopupPosition } from '../ConceptPopup'
 import styles from './QuestionNode.module.css'
 
 /**
@@ -41,6 +46,22 @@ interface QuestionNodeProps {
   isGenerating?: boolean
   /** Callback to "lock in" on this question and open chat view */
   onLockIn?: (nodeId: string, question: string) => void
+  
+  // Concept highlighting props
+  /** Extracted concepts to highlight in the question text */
+  concepts?: ExtractedConcept[]
+  /** Current concept explanation being displayed */
+  conceptExplanation?: ConceptExplanation | null
+  /** Whether concept explanation is loading */
+  isConceptLoading?: boolean
+  /** Error loading concept explanation */
+  conceptError?: string | null
+  /** Callback when a concept is hovered */
+  onConceptHover?: (concept: ExtractedConcept) => void
+  /** Callback when concept hover ends */
+  onConceptLeave?: () => void
+  /** Callback when a concept is clicked */
+  onConceptClick?: (concept: ExtractedConcept) => void
 }
 
 /**
@@ -74,10 +95,23 @@ export function QuestionNode({
   onGenerateAI,
   isGenerating = false,
   onLockIn,
+  // Concept props
+  concepts = [],
+  conceptExplanation,
+  isConceptLoading = false,
+  conceptError,
+  onConceptHover,
+  onConceptLeave,
+  onConceptClick,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [newQuestion, setNewQuestion] = useState('')
+  
+  // State for concept popup
+  const [hoveredConcept, setHoveredConcept] = useState<ExtractedConcept | null>(null)
+  const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: 0, y: 0 })
+  const [isPopupSticky, setIsPopupSticky] = useState(false)
 
   /**
    * Handles click on the node body to select it.
@@ -120,6 +154,54 @@ export function QuestionNode({
   }
 
   /**
+   * Handles concept hover - shows popup.
+   */
+  const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
+    if (!isPopupSticky) {
+      setHoveredConcept(concept)
+      setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
+      onConceptHover?.(concept)
+    }
+  }, [isPopupSticky, onConceptHover])
+
+  /**
+   * Handles concept hover end - hides popup unless sticky.
+   */
+  const handleConceptLeave = useCallback(() => {
+    if (!isPopupSticky) {
+      setHoveredConcept(null)
+      onConceptLeave?.()
+    }
+  }, [isPopupSticky, onConceptLeave])
+
+  /**
+   * Handles concept click - makes popup sticky.
+   */
+  const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
+    event.stopPropagation()
+    setHoveredConcept(concept)
+    setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
+    setIsPopupSticky(true)
+    onConceptClick?.(concept)
+  }, [onConceptClick])
+
+  /**
+   * Handles popup close.
+   */
+  const handlePopupClose = useCallback(() => {
+    setHoveredConcept(null)
+    setIsPopupSticky(false)
+    onConceptLeave?.()
+  }, [onConceptLeave])
+
+  /**
+   * Handles popup sticky state change.
+   */
+  const handleStickyChange = useCallback((sticky: boolean) => {
+    setIsPopupSticky(sticky)
+  }, [])
+
+  /**
    * Submits the new child question.
    */
   const handleSubmitChild = () => {
@@ -159,7 +241,18 @@ export function QuestionNode({
         {/* Question content with prefix */}
         <div className={styles.content}>
           <span className={styles.prefix}>?</span>
-          <span className={styles.text}>{node.text}</span>
+          {concepts.length > 0 ? (
+            <ConceptHighlighter
+              text={node.text}
+              concepts={concepts}
+              className={styles.text}
+              onConceptHover={handleConceptHover}
+              onConceptLeave={handleConceptLeave}
+              onConceptClick={handleConceptClick}
+            />
+          ) : (
+            <span className={styles.text}>{node.text}</span>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -248,6 +341,20 @@ export function QuestionNode({
             ×
           </button>
         </div>
+      )}
+
+      {/* Concept explanation popup */}
+      {hoveredConcept && (
+        <ConceptPopup
+          concept={hoveredConcept}
+          explanation={conceptExplanation || null}
+          isLoading={isConceptLoading}
+          error={conceptError}
+          position={popupPosition}
+          isSticky={isPopupSticky}
+          onClose={handlePopupClose}
+          onStickyChange={handleStickyChange}
+        />
       )}
     </div>
   )

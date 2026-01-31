@@ -279,7 +279,8 @@ export function QuestionNode({
               aria-label="Generate AI suggestions"
               title="Branch: Generate related questions"
             >
-              {isGenerating ? '◌' : '✦'}
+              <span className={styles.icon}>{isGenerating ? '◌' : '✦'}</span>
+              <span>AI</span>
             </button>
           )}
 
@@ -291,7 +292,8 @@ export function QuestionNode({
               aria-label="Explore this question"
               title="Explore: Dive deep into this question"
             >
-              →
+              <span className={styles.icon}>→</span>
+              <span>Go</span>
             </button>
           )}
           
@@ -300,8 +302,10 @@ export function QuestionNode({
             className={styles.addBtn}
             onClick={handleAddChildClick}
             aria-label="Add related question"
+            title="Add a related question"
           >
-            ↳
+            <span className={styles.icon}>↳</span>
+            <span>Add</span>
           </button>
         </div>
       </div>

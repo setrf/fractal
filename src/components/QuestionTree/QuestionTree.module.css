@@ -43,14 +43,16 @@
  * Visual connection between parent and children
  * ============================================ */
 
-/* Vertical connector - runs down the left side of children */
+/* Vertical connector - height is set dynamically via JS
+ * to stop at the last child's horizontal connector position */
 .connector {
   position: absolute;
   left: var(--space-4);
-  top: 0;
-  bottom: var(--space-4);
+  top: calc(var(--space-4) + 2px);
   width: var(--border-width);
   background: var(--border-primary);
+  /* Default height - overridden by JS with --connector-height */
+  height: var(--connector-height, calc(100% - var(--space-4) - 2px));
 }
 
 /* Horizontal branch connectors - drawn via pseudo-elements

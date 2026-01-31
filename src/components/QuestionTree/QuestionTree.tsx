@@ -16,6 +16,7 @@
  * - Slide-in animation for new nodes
  */
 
+import { useRef, useEffect, useCallback } from 'react'
 import type { QuestionTree as QuestionTreeType, QuestionNode as QuestionNodeType } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation } from '../../api'
 import { QuestionNode } from '../QuestionNode'
@@ -150,6 +151,9 @@ function TreeBranch({
   onAddUserConcept,
   onRemoveConcept,
 }: TreeBranchProps) {
+  const childrenRef = useRef<HTMLDivElement>(null)
+  const connectorRef = useRef<HTMLDivElement>(null)
+
   // Get actual child node objects from IDs
   const children = node.childIds
     .map((id) => tree.nodes[id])
@@ -157,6 +161,31 @@ function TreeBranch({
 
   const hasChildren = children.length > 0
   const isExpanded = node.meta.isExpanded
+
+  // Calculate connector height to stop at last child's horizontal line
+  const updateConnectorHeight = useCallback(() => {
+    if (!childrenRef.current || !connectorRef.current) return
+    
+    const childrenEl = childrenRef.current
+    const branches = childrenEl.querySelectorAll(':scope > .' + styles.branch)
+    
+    if (branches.length === 0) return
+    
+    const lastBranch = branches[branches.length - 1] as HTMLElement
+    // The horizontal connector is at var(--space-4) + 2px = 18px from top of branch
+    const horizontalConnectorOffset = 18
+    const connectorHeight = lastBranch.offsetTop + horizontalConnectorOffset
+    
+    connectorRef.current.style.height = `${connectorHeight}px`
+  }, [])
+
+  // Update connector height when children change
+  useEffect(() => {
+    if (hasChildren && isExpanded) {
+      // Small delay to ensure DOM is updated
+      requestAnimationFrame(updateConnectorHeight)
+    }
+  }, [hasChildren, isExpanded, children.length, updateConnectorHeight])
 
   return (
     <div 
@@ -190,9 +219,9 @@ function TreeBranch({
 
       {/* Render children if any and expanded */}
       {hasChildren && isExpanded && (
-        <div className={styles.children}>
-          {/* Vertical connector line */}
-          <div className={styles.connector} aria-hidden="true" />
+        <div ref={childrenRef} className={styles.children}>
+          {/* Vertical connector line - height calculated dynamically */}
+          <div ref={connectorRef} className={styles.connector} aria-hidden="true" />
           
           {/* Recursively render each child */}
           {children.map((child) => (

@@ -277,10 +277,10 @@ export function QuestionNode({
               onClick={handleGenerateAI}
               disabled={isGenerating}
               aria-label="Generate AI suggestions"
-              title="Branch: Generate related questions"
+              title="Generate related questions to explore"
             >
               <span className={styles.icon}>{isGenerating ? '◌' : '✦'}</span>
-              <span>AI</span>
+              <span>Deep dive</span>
             </button>
           )}
 
@@ -289,11 +289,11 @@ export function QuestionNode({
             <button
               className={styles.lockInBtn}
               onClick={handleLockIn}
-              aria-label="Explore this question"
-              title="Explore: Dive deep into this question"
+              aria-label="Chat about this question"
+              title="Start a conversation about this question"
             >
               <span className={styles.icon}>→</span>
-              <span>Go</span>
+              <span>Chat</span>
             </button>
           )}
           
@@ -301,11 +301,11 @@ export function QuestionNode({
           <button
             className={styles.addBtn}
             onClick={handleAddChildClick}
-            aria-label="Add related question"
-            title="Add a related question"
+            aria-label="Customize with your own question"
+            title="Add your own related question"
           >
             <span className={styles.icon}>↳</span>
-            <span>Add</span>
+            <span>Customize</span>
           </button>
         </div>
       </div>

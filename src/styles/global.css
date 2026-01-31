@@ -1,21 +1,40 @@
 /**
  * Fractal Global Styles
- * Swiss Neobrutalist utilities and base styles
+ * =====================
+ * 
+ * Global styles and utility classes for the Fractal application.
+ * 
+ * This file:
+ * 1. Imports tokens and reset (order matters!)
+ * 2. Sets up the root layout
+ * 3. Provides utility classes for common patterns
+ * 
+ * Note: Most styles are component-scoped via CSS Modules.
+ * This file only contains truly global concerns.
  */
 
+/* Import design tokens first (defines all CSS custom properties) */
 @import './tokens.css';
+
+/* Import reset (uses tokens, must come after) */
 @import './reset.css';
 
-/* === Layout === */
+/* ============================================
+ * ROOT LAYOUT
+ * Full-height flex container for the app
+ * ============================================ */
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* === Utility Classes === */
+/* ============================================
+ * TYPOGRAPHY UTILITIES
+ * Quick access to typography tokens
+ * ============================================ */
 
-/* Typography */
+/* Font family utilities */
 .font-sans {
   font-family: var(--font-sans);
 }
@@ -24,6 +43,7 @@
   font-family: var(--font-mono);
 }
 
+/* Font size utilities */
 .text-xs { font-size: var(--text-xs); }
 .text-sm { font-size: var(--text-sm); }
 .text-base { font-size: var(--text-base); }
@@ -33,24 +53,31 @@
 .text-3xl { font-size: var(--text-3xl); }
 .text-4xl { font-size: var(--text-4xl); }
 
+/* Text color utilities */
 .text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
 .text-tertiary { color: var(--text-tertiary); }
 .text-error { color: var(--accent-error); }
 
+/* Letter spacing utilities */
 .tracking-tight { letter-spacing: var(--tracking-tight); }
 .tracking-normal { letter-spacing: var(--tracking-normal); }
 .tracking-wide { letter-spacing: var(--tracking-wide); }
 
+/* Line height utilities */
 .leading-tight { line-height: var(--leading-tight); }
 .leading-normal { line-height: var(--leading-normal); }
 .leading-relaxed { line-height: var(--leading-relaxed); }
 
+/* Text transform */
 .uppercase {
   text-transform: uppercase;
 }
 
-/* Neobrutalist borders */
+/* ============================================
+ * NEOBRUTALIST BORDER UTILITIES
+ * Standard and strong border patterns
+ * ============================================ */
 .border {
   border: var(--border-width) solid var(--border-primary);
 }
@@ -59,7 +86,14 @@
   border: var(--border-width-strong) solid var(--text-primary);
 }
 
-/* Screen reader only */
+/* ============================================
+ * ACCESSIBILITY UTILITIES
+ * ============================================ */
+
+/**
+ * Screen reader only content
+ * Visually hidden but accessible to screen readers
+ */
 .sr-only {
   position: absolute;
   width: 1px;

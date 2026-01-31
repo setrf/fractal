@@ -1,8 +1,23 @@
 /**
  * Fractal CSS Reset
- * Neobrutalist foundation
+ * =================
+ * 
+ * A modern CSS reset with neobrutalist foundations.
+ * 
+ * Goals:
+ * 1. Remove default browser styling for consistency
+ * 2. Establish neobrutalist base styles (hard edges, visible focus)
+ * 3. Set up typography defaults using design tokens
+ * 4. Custom scrollbar styling matching the theme
+ * 
+ * Based on modern reset principles but tailored for Fractal's
+ * Swiss neobrutalist aesthetic.
  */
 
+/* ============================================
+ * BOX SIZING & MARGINS
+ * Use border-box everywhere, remove all margins
+ * ============================================ */
 *,
 *::before,
 *::after {
@@ -11,35 +26,56 @@
   padding: 0;
 }
 
+/* ============================================
+ * HTML ROOT
+ * Base font size and rendering optimizations
+ * ============================================ */
 html {
   font-size: 16px;
+  /* Smooth font rendering on macOS/iOS */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Optimize for legibility over speed */
   text-rendering: optimizeLegibility;
 }
 
+/* ============================================
+ * BODY
+ * Typography and color defaults from tokens
+ * ============================================ */
 body {
   min-height: 100vh;
+  /* Monospace-first typography */
   font-family: var(--font-mono);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
+  /* Theme-aware colors */
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
 
-/* Remove default list styles */
+/* ============================================
+ * LISTS
+ * Remove default list styling
+ * ============================================ */
 ul,
 ol {
   list-style: none;
 }
 
-/* Remove default link styles */
+/* ============================================
+ * LINKS
+ * Remove default link styling, inherit colors
+ * ============================================ */
 a {
   color: inherit;
   text-decoration: none;
 }
 
-/* Remove default button styles */
+/* ============================================
+ * BUTTONS
+ * Reset to base styling, use cursor pointer
+ * ============================================ */
 button {
   font: inherit;
   color: inherit;
@@ -52,7 +88,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Remove default input styles */
+/* ============================================
+ * FORM INPUTS
+ * Remove default styling, inherit typography
+ * ============================================ */
 input,
 textarea,
 select {
@@ -63,7 +102,10 @@ select {
   outline: none;
 }
 
-/* Remove default image styles */
+/* ============================================
+ * MEDIA
+ * Block display, responsive by default
+ * ============================================ */
 img,
 picture,
 video,
@@ -73,25 +115,41 @@ svg {
   max-width: 100%;
 }
 
-/* Remove default table styles */
+/* ============================================
+ * TABLES
+ * Collapse borders, remove spacing
+ * ============================================ */
 table {
   border-collapse: collapse;
   border-spacing: 0;
 }
 
-/* Neobrutalist focus styles */
+/* ============================================
+ * NEOBRUTALIST FOCUS STYLES
+ * Visible, high-contrast focus rings
+ * 
+ * Using :focus-visible for keyboard-only focus
+ * (mouse clicks won't show the ring)
+ * ============================================ */
 :focus-visible {
   outline: var(--border-width) solid var(--border-focus);
   outline-offset: 2px;
 }
 
-/* Selection */
+/* ============================================
+ * SELECTION STYLING
+ * Inverted colors for selected text
+ * ============================================ */
 ::selection {
   background-color: var(--text-primary);
   color: var(--bg-primary);
 }
 
-/* Scrollbar styling */
+/* ============================================
+ * SCROLLBAR STYLING
+ * Custom scrollbars matching the theme
+ * (WebKit browsers only)
+ * ============================================ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

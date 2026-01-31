@@ -1,9 +1,31 @@
+/**
+ * QuestionNode Component Styles
+ * =============================
+ * 
+ * Styling for individual question nodes in the tree.
+ * 
+ * States:
+ * - Default: Standard border
+ * - Root: Thicker border (--border-width-strong)
+ * - Active: Offset shadow, emphasized background
+ * - Hover: Darker border
+ * 
+ * Structure:
+ * - container: Wraps node and optional add-child form
+ * - node: The clickable question box
+ * - content: Question text with prefix
+ * - actions: Expand/collapse and add buttons
+ * - addChildForm: Inline form for adding children
+ */
+
+/* Container wraps the node and any child creation form */
 .container {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
+/* Main node element - the question box */
 .node {
   display: flex;
   align-items: flex-start;
@@ -13,40 +35,47 @@
   border: var(--border-width) solid var(--border-primary);
   background: var(--bg-primary);
   cursor: pointer;
+  /* Multi-property transitions for smooth state changes */
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
     background-color var(--transition-fast);
 }
 
+/* Hover state - subtle border emphasis */
 .node:hover {
   border-color: var(--text-secondary);
 }
 
+/* Focus state - keyboard navigation */
 .node:focus {
   outline: none;
   border-color: var(--text-primary);
 }
 
+/* Root node modifier - thicker border for emphasis */
 .node.root {
   border-width: var(--border-width-strong);
   border-color: var(--text-primary);
 }
 
+/* Active/selected node - shadow offset effect */
 .node.active {
   background: var(--bg-secondary);
   border-color: var(--text-primary);
   box-shadow: 3px 3px 0 var(--text-primary);
 }
 
+/* Content area - question text with prefix */
 .content {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   flex: 1;
-  min-width: 0;
+  min-width: 0; /* Allow text to truncate properly */
 }
 
+/* Question mark prefix */
 .prefix {
   font-family: var(--font-mono);
   font-size: var(--text-base);
@@ -56,14 +85,16 @@
   flex-shrink: 0;
 }
 
+/* Question text */
 .text {
   font-family: var(--font-mono);
   font-size: var(--text-base);
   color: var(--text-primary);
   line-height: 1.5;
-  word-break: break-word;
+  word-break: break-word; /* Handle long words */
 }
 
+/* Action buttons container */
 .actions {
   display: flex;
   align-items: center;
@@ -71,6 +102,7 @@
   flex-shrink: 0;
 }
 
+/* Shared styles for action buttons */
 .expandBtn,
 .addBtn {
   width: 28px;
@@ -90,6 +122,7 @@
     background-color var(--transition-fast);
 }
 
+/* Hover state for action buttons */
 .expandBtn:hover,
 .addBtn:hover {
   color: var(--text-primary);
@@ -97,18 +130,24 @@
   background: var(--bg-secondary);
 }
 
+/* Add button uses larger icon */
 .addBtn {
   font-size: var(--text-lg);
 }
 
-/* Add child form */
+/* ============================================
+ * ADD CHILD FORM
+ * Inline form for creating child questions
+ * ============================================ */
+
 .addChildForm {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding-left: var(--space-4);
+  padding-left: var(--space-4); /* Indent from parent */
 }
 
+/* Visual branch connector character */
 .branchLine {
   font-family: var(--font-mono);
   font-size: var(--text-base);
@@ -116,6 +155,7 @@
   user-select: none;
 }
 
+/* Child question input field */
 .childInput {
   flex: 1;
   padding: var(--space-2) var(--space-3);
@@ -135,6 +175,7 @@
   color: var(--text-tertiary);
 }
 
+/* Submit and cancel buttons for child form */
 .submitChild,
 .cancelChild {
   width: 28px;
@@ -162,6 +203,7 @@
   cursor: not-allowed;
 }
 
+/* Cancel button - red on hover for destructive hint */
 .cancelChild {
   color: var(--text-secondary);
 }

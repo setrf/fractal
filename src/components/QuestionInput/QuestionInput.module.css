@@ -1,3 +1,22 @@
+/**
+ * QuestionInput Component Styles
+ * ==============================
+ * 
+ * Styling for the central question input component.
+ * 
+ * Visual Design:
+ * - Terminal-style with monospace typography
+ * - Bold "?" prompt prefix
+ * - Neobrutalist border with shadow on focus
+ * - Arrow submit button
+ * 
+ * Layout:
+ * - Max width constrained for readability
+ * - Centered via parent flex container
+ * - Vertical stack: input wrapper + hint text
+ */
+
+/* Container - centers content and constrains width */
 .container {
   width: 100%;
   max-width: 600px;
@@ -7,6 +26,7 @@
   gap: var(--space-4);
 }
 
+/* Input wrapper - the bordered box containing prompt, input, and button */
 .inputWrapper {
   width: 100%;
   display: flex;
@@ -15,22 +35,26 @@
   padding: var(--space-4) var(--space-5);
   border: var(--border-width-strong) solid var(--text-primary);
   background: var(--bg-primary);
+  /* Smooth shadow transition for focus state */
   transition: box-shadow var(--transition-fast);
 }
 
+/* Neobrutalist offset shadow on focus */
 .inputWrapper:focus-within {
   box-shadow: 4px 4px 0 var(--text-primary);
 }
 
+/* Question mark prompt - static, non-interactive */
 .prompt {
   font-family: var(--font-mono);
   font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
-  user-select: none;
+  user-select: none; /* Prevent accidental selection */
 }
 
+/* Text input - grows to fill available space */
 .input {
   flex: 1;
   font-family: var(--font-mono);
@@ -40,10 +64,12 @@
   caret-color: var(--text-primary);
 }
 
+/* Placeholder styling */
 .input::placeholder {
   color: var(--text-tertiary);
 }
 
+/* Submit button - arrow icon */
 .submit {
   width: 40px;
   height: 40px;
@@ -56,27 +82,32 @@
   color: var(--text-primary);
   border: var(--border-width) solid var(--border-primary);
   background: var(--bg-secondary);
+  /* Multi-property transition */
   transition: 
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     opacity var(--transition-fast);
 }
 
+/* Hover state - emphasize the button */
 .submit:hover:not(:disabled) {
   background: var(--bg-tertiary);
   border-color: var(--text-primary);
 }
 
+/* Active/pressed state - inverted colors */
 .submit:active:not(:disabled) {
   background: var(--text-primary);
   color: var(--bg-primary);
 }
 
+/* Disabled state - reduced opacity */
 .submit:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
+/* Hint text below input */
 .hint {
   font-family: var(--font-mono);
   font-size: var(--text-sm);

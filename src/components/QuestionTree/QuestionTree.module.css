@@ -1,25 +1,49 @@
+/**
+ * QuestionTree Component Styles
+ * =============================
+ * 
+ * Styling for the branching tree visualization.
+ * 
+ * Visual Structure:
+ * - Each branch is a vertical stack (node + children)
+ * - Children are indented with a connector line
+ * - Vertical line runs down the left of child groups
+ * - Horizontal lines connect to each child node
+ * 
+ * Animation:
+ * - New child nodes slide in from the left
+ */
+
+/* Main container - constrains width and adds padding */
 .container {
   width: 100%;
   max-width: 800px;
   padding: var(--space-4);
 }
 
+/* Branch wrapper - a node and its children */
 .branch {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
+/* Children container - indented with connector line */
 .children {
-  position: relative;
+  position: relative; /* For absolute positioned connector */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-left: var(--space-8);
+  padding-left: var(--space-8); /* Indentation per level */
   margin-top: var(--space-2);
 }
 
-/* Vertical connector line */
+/* ============================================
+ * CONNECTOR LINES
+ * Visual connection between parent and children
+ * ============================================ */
+
+/* Vertical connector - runs down the left side of children */
 .connector {
   position: absolute;
   left: var(--space-4);
@@ -29,27 +53,34 @@
   background: var(--border-primary);
 }
 
-/* Horizontal branch connectors via pseudo-elements on branch */
+/* Horizontal branch connectors - drawn via pseudo-elements
+ * Each child branch has a horizontal line connecting to the vertical line */
 .children > .branch::before {
   content: '';
   position: absolute;
   left: calc(var(--space-4) * -1);
-  top: calc(var(--space-4) + 2px);
+  top: calc(var(--space-4) + 2px); /* Align with middle of node */
   width: var(--space-4);
   height: var(--border-width);
   background: var(--border-primary);
 }
 
+/* Child branches need relative positioning for the pseudo-element */
 .children > .branch {
   position: relative;
 }
 
-/* Depth-based subtle indentation highlight */
+/* Optional: subtle background based on depth (uses CSS custom property) */
 .branch {
   transition: background-color var(--transition-fast);
 }
 
-/* Animation for new nodes */
+/* ============================================
+ * ANIMATIONS
+ * Smooth entrance for new nodes
+ * ============================================ */
+
+/* Slide-in animation for new child nodes */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -61,6 +92,7 @@
   }
 }
 
+/* Apply animation to child branches */
 .children > .branch {
   animation: slideIn var(--transition-normal) ease-out;
 }

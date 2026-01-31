@@ -1,73 +1,331 @@
-# React + TypeScript + Vite
+# Fractal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A place for questions, not answers.
 
-Currently, two official plugins are available:
+Fractal is an interactive interface for creative exploration of curiosity. In a world full of answer engines—Google, LLMs, ChatGPT—there's no place designed specifically for **questions**. Fractal fills that gap.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Enter a question, and watch it branch into related sub-questions, creating an infinite mind-map of inquiry. Each question fractal into more questions, enabling you to explore tangents and follow your curiosity wherever it leads.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Table of Contents
 
-## Expanding the ESLint configuration
+- [Vision](#vision)
+- [Features](#features)
+- [Design Philosophy](#design-philosophy)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Design System](#design-system)
+- [Development](#development)
+- [Roadmap](#roadmap)
+- [License](#license)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Vision
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+The internet optimized for answers. But learning, creativity, and discovery are driven by **questions**. Fractal inverts the paradigm:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Questions are first-class citizens** — Not stepping stones to answers, but destinations themselves
+- **Tangents are encouraged** — Every question branches into related questions
+- **Exploration over resolution** — The goal isn't to find "the answer" but to discover what you're truly curious about
+
+---
+
+## Features
+
+### Current (v0.1.0)
+
+- **Central Question Input** — Terminal-style interface to enter your initial question
+- **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
+- **Add Related Questions** — Click any node to add child questions
+- **Expand/Collapse Branches** — Manage complexity by collapsing explored branches
+- **Light/Dark Mode** — Automatic system detection with manual toggle
+- **Keyboard Support** — Enter to submit, Escape to cancel
+
+### Planned
+
+- AI-generated related questions
+- Mini hover previews with embedded content
+- Export/save question trees
+- Collaborative question exploration
+- Search within your question history
+
+---
+
+## Design Philosophy
+
+### Swiss Neobrutalist
+
+Fractal's design is rooted in Swiss neobrutalism:
+
+- **Hard edges** — No border-radius; everything is sharp and intentional
+- **Bold borders** — 2-3px borders create visual weight
+- **Functional over decorative** — Every element serves a purpose
+- **Stark contrast** — Clear visual hierarchy through contrast, not color
+- **Visible structure** — The grid and layout are celebrated, not hidden
+
+### Monochromatic OKLCH
+
+The color system uses **zero chromatic colors** in the core UI:
+
+- **Grayscale only** — All interface elements use achromatic OKLCH values
+- **Single accent** — Vivid red reserved exclusively for errors/destructive actions
+- **Chart colors** — 5 chromatic colors reserved for data visualization only
+- **Perceptually uniform** — OKLCH ensures consistent perceived brightness across the palette
+
+### Typography
+
+- **Monospace primary** — JetBrains Mono for the terminal aesthetic
+- **Sans-serif secondary** — Inter for supporting UI text
+- **Tight tracking** — Condensed letter-spacing for headings
+- **Functional hierarchy** — Size and weight convey importance, not decoration
+
+---
+
+## Architecture
+
+### Component Hierarchy
+
+```
+App
+├── ThemeToggle          # Light/dark mode switch
+├── QuestionInput        # Initial question entry (shown when no root)
+└── QuestionTree         # Branching visualization (shown when root exists)
+    └── TreeBranch       # Recursive branch renderer
+        └── QuestionNode # Individual question with actions
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### State Management
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+The question tree uses a **normalized data structure** for efficient updates:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```typescript
+interface QuestionTree {
+  nodes: Record<string, QuestionNode>  // O(1) lookup by ID
+  rootId: string | null                // Entry point
+  activeId: string | null              // Currently focused node
+}
 ```
+
+This structure allows:
+- O(1) node lookup, insertion, and updates
+- Efficient re-rendering (only affected branches update)
+- Easy serialization for future persistence
+
+### Data Flow
+
+```
+User Input
+    ↓
+QuestionInput.onSubmit()
+    ↓
+useQuestionTree.addRootQuestion()
+    ↓
+Creates QuestionNode → Updates QuestionTree state
+    ↓
+React re-renders QuestionTree component
+    ↓
+TreeBranch recursively renders nodes
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/setrf/fractal.git
+cd fractal
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview  # Preview production build locally
+```
+
+---
+
+## Project Structure
+
+```
+fractal/
+├── public/
+│   └── favicon.svg           # Question mark favicon
+├── src/
+│   ├── components/
+│   │   ├── QuestionInput/    # Central text entry component
+│   │   │   ├── QuestionInput.tsx
+│   │   │   ├── QuestionInput.module.css
+│   │   │   └── index.ts
+│   │   ├── QuestionNode/     # Individual question node
+│   │   │   ├── QuestionNode.tsx
+│   │   │   ├── QuestionNode.module.css
+│   │   │   └── index.ts
+│   │   ├── QuestionTree/     # Branching tree visualization
+│   │   │   ├── QuestionTree.tsx
+│   │   │   ├── QuestionTree.module.css
+│   │   │   └── index.ts
+│   │   └── ThemeToggle/      # Light/dark mode toggle
+│   │       ├── ThemeToggle.tsx
+│   │       ├── ThemeToggle.module.css
+│   │       └── index.ts
+│   ├── hooks/
+│   │   ├── useQuestionTree.ts  # Question tree state management
+│   │   └── useTheme.ts         # Theme state and persistence
+│   ├── styles/
+│   │   ├── tokens.css        # OKLCH design tokens
+│   │   ├── reset.css         # CSS reset with neobrutalist base
+│   │   └── global.css        # Global styles and utilities
+│   ├── types/
+│   │   └── question.ts       # TypeScript types and utilities
+│   ├── App.tsx               # Root application component
+│   └── main.tsx              # Application entry point
+├── index.html                # HTML template
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── CHANGELOG.md              # Version history
+└── README.md                 # This file
+```
+
+---
+
+## Design System
+
+### Color Tokens (OKLCH)
+
+#### Light Mode
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--bg-primary` | `oklch(100% 0 0)` | Main background |
+| `--bg-secondary` | `oklch(97% 0 0)` | Subtle background |
+| `--text-primary` | `oklch(15% 0 0)` | Main text |
+| `--text-secondary` | `oklch(40% 0 0)` | Secondary text |
+| `--border-primary` | `oklch(85% 0 0)` | Default borders |
+
+#### Dark Mode
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--bg-primary` | `oklch(12% 0 0)` | Main background |
+| `--bg-secondary` | `oklch(18% 0 0)` | Subtle background |
+| `--text-primary` | `oklch(92% 0 0)` | Main text |
+| `--text-secondary` | `oklch(65% 0 0)` | Secondary text |
+| `--border-primary` | `oklch(25% 0 0)` | Default borders |
+
+#### Accent
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--accent-error` | `oklch(55% 0.25 25)` | Errors, destructive actions |
+
+#### Chart Colors (Data Viz Only)
+| Token | Color | Hue |
+|-------|-------|-----|
+| `--chart-1` | Blue | 250 |
+| `--chart-2` | Green | 150 |
+| `--chart-3` | Yellow | 85 |
+| `--chart-4` | Purple | 310 |
+| `--chart-5` | Orange | 50 |
+
+### Typography Scale
+
+| Token | Size | Usage |
+|-------|------|-------|
+| `--text-xs` | 0.75rem | Captions |
+| `--text-sm` | 0.875rem | Small text, hints |
+| `--text-base` | 1rem | Body text |
+| `--text-lg` | 1.125rem | Large body |
+| `--text-xl` | 1.25rem | Subheadings |
+| `--text-2xl` | 1.5rem | Headings |
+| `--text-3xl` | 2rem | Large headings |
+| `--text-4xl` | 2.5rem | Display |
+
+### Spacing Scale
+
+Based on 0.25rem (4px) increments:
+`--space-1` through `--space-24`
+
+---
+
+## Development
+
+### Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+
+### Code Style
+
+- **TypeScript** — Strict mode enabled
+- **CSS Modules** — Scoped styles per component
+- **Functional Components** — Hooks-based React
+- **Named Exports** — For better tree-shaking and refactoring
+
+### Component Guidelines
+
+1. Each component lives in its own folder with:
+   - `ComponentName.tsx` — Component implementation
+   - `ComponentName.module.css` — Scoped styles
+   - `index.ts` — Public exports
+
+2. Use CSS custom properties for all colors, spacing, and typography
+
+3. Prefer composition over prop drilling
+
+---
+
+## Roadmap
+
+### v0.2.0 — Persistence
+- [ ] Save question trees to localStorage
+- [ ] Export as JSON/Markdown
+- [ ] Load previous sessions
+
+### v0.3.0 — AI Integration
+- [ ] Generate related questions via LLM
+- [ ] Suggest tangents based on context
+- [ ] Optional answer previews (on-demand)
+
+### v0.4.0 — Enhanced Visualization
+- [ ] Zoom and pan navigation
+- [ ] Mini-map for large trees
+- [ ] Hover previews with embedded content
+
+### v1.0.0 — Full Release
+- [ ] User accounts and sync
+- [ ] Collaborative exploration
+- [ ] Public question tree sharing
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <strong>Fractal</strong> — Where questions lead to more questions.
+</p>

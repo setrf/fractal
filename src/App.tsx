@@ -1,9 +1,31 @@
+/**
+ * @fileoverview Root application component for Fractal.
+ * 
+ * The App component manages the top-level application state and layout:
+ * 
+ * - When no root question exists: Shows the welcome view with QuestionInput
+ * - When a root question exists: Shows the QuestionTree visualization
+ * 
+ * The component acts as the orchestrator, connecting the useQuestionTree
+ * hook to the UI components.
+ */
+
 import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { useQuestionTree } from './hooks/useQuestionTree'
 
+/**
+ * Root application component.
+ * 
+ * Renders either:
+ * 1. Welcome view with centered input (no root question)
+ * 2. Tree view with branching questions (has root question)
+ * 
+ * The ThemeToggle is always visible in the top-right corner.
+ */
 function App() {
+  // Initialize the question tree state and operations
   const {
     tree,
     rootNode,
@@ -14,13 +36,19 @@ function App() {
     reset,
   } = useQuestionTree()
 
+  /**
+   * Handles submission of the initial question.
+   * Creates the root node and transitions to tree view.
+   */
   const handleQuestionSubmit = (question: string) => {
     addRootQuestion(question)
   }
 
   return (
     <>
+      {/* Theme toggle - always visible */}
       <ThemeToggle />
+      
       <main
         style={{
           display: 'flex',
@@ -31,6 +59,11 @@ function App() {
         }}
       >
         {!rootNode ? (
+          /* ============================================
+           * WELCOME VIEW
+           * Shown when no question has been entered yet.
+           * Centered layout with branding and input.
+           * ============================================ */
           <div
             style={{
               display: 'flex',
@@ -42,6 +75,7 @@ function App() {
               flex: 1,
             }}
           >
+            {/* Branding header */}
             <header style={{ textAlign: 'center' }}>
               <h1
                 style={{
@@ -62,9 +96,16 @@ function App() {
                 A place for questions, not answers.
               </p>
             </header>
+            
+            {/* Central question input */}
             <QuestionInput onSubmit={handleQuestionSubmit} />
           </div>
         ) : (
+          /* ============================================
+           * TREE VIEW
+           * Shown after a root question is entered.
+           * Displays the branching question tree.
+           * ============================================ */
           <div
             style={{
               display: 'flex',
@@ -74,6 +115,7 @@ function App() {
               paddingTop: 'var(--space-8)',
             }}
           >
+            {/* Minimal header in tree view */}
             <header
               style={{
                 textAlign: 'center',
@@ -93,6 +135,7 @@ function App() {
               </h1>
             </header>
 
+            {/* Question tree visualization */}
             <QuestionTree
               tree={tree}
               onSelectNode={setActiveNode}
@@ -100,6 +143,7 @@ function App() {
               onToggleExpand={toggleNodeExpansion}
             />
 
+            {/* Reset button to start over */}
             <button
               onClick={reset}
               style={{

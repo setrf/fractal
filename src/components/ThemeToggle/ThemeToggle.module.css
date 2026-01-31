@@ -1,3 +1,20 @@
+/**
+ * ThemeToggle Component Styles
+ * ============================
+ * 
+ * Styling for the light/dark mode toggle button.
+ * 
+ * Design:
+ * - Fixed position in top-right corner
+ * - Square button with border
+ * - Half-moon icon indicating current theme
+ * - Hover and active states
+ * 
+ * The button is always accessible via fixed positioning,
+ * remaining visible regardless of scroll position.
+ */
+
+/* Toggle button - fixed in top-right corner */
 .toggle {
   position: fixed;
   top: var(--space-4);
@@ -9,21 +26,26 @@
   justify-content: center;
   border: var(--border-width) solid var(--border-primary);
   background: var(--bg-secondary);
+  /* Smooth state transitions */
   transition: 
     border-color var(--transition-fast),
     background-color var(--transition-fast);
+  /* Ensure it's above other content */
   z-index: 100;
 }
 
+/* Hover state - emphasize the button */
 .toggle:hover {
   border-color: var(--text-primary);
   background: var(--bg-tertiary);
 }
 
+/* Active/pressed state */
 .toggle:active {
   background: var(--border-primary);
 }
 
+/* Icon styling */
 .icon {
   font-size: var(--text-xl);
   line-height: 1;

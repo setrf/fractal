@@ -188,25 +188,27 @@ export function ChatView({
   }
 
   /**
-   * Handles concept hover - shows popup.
+   * Handles concept hover - shows popup and makes it sticky.
+   * Popup only closes when user clicks the close button.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
-    if (!isPopupSticky) {
+    // Only show new popup if no popup is currently displayed
+    if (!hoveredConcept) {
       setHoveredConcept(concept)
       setPopupPosition({ x: event.clientX + 10, y: event.clientY + 10 })
+      setIsPopupSticky(true)  // Make sticky immediately so it doesn't disappear
       onConceptHover?.(concept)
     }
-  }, [isPopupSticky, onConceptHover])
+  }, [hoveredConcept, onConceptHover])
 
   /**
-   * Handles concept hover end - hides popup unless sticky.
+   * Handles concept hover end - no-op since popups are sticky by default.
+   * Popup only closes when user explicitly clicks close button.
    */
   const handleConceptLeave = useCallback(() => {
-    if (!isPopupSticky) {
-      setHoveredConcept(null)
-      onConceptLeave?.()
-    }
-  }, [isPopupSticky, onConceptLeave])
+    // Don't close popup on mouse leave - user must click close button
+    // This provides a better UX for reading explanations
+  }, [])
 
   /**
    * Handles concept click - makes popup sticky.

@@ -371,11 +371,12 @@ export function ConceptPopup({
     if (!isDragging) return
 
     // Check if mouse is over the stash sidebar (for drop detection)
-    const isOverStash = (mouseX: number): boolean => {
-      const sidebar = document.querySelector('aside')
+    const isOverStash = (mouseX: number, mouseY: number): boolean => {
+      const sidebar = document.querySelector('aside[data-stash-sidebar="true"]')
       if (!sidebar) return false
       const rect = sidebar.getBoundingClientRect()
-      return mouseX >= rect.left && mouseX <= rect.right
+      return mouseX >= rect.left && mouseX <= rect.right &&
+        mouseY >= rect.top && mouseY <= rect.bottom
     }
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -389,7 +390,7 @@ export function ConceptPopup({
       setExternalDragHover(false) // Hide stash overlay when drag ends
       
       // If dropped over stash, add the item
-      if (isOverStash(e.clientX) && concept && explanation) {
+      if (isOverStash(e.clientX, e.clientY) && concept && explanation) {
         addItem({
           type: 'explanation',
           content: concept.normalizedName,

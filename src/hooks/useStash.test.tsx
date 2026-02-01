@@ -261,8 +261,8 @@ describe('useStash', () => {
         result.current.setFilterType('highlight')
       })
 
-      expect(result.current.items.length).toBe(2)
-      expect(result.current.items.every(i => i.type === 'highlight')).toBe(true)
+      expect(result.current.displayedItems.length).toBe(2)
+      expect(result.current.displayedItems.every(i => i.type === 'highlight')).toBe(true)
     })
 
     it('should return all items when filter is null', () => {
@@ -277,7 +277,7 @@ describe('useStash', () => {
         result.current.setFilterType(null)
       })
 
-      expect(result.current.items.length).toBe(2)
+      expect(result.current.displayedItems.length).toBe(2)
     })
 
     it('should filter by type using getByType', () => {
@@ -307,8 +307,8 @@ describe('useStash', () => {
         result.current.setSearchQuery('evol')
       })
 
-      expect(result.current.items.length).toBe(1)
-      expect(result.current.items[0].content).toBe('evolution')
+      expect(result.current.displayedItems.length).toBe(1)
+      expect(result.current.displayedItems[0].content).toBe('evolution')
     })
 
     it('should search items by normalized name', () => {
@@ -326,7 +326,7 @@ describe('useStash', () => {
         result.current.setSearchQuery('evolution')
       })
 
-      expect(result.current.items.length).toBe(1)
+      expect(result.current.displayedItems.length).toBe(1)
     })
 
     it('should search items by tags', () => {
@@ -436,12 +436,6 @@ describe('useStash', () => {
     it('should toggle open state', () => {
       const { result } = renderHook(() => useStash())
 
-      expect(result.current.isOpen).toBe(false)
-
-      act(() => {
-        result.current.toggleOpen()
-      })
-
       expect(result.current.isOpen).toBe(true)
 
       act(() => {
@@ -449,6 +443,12 @@ describe('useStash', () => {
       })
 
       expect(result.current.isOpen).toBe(false)
+
+      act(() => {
+        result.current.toggleOpen()
+      })
+
+      expect(result.current.isOpen).toBe(true)
     })
 
     it('should set open state explicitly', () => {

@@ -8,6 +8,7 @@
  * - GET  /health                  - Health check
  * - POST /api/generate            - Generate related questions
  * - POST /api/chat                - Chat about a specific question
+ * - POST /api/probe/chat          - Probe synthesis conversation
  * - GET  /api/models              - List available models
  * - POST /api/concepts/extract    - Extract concepts from text
  * - POST /api/concepts/explain    - Get explanation for a concept

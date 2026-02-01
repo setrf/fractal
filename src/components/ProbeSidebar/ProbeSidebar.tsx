@@ -108,7 +108,8 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
   // Check if this is an external drop (from stash) by checking data types
   const isExternalDrag = useCallback((e: React.DragEvent): boolean => {
     return e.dataTransfer.types.includes('application/json') || 
-           e.dataTransfer.types.includes('text/x-stash-item')
+           e.dataTransfer.types.includes('text/x-stash-item') ||
+           e.dataTransfer.types.includes('text/plain')
   }, [])
 
   // Drag and drop handlers for EXTERNAL drops (from stash)
@@ -146,9 +147,11 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
       try {
         // Try to get stash item ID
         const itemId = e.dataTransfer.getData('text/x-stash-item')
-        if (itemId) {
-          addStashItemToProbe(activeProbe.id, itemId)
-          onStashItemDrop?.(itemId)
+        const plainId = e.dataTransfer.getData('text/plain')
+        const resolvedId = itemId || plainId
+        if (resolvedId) {
+          addStashItemToProbe(activeProbe.id, resolvedId)
+          onStashItemDrop?.(resolvedId)
           return
         }
 
@@ -176,6 +179,7 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      data-probe-sidebar="true"
     >
       {/* Toggle button - always visible */}
       <button

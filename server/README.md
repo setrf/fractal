@@ -108,6 +108,12 @@ Response:
       "Can artificial systems achieve consciousness?",
       "How does subjective experience relate to physical reality?"
     ],
+    "meta": {
+      "promptVariant": "v1-balanced",
+      "promptLabel": "Balanced",
+      "qualityScore": 7.8,
+      "evalModel": "meta-llama/Llama-3.1-8B-Instruct"
+    },
     "model": "meta-llama/Llama-3.1-8B-Instruct",
     "usage": {
       "promptTokens": 152,
@@ -166,6 +172,48 @@ Response:
       "promptTokens": 200,
       "completionTokens": 150,
       "totalTokens": 350
+    }
+  }
+}
+```
+
+### Probe Chat
+
+```
+POST /api/probe/chat
+```
+
+Request:
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Synthesize the highlights into a direction." }
+  ],
+  "stashItems": [
+    {
+      "id": "s_1706745600000_abc123",
+      "type": "highlight",
+      "content": "memory consolidation",
+      "metadata": {
+        "sourceQuestion": "Why do we dream?"
+      }
+    }
+  ],
+  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Based on your highlights, a useful direction is...",
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "usage": {
+      "promptTokens": 420,
+      "completionTokens": 180,
+      "totalTokens": 600
     }
   }
 }

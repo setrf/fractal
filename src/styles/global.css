@@ -68,6 +68,20 @@
 }
 
 /* ============================================
+ * GRAPH VIEW MODE
+ * Special layout for 3D graph visualization
+ * ============================================ */
+.app-layout.graph-view .main-content {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ensure graph view fills available space */
+.app-layout.graph-view .main-content > div:first-of-type {
+  flex: 1;
+}
+
+/* ============================================
  * TYPOGRAPHY UTILITIES
  * Quick access to typography tokens
  * ============================================ */

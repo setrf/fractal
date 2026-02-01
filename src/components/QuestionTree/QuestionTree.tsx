@@ -17,7 +17,7 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react'
-import type { QuestionTree as QuestionTreeType, QuestionNode as QuestionNodeType } from '../../types/question'
+import type { QuestionTree as QuestionTreeType, QuestionNode as QuestionNodeType, QuestionNodeAddOptions } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation } from '../../api'
 import { QuestionNode } from '../QuestionNode'
 import styles from './QuestionTree.module.css'
@@ -31,7 +31,7 @@ interface QuestionTreeProps {
   /** Callback when a node is selected */
   onSelectNode: (nodeId: string) => void
   /** Callback when adding a child to a node */
-  onAddChild: (parentId: string, question: string) => void
+  onAddChild: (parentId: string, question: string, options?: QuestionNodeAddOptions) => void
   /** Callback when toggling a node's expansion */
   onToggleExpand: (nodeId: string) => void
   /** Callback to generate AI suggestions */
@@ -55,11 +55,11 @@ interface QuestionTreeProps {
   /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
-  onConceptHover?: (concept: ExtractedConcept) => void
+  onConceptHover?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when concept hover ends */
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
-  onConceptClick?: (concept: ExtractedConcept) => void
+  onConceptClick?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */
@@ -89,7 +89,7 @@ interface TreeBranchProps {
   /** Callback when a node is selected */
   onSelectNode: (nodeId: string) => void
   /** Callback when adding a child */
-  onAddChild: (parentId: string, question: string) => void
+  onAddChild: (parentId: string, question: string, options?: QuestionNodeAddOptions) => void
   /** Callback when toggling expansion */
   onToggleExpand: (nodeId: string) => void
   /** Callback to generate AI suggestions */
@@ -115,11 +115,11 @@ interface TreeBranchProps {
   /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
-  onConceptHover?: (concept: ExtractedConcept) => void
+  onConceptHover?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when concept hover ends */
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
-  onConceptClick?: (concept: ExtractedConcept) => void
+  onConceptClick?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */

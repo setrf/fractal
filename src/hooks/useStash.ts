@@ -51,6 +51,9 @@ export interface UseStashReturn {
   /** All stash items, sorted by creation date (newest first) */
   items: StashItem[]
 
+  /** Items filtered by search and type */
+  displayedItems: StashItem[]
+
   /** Add a new item to the stash */
   addItem: (item: StashItemInput) => void
 
@@ -383,7 +386,8 @@ export function useStash(): UseStashReturn {
   })()
 
   return {
-    items: displayedItems,
+    items,
+    displayedItems,
     addItem,
     removeItem,
     updateItem,

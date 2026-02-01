@@ -25,7 +25,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { QuestionTree, QuestionNode } from '../types/question'
+import type { QuestionTree, QuestionNode, QuestionNodeAddOptions } from '../types/question'
 import {
   createEmptyTree,
   createQuestionNode,
@@ -59,8 +59,10 @@ export function useQuestionTree() {
    * const rootId = addRootQuestion("What is the meaning of life?")
    * ```
    */
-  const addRootQuestion = useCallback((text: string) => {
-    const node = createQuestionNode(text, null, { x: 0, y: 0 })
+  const addRootQuestion = useCallback((text: string, options?: QuestionNodeAddOptions) => {
+    const node = createQuestionNode(text, null, { x: 0, y: 0 }, {
+      qualityScore: options?.qualityScore ?? null,
+    })
     setTree((prevTree) => addNodeToTree(prevTree, node))
     return node.id
   }, [])
@@ -79,7 +81,7 @@ export function useQuestionTree() {
    * addChildQuestion(parentId, "What about consciousness?")
    * ```
    */
-  const addChildQuestion = useCallback((parentId: string, text: string) => {
+  const addChildQuestion = useCallback((parentId: string, text: string, options?: QuestionNodeAddOptions) => {
     setTree((prevTree) => {
       const parent = prevTree.nodes[parentId]
       if (!parent) return prevTree
@@ -89,10 +91,17 @@ export function useQuestionTree() {
       const siblings = getChildren(prevTree, parentId)
       const yOffset = siblings.length * 60 // 60px between siblings
 
-      const node = createQuestionNode(text, parentId, {
-        x: parent.position.x + 200, // Offset right from parent
-        y: parent.position.y + yOffset,
-      })
+      const node = createQuestionNode(
+        text,
+        parentId,
+        {
+          x: parent.position.x + 200, // Offset right from parent
+          y: parent.position.y + yOffset,
+        },
+        {
+          qualityScore: options?.qualityScore ?? null,
+        }
+      )
 
       return addNodeToTree(prevTree, node)
     })
@@ -158,6 +167,30 @@ export function useQuestionTree() {
   }, [])
 
   /**
+   * Updates a node's metadata with partial fields.
+   *
+   * @param nodeId - ID of the node to update
+   * @param metaUpdates - Partial metadata fields to apply
+   */
+  const updateNodeMeta = useCallback((nodeId: string, metaUpdates: Partial<QuestionNode['meta']>) => {
+    setTree((prevTree) => {
+      const node = prevTree.nodes[nodeId]
+      if (!node) return prevTree
+
+      return {
+        ...prevTree,
+        nodes: {
+          ...prevTree.nodes,
+          [nodeId]: {
+            ...node,
+            meta: { ...node.meta, ...metaUpdates },
+          },
+        },
+      }
+    })
+  }, [])
+
+  /**
    * Resets the tree to its initial empty state.
    * 
    * Clears all nodes and resets rootId and activeId to null.
@@ -209,6 +242,8 @@ export function useQuestionTree() {
     setActiveNode,
     /** Toggle a node's expanded/collapsed state */
     toggleNodeExpansion,
+    /** Update node metadata */
+    updateNodeMeta,
     /** Get a specific node by ID */
     getNode,
     /** Get all children of a node */

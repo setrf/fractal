@@ -227,13 +227,44 @@ export const STASH_MAX_ITEMS = 500
 export const isValidStashItem = (item: unknown): item is StashItem => {
   if (!item || typeof item !== 'object') return false
   const obj = item as Record<string, unknown>
-  return (
+  const validTypes: StashItemType[] = ['highlight', 'explanation', 'question', 'chat-message', 'note']
+  const validCategories: ConceptCategory[] = ['science', 'philosophy', 'psychology', 'technology', 'abstract']
+  const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every(itemValue => typeof itemValue === 'string')
+  )
+
+  if (obj.tags !== undefined && !isStringArray(obj.tags)) return false
+  if (obj.assignedProbeIds !== undefined && !isStringArray(obj.assignedProbeIds)) return false
+
+  const hasCoreFields = (
     typeof obj.id === 'string' &&
     typeof obj.type === 'string' &&
+    validTypes.includes(obj.type as StashItemType) &&
     typeof obj.content === 'string' &&
     typeof obj.createdAt === 'number' &&
-    typeof obj.metadata === 'object'
+    typeof obj.metadata === 'object' &&
+    obj.metadata !== null &&
+    !Array.isArray(obj.metadata)
   )
+  if (!hasCoreFields) return false
+
+  const metadata = obj.metadata as Record<string, unknown>
+  if (metadata.relatedConcepts !== undefined && !isStringArray(metadata.relatedConcepts)) return false
+  if (metadata.conceptCategory !== undefined && !validCategories.includes(metadata.conceptCategory as ConceptCategory)) return false
+  if (metadata.role !== undefined && metadata.role !== 'user' && metadata.role !== 'assistant') return false
+  if (metadata.messageIndex !== undefined && typeof metadata.messageIndex !== 'number') return false
+  if (metadata.treeDepth !== undefined && typeof metadata.treeDepth !== 'number') return false
+  if (metadata.questionId !== undefined && typeof metadata.questionId !== 'string') return false
+  if (metadata.parentQuestion !== undefined && typeof metadata.parentQuestion !== 'string') return false
+  if (metadata.sourceQuestion !== undefined && typeof metadata.sourceQuestion !== 'string') return false
+  if (metadata.normalizedName !== undefined && typeof metadata.normalizedName !== 'string') return false
+  if (metadata.summary !== undefined && typeof metadata.summary !== 'string') return false
+  if (metadata.context !== undefined && typeof metadata.context !== 'string') return false
+  if (metadata.questionContext !== undefined && typeof metadata.questionContext !== 'string') return false
+  if (metadata.linkedItemId !== undefined && typeof metadata.linkedItemId !== 'string') return false
+  if (metadata.title !== undefined && typeof metadata.title !== 'string') return false
+
+  return true
 }
 
 /**

@@ -181,6 +181,18 @@
   --probe-yellow: var(--chart-3);
   --probe-purple: var(--chart-4);
   --probe-orange: var(--chart-5);
+  
+  /* ============================================
+   * GRAPH VIEW TOKENS
+   * 3D knowledge graph visualization
+   * ============================================ */
+  --graph-bg: var(--bg-primary);
+  --graph-node-question: oklch(65% 0.15 250);     /* Blue sphere */
+  --graph-node-concept: oklch(65% 0.12 310);      /* Purple icosahedron */
+  --graph-node-stash: oklch(65% 0.15 145);        /* Green cube */
+  --graph-node-probe: oklch(65% 0.15 45);         /* Orange torus */
+  --graph-edge-default: oklch(50% 0 0);           /* Gray edges */
+  --graph-edge-strong: oklch(65% 0.1 250);        /* Highlighted edges */
 }
 
 /* ============================================
@@ -229,6 +241,15 @@
   --highlight-technology-hover: oklch(50% 0.22 50);
   --highlight-abstract: oklch(38% 0.08 0);        /* Gray highlight */
   --highlight-abstract-hover: oklch(45% 0.10 0);
+  
+  /* Graph view tokens for dark mode */
+  --graph-bg: var(--bg-primary);
+  --graph-node-question: oklch(70% 0.18 250);     /* Brighter blue */
+  --graph-node-concept: oklch(70% 0.15 310);      /* Brighter purple */
+  --graph-node-stash: oklch(70% 0.18 145);        /* Brighter green */
+  --graph-node-probe: oklch(70% 0.18 45);         /* Brighter orange */
+  --graph-edge-default: oklch(45% 0 0);           /* Slightly lighter gray */
+  --graph-edge-strong: oklch(70% 0.12 250);       /* Highlighted edges */
 }
 
 /* ============================================
@@ -276,5 +297,14 @@
     --highlight-technology-hover: oklch(50% 0.22 50);
     --highlight-abstract: oklch(38% 0.08 0);
     --highlight-abstract-hover: oklch(45% 0.10 0);
+    
+    /* Graph view tokens for dark mode */
+    --graph-bg: var(--bg-primary);
+    --graph-node-question: oklch(70% 0.18 250);
+    --graph-node-concept: oklch(70% 0.15 310);
+    --graph-node-stash: oklch(70% 0.18 145);
+    --graph-node-probe: oklch(70% 0.18 45);
+    --graph-edge-default: oklch(45% 0 0);
+    --graph-edge-strong: oklch(70% 0.12 250);
   }
 }

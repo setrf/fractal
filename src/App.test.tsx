@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, userEvent, waitFor, logAccessibleElements } from './test/test-utils'
+import { render, screen, waitFor, logAccessibleElements } from './test/test-utils'
 import App from './App'
 import { localStorageMock } from './test/setup'
 
@@ -42,14 +42,14 @@ describe('App Integration Tests', () => {
       expect(title).toBeInTheDocument()
     })
 
-    it('should display the tagline', () => {
+    it('should not display the tagline', () => {
       render(<App />)
-      
-      const tagline = screen.getByText(/a place for questions, not answers/i)
-      
-      console.log(`[TEST] Tagline found: ${!!tagline}`)
-      
-      expect(tagline).toBeInTheDocument()
+
+      const tagline = screen.queryByText(/a place for questions, not answers/i)
+
+      console.log(`[TEST] Tagline present: ${!!tagline}`)
+
+      expect(tagline).not.toBeInTheDocument()
     })
 
     it('should display the question input', () => {
@@ -75,7 +75,7 @@ describe('App Integration Tests', () => {
     it('should focus the input automatically', () => {
       render(<App />)
       
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       
       console.log(`[TEST] Input has focus: ${document.activeElement === input}`)
       
@@ -99,7 +99,7 @@ describe('App Integration Tests', () => {
     it('should transition to tree view after submitting question', async () => {
       const { user } = render(<App />)
       
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'What is consciousness?')
       await user.keyboard('{Enter}')
       
@@ -114,7 +114,7 @@ describe('App Integration Tests', () => {
     it('should hide the welcome input after submission', async () => {
       const { user } = render(<App />)
       
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Test question')
       await user.keyboard('{Enter}')
       
@@ -129,7 +129,7 @@ describe('App Integration Tests', () => {
     it('should display smaller header in tree view', async () => {
       const { user } = render(<App />)
       
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Test')
       await user.keyboard('{Enter}')
       
@@ -143,7 +143,7 @@ describe('App Integration Tests', () => {
     it('should show "Start over" button in tree view', async () => {
       const { user } = render(<App />)
       
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Test')
       await user.keyboard('{Enter}')
       
@@ -163,7 +163,7 @@ describe('App Integration Tests', () => {
       const { user } = render(<App />)
       
       // Submit root question
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Root question')
       await user.keyboard('{Enter}')
       
@@ -188,7 +188,7 @@ describe('App Integration Tests', () => {
       const { user } = render(<App />)
       
       // Submit root question
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Root')
       await user.keyboard('{Enter}')
       
@@ -230,7 +230,7 @@ describe('App Integration Tests', () => {
       const { user } = render(<App />)
       
       // Submit a question
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Test')
       await user.keyboard('{Enter}')
       
@@ -250,7 +250,7 @@ describe('App Integration Tests', () => {
       const { user } = render(<App />)
       
       // Submit a question
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Question to be cleared')
       await user.keyboard('{Enter}')
       
@@ -308,7 +308,7 @@ describe('App Integration Tests', () => {
       const themeBefore = document.documentElement.getAttribute('data-theme')
       
       // Submit a question (this shouldn't affect theme)
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Test')
       await user.keyboard('{Enter}')
       
@@ -331,7 +331,7 @@ describe('App Integration Tests', () => {
       
       // Step 1: Start with a root question
       console.log('[STEP 1] Submitting root question...')
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: /enter your question/i })
       await user.type(input, 'Why do we dream?')
       await user.keyboard('{Enter}')
       

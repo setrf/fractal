@@ -22,9 +22,20 @@ const client = new OpenAI({
 })
 
 /**
- * System prompt for generating related questions.
+ * Prompt variants for generating related questions.
+ * We use a lightweight self-improving loop to pick the best variant over time.
  */
-const QUESTION_GENERATION_PROMPT = `You are a curious intellectual assistant that helps people explore ideas through questions.
+interface PromptVariant {
+  id: string
+  label: string
+  prompt: string
+}
+
+const QUESTION_PROMPT_VARIANTS: PromptVariant[] = [
+  {
+    id: 'v1-balanced',
+    label: 'Balanced',
+    prompt: `You are a curious intellectual assistant that helps people explore ideas through questions.
 
 Given a question, generate 3-5 related follow-up questions that:
 1. Explore different angles or perspectives on the topic
@@ -35,7 +46,125 @@ Given a question, generate 3-5 related follow-up questions that:
 Format your response as a JSON array of strings, each being a question.
 Example: ["Why does X happen?", "What if Y instead?", "How does this relate to Z?"]
 
-Only output the JSON array, nothing else.`
+Only output the JSON array, nothing else.`,
+  },
+  {
+    id: 'v2-divergent',
+    label: 'Divergent',
+    prompt: `You are a creative research companion. Generate 3-5 provocative, divergent follow-up questions that:
+1. Explore surprising angles or counterfactuals
+2. Surface hidden assumptions
+3. Bridge into adjacent domains
+4. Invite deeper investigation
+
+Return a JSON array of strings only. Example: ["What if X were false?", "How would Y behave in Z?", "Which assumptions break under A?"]`,
+  },
+  {
+    id: 'v3-structured',
+    label: 'Structured',
+    prompt: `You are an analytical question architect. Generate 3-5 structured follow-up questions that:
+1. Clarify definitions and boundaries
+2. Probe mechanisms or causes
+3. Check implications and tradeoffs
+4. Compare competing explanations
+
+Return a JSON array of strings only.`,
+  },
+]
+
+const PROMPT_SELECTION_EPSILON = 0.2
+const promptStats = new Map<string, { count: number; avgScore: number }>()
+
+function selectPromptVariant(): PromptVariant {
+  if (QUESTION_PROMPT_VARIANTS.length === 0) {
+    throw new Error('No question prompt variants configured')
+  }
+
+  if (Math.random() < PROMPT_SELECTION_EPSILON) {
+    return QUESTION_PROMPT_VARIANTS[Math.floor(Math.random() * QUESTION_PROMPT_VARIANTS.length)]
+  }
+
+  let bestVariant = QUESTION_PROMPT_VARIANTS[0]
+  let bestScore = -Infinity
+  QUESTION_PROMPT_VARIANTS.forEach((variant) => {
+    const stats = promptStats.get(variant.id)
+    const score = stats ? stats.avgScore : 0
+    if (score > bestScore) {
+      bestScore = score
+      bestVariant = variant
+    }
+  })
+  return bestVariant
+}
+
+function updatePromptStats(variantId: string, score: number) {
+  const prev = promptStats.get(variantId)
+  if (!prev) {
+    promptStats.set(variantId, { count: 1, avgScore: score })
+    return
+  }
+  const nextCount = prev.count + 1
+  const nextAvg = (prev.avgScore * prev.count + score) / nextCount
+  promptStats.set(variantId, { count: nextCount, avgScore: nextAvg })
+}
+
+/**
+ * Score generated questions for quality.
+ * Logged to Weave for self-improvement tracking.
+ */
+const QUESTION_SCORE_PROMPT = `You are a strict judge of question quality.
+Score a set of follow-up questions from 0 to 10 based on:
+- Diversity of perspectives
+- Depth and curiosity
+- Usefulness for exploration
+
+Return JSON only:
+{"score": number, "strengths": ["..."], "weaknesses": ["..."]}`
+
+interface QuestionSetScore {
+  score: number
+  strengths: string[]
+  weaknesses: string[]
+}
+
+export const scoreQuestionSet = weave.op(
+  async function scoreQuestionSet(
+    question: string,
+    questions: string[],
+    model: string = config.defaultModel
+  ): Promise<QuestionSetScore> {
+    if (questions.length === 0) {
+      return { score: 0, strengths: [], weaknesses: ['No questions generated'] }
+    }
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: QUESTION_SCORE_PROMPT },
+        { role: 'user', content: JSON.stringify({ question, questions }) },
+      ],
+      temperature: 0,
+      max_tokens: 300,
+    })
+
+    const content = response.choices[0]?.message?.content || '{}'
+    try {
+      const parsed = JSON.parse(content)
+      const score = typeof parsed.score === 'number' ? parsed.score : Math.min(10, 2 + questions.length)
+      return {
+        score,
+        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+        weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+      }
+    } catch {
+      return {
+        score: Math.min(10, 2 + questions.length),
+        strengths: [],
+        weaknesses: ['Scoring parse fallback'],
+      }
+    }
+  }
+)
 
 /**
  * Interface for generated questions response.
@@ -43,6 +172,12 @@ Only output the JSON array, nothing else.`
 export interface GeneratedQuestions {
   questions: string[]
   model: string
+  meta: {
+    promptVariant: string
+    promptLabel: string
+    qualityScore: number | null
+    evalModel: string
+  }
   usage: {
     promptTokens: number
     completionTokens: number
@@ -62,10 +197,13 @@ export const generateRelatedQuestions = weave.op(
     console.log(`[Inference] Generating questions for: "${question}"`)
     console.log(`[Inference] Using model: ${model}`)
 
+    const promptVariant = selectPromptVariant()
+    console.log(`[Inference] Using prompt variant: ${promptVariant.id}`)
+
     const response = await client.chat.completions.create({
       model,
       messages: [
-        { role: 'system', content: QUESTION_GENERATION_PROMPT },
+        { role: 'system', content: promptVariant.prompt },
         { role: 'user', content: question },
       ],
       temperature: 0.8,
@@ -95,9 +233,25 @@ export const generateRelatedQuestions = weave.op(
       }
     }
 
+    let qualityScore: number | null = null
+    try {
+      const scored = await scoreQuestionSet(question, questions, model)
+      qualityScore = scored.score
+      updatePromptStats(promptVariant.id, scored.score)
+      console.log(`[Inference] Weave score: ${scored.score}`)
+    } catch (error) {
+      console.warn('[Inference] Scoring failed:', error)
+    }
+
     const result: GeneratedQuestions = {
       questions,
       model,
+      meta: {
+        promptVariant: promptVariant.id,
+        promptLabel: promptVariant.label,
+        qualityScore,
+        evalModel: model,
+      },
       usage: {
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,

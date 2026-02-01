@@ -15,6 +15,59 @@ import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeAll, vi } from 'vitest'
 
+vi.mock('react-force-graph-3d', () => ({
+  default: () => null,
+}))
+
+vi.mock('three', () => {
+  class Object3D {}
+  class BufferGeometry {}
+  class Material {}
+  class SphereGeometry extends BufferGeometry {}
+  class IcosahedronGeometry extends BufferGeometry {}
+  class BoxGeometry extends BufferGeometry {}
+  class TorusGeometry extends BufferGeometry {}
+  class MeshPhongMaterial extends Material {}
+  class MeshBasicMaterial extends Material {}
+  class Mesh {
+    geometry: BufferGeometry
+    material: Material
+    constructor(geometry: BufferGeometry, material: Material) {
+      this.geometry = geometry
+      this.material = material
+    }
+  }
+  class Vector3 {
+    x: number
+    y: number
+    z: number
+    constructor(x = 0, y = 0, z = 0) {
+      this.x = x
+      this.y = y
+      this.z = z
+    }
+    normalize() {
+      return this
+    }
+    multiplyScalar() {
+      return this
+    }
+  }
+  return {
+    Object3D,
+    BufferGeometry,
+    Material,
+    SphereGeometry,
+    IcosahedronGeometry,
+    BoxGeometry,
+    TorusGeometry,
+    MeshPhongMaterial,
+    MeshBasicMaterial,
+    Mesh,
+    Vector3,
+  }
+})
+
 // Cleanup after each test to prevent state leakage
 afterEach(() => {
   cleanup()

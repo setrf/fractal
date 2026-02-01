@@ -50,7 +50,7 @@ describe('API Client', () => {
       )
       
       console.log('[TEST] Generated questions:', result)
-      expect(result).toEqual(['Question 1?', 'Question 2?'])
+      expect(result.questions).toEqual(['Question 1?', 'Question 2?'])
     })
 
     it('should pass optional model parameter', async () => {

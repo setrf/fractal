@@ -44,14 +44,22 @@ interface CachedExplanation {
  * Key is based on normalized name + question context to allow
  * different explanations for the same concept in different contexts.
  */
+function hashString(value: string): string {
+  let hash = 0
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0
+  }
+  return hash.toString(36)
+}
+
 function getCacheKey(conceptName: string, questionContext: string): string {
-  // Create a simple hash of the context to keep key manageable
-  const contextHash = questionContext
+  const normalizedContext = questionContext.trim().toLowerCase()
+  const contextHash = hashString(normalizedContext)
+  const conceptKey = conceptName
     .toLowerCase()
-    .slice(0, 50)
-    .replace(/[^a-z0-9]/g, '')
-  
-  return `${CACHE_KEY_PREFIX}${conceptName.toLowerCase()}_${contextHash}`
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${CACHE_KEY_PREFIX}${conceptKey}_${contextHash}`
 }
 
 /**

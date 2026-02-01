@@ -11,6 +11,7 @@ import { useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import type { ExtractedConcept, ConceptCategory } from '../../api'
 import styles from './MarkdownWithHighlights.module.css'
 
@@ -52,6 +53,41 @@ function getCategoryClassName(category: ConceptCategory): string {
     abstract: 'category-abstract',
   }
   return classes[category] || 'category-abstract'
+}
+
+const highlightSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    'mark',
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    mark: [
+      ...((defaultSchema.attributes && defaultSchema.attributes.mark) || []),
+      'className',
+      'class',
+      'data-concept-id',
+      'data-concept-name',
+      'data-concept-category',
+    ],
+  },
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function escapeHtmlAttribute(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
 /**
@@ -97,12 +133,12 @@ function insertMarkElements(content: string, concepts: ExtractedConcept[]): stri
     
     if (matchIndex === -1) continue
     
-    // Get the actual text (preserving case)
-    const actualText = result.slice(matchIndex, matchIndex + concept.text.length)
+    // Get the actual text (preserving case) and escape it for safety
+    const actualText = escapeHtml(result.slice(matchIndex, matchIndex + concept.text.length))
     
     // Create the mark element as raw HTML
     const categoryClass = getCategoryClassName(concept.category)
-    const markHtml = `<mark class="concept-highlight ${categoryClass}" data-concept-id="${concept.id}" data-concept-name="${concept.normalizedName}" data-concept-category="${concept.category}">${actualText}</mark>`
+    const markHtml = `<mark class="concept-highlight ${categoryClass}" data-concept-id="${escapeHtmlAttribute(concept.id)}" data-concept-name="${escapeHtmlAttribute(concept.normalizedName)}" data-concept-category="${escapeHtmlAttribute(concept.category)}">${actualText}</mark>`
     
     // Insert the mark
     result = result.slice(0, matchIndex) + markHtml + result.slice(matchIndex + concept.text.length)
@@ -130,45 +166,62 @@ export function MarkdownWithHighlights({
   }, [content, concepts])
   
   // Handle clicks on highlight marks
-  const handleClick = useCallback((event: React.MouseEvent) => {
-    const target = event.target as HTMLElement
-    const mark = target.closest('mark[data-concept-id]')
-    if (!mark) return
-    
+  const resolveConceptFromMark = useCallback((mark: Element): ExtractedConcept | undefined => {
     const conceptId = mark.getAttribute('data-concept-id')
-    const concept = concepts.find(c => c.id === conceptId)
+    if (conceptId) {
+      return concepts.find(c => c.id === conceptId)
+    }
+
+    const conceptName = mark.getAttribute('data-concept-name')
+    if (conceptName) {
+      const normalized = conceptName.toLowerCase()
+      return concepts.find(c => c.normalizedName.toLowerCase() === normalized)
+    }
+
+    const text = (mark.textContent || '').replace('×', '').trim()
+    if (!text) return undefined
+    const lowerText = text.toLowerCase()
+    return concepts.find(c =>
+      c.text.toLowerCase() === lowerText || c.normalizedName.toLowerCase() === lowerText
+    )
+  }, [concepts])
+
+  const handleClick = useCallback((event: React.MouseEvent) => {
+    if (!(event.target instanceof Element)) return
+    const mark = event.target.closest('mark.concept-highlight')
+    if (!mark) return
+
+    const concept = resolveConceptFromMark(mark)
     if (concept && onConceptClick) {
       event.preventDefault()
       event.stopPropagation()
       onConceptClick(concept, event)
     }
-  }, [concepts, onConceptClick])
+  }, [onConceptClick, resolveConceptFromMark])
   
   // Handle hover on highlight marks
   const handleMouseOver = useCallback((event: React.MouseEvent) => {
-    const target = event.target as HTMLElement
-    const mark = target.closest('mark[data-concept-id]')
+    if (!(event.target instanceof Element)) return
+    const mark = event.target.closest('mark.concept-highlight')
     if (!mark) return
-    
-    const conceptId = mark.getAttribute('data-concept-id')
-    const concept = concepts.find(c => c.id === conceptId)
+
+    const concept = resolveConceptFromMark(mark)
     if (concept && onConceptHover) {
       onConceptHover(concept, event)
     }
-  }, [concepts, onConceptHover])
+  }, [onConceptHover, resolveConceptFromMark])
   
   // Handle mouse leave on highlight marks
   const handleMouseOut = useCallback((event: React.MouseEvent) => {
-    const target = event.target as HTMLElement
-    const mark = target.closest('mark[data-concept-id]')
+    if (!(event.target instanceof Element)) return
+    const mark = event.target.closest('mark.concept-highlight')
     if (!mark) return
-    
-    const conceptId = mark.getAttribute('data-concept-id')
-    const concept = concepts.find(c => c.id === conceptId)
+
+    const concept = resolveConceptFromMark(mark)
     if (concept && onConceptLeave) {
       onConceptLeave(concept)
     }
-  }, [concepts, onConceptLeave])
+  }, [onConceptLeave, resolveConceptFromMark])
   
   // Handle remove button clicks (on dynamically added buttons)
   const handleRemoveClick = useCallback((event: React.MouseEvent) => {
@@ -193,7 +246,7 @@ export function MarkdownWithHighlights({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, highlightSanitizeSchema]]}
         components={{
           // Custom renderer for mark elements to add remove buttons
           mark: ({ node, children, ...props }) => {

@@ -10,9 +10,22 @@
  * - Helper functions for common assertions
  */
 
-import { ReactElement } from 'react'
+import { ReactElement, type ReactNode } from 'react'
 import { render, RenderOptions, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StashProvider } from '../context/StashContext'
+import { ProbeProvider } from '../context/ProbeContext'
+import { ViewModeProvider } from '../context/ViewModeContext'
+
+function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ViewModeProvider>
+      <StashProvider>
+        <ProbeProvider>{children}</ProbeProvider>
+      </StashProvider>
+    </ViewModeProvider>
+  )
+}
 
 /**
  * Custom render function that wraps components with necessary providers.
@@ -24,7 +37,7 @@ function customRender(
 ) {
   return {
     user: userEvent.setup(),
-    ...render(ui, { ...options }),
+    ...render(ui, { wrapper: Providers, ...options }),
   }
 }
 

@@ -15,7 +15,6 @@
  */
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
-import ReactMarkdown from 'react-markdown'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { MarkdownWithHighlights } from '../MarkdownWithHighlights'
@@ -51,11 +50,11 @@ interface ChatViewProps {
   /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
-  onConceptHover?: (concept: ExtractedConcept) => void
+  onConceptHover?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when concept hover ends */
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
-  onConceptClick?: (concept: ExtractedConcept) => void
+  onConceptClick?: (concept: ExtractedConcept, questionContext?: string) => void
   
   // Message concept highlighting props
   /** Function to extract concepts from text */
@@ -482,7 +481,8 @@ export function ChatView({
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed) return
     
-    const selectedText = selection.toString().trim()
+    const rawSelectedText = selection.toString()
+    const selectedText = rawSelectedText.trim()
     if (!selectedText || selectedText.length < 2) return
     
     // Get the message element
@@ -497,8 +497,74 @@ export function ChatView({
     const msg = messages[messageIndex]
     if (!msg) return
     
+    const getTextOffset = (container: Node, offset: number): number | null => {
+      let node: Node | null = container
+      let nodeOffset = offset
+
+      if (node.nodeType !== Node.TEXT_NODE) {
+        const child = node.childNodes[offset]
+        if (child && child.nodeType === Node.TEXT_NODE) {
+          node = child
+          nodeOffset = 0
+        } else {
+          return null
+        }
+      }
+
+      const walker = document.createTreeWalker(
+        messageEl,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (textNode) => {
+            const parent = (textNode as Text).parentElement
+            if (parent?.closest('button')) {
+              return NodeFilter.FILTER_REJECT
+            }
+            return NodeFilter.FILTER_ACCEPT
+          },
+        }
+      )
+
+      let total = 0
+      let current = walker.nextNode()
+      while (current) {
+        if (current === node) {
+          const length = current.textContent?.length || 0
+          return total + Math.min(nodeOffset, length)
+        }
+        total += current.textContent?.length || 0
+        current = walker.nextNode()
+      }
+      return null
+    }
+
+    const startOffset = getTextOffset(range.startContainer, range.startOffset)
+    const endOffset = getTextOffset(range.endContainer, range.endOffset)
+    if (startOffset === null || endOffset === null) return
+
+    const leadingWhitespace = rawSelectedText.length - rawSelectedText.trimStart().length
+    const trailingWhitespace = rawSelectedText.length - rawSelectedText.trimEnd().length
+    const startIndexApprox = startOffset + leadingWhitespace
+    const endIndexApprox = endOffset - trailingWhitespace
+    if (endIndexApprox <= startIndexApprox) return
+
+    const findClosestOccurrence = (text: string, needle: string, approxIndex: number): number => {
+      let bestIndex = -1
+      let bestDistance = Number.POSITIVE_INFINITY
+      let pos = 0
+      while ((pos = text.indexOf(needle, pos)) !== -1) {
+        const distance = Math.abs(pos - approxIndex)
+        if (distance < bestDistance) {
+          bestDistance = distance
+          bestIndex = pos
+        }
+        pos += 1
+      }
+      return bestIndex
+    }
+
     const fullText = msg.content
-    const startIndex = fullText.indexOf(selectedText)
+    const startIndex = findClosestOccurrence(fullText, selectedText, startIndexApprox)
     if (startIndex === -1) return
     
     // Check for overlap with existing concepts
@@ -528,8 +594,8 @@ export function ChatView({
     selection.removeAllRanges()
     
     // Also trigger explanation fetch if callback exists
-    onConceptClick?.(newConcept)
-  }, [messages, messageConcepts, handleAddUserConcept, onConceptClick])
+    onConceptClick?.(newConcept, question)
+  }, [messages, messageConcepts, handleAddUserConcept, onConceptClick, question])
 
   /**
    * Handle sending a message.
@@ -585,7 +651,7 @@ export function ChatView({
     // If global popup management is enabled, delegate to App
     if (onOpenPopup) {
       onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
-      onConceptHover?.(concept)
+      onConceptHover?.(concept, question)
       return
     }
     
@@ -617,8 +683,8 @@ export function ChatView({
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
-    onConceptHover?.(concept)
-  }, [openPopups, onConceptHover, onOpenPopup])
+    onConceptHover?.(concept, question)
+  }, [openPopups, onConceptHover, onOpenPopup, question])
 
   /**
    * Handles concept hover end - no-op since popups are persistent.
@@ -640,7 +706,7 @@ export function ChatView({
     // If global popup management is enabled, delegate to App
     if (onOpenPopup) {
       onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
-      onConceptClick?.(concept)
+      onConceptClick?.(concept, question)
       return
     }
     
@@ -672,8 +738,8 @@ export function ChatView({
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
-    onConceptClick?.(concept)
-  }, [openPopups, onConceptClick, onOpenPopup])
+    onConceptClick?.(concept, question)
+  }, [openPopups, onConceptClick, onOpenPopup, question])
 
   /**
    * Handles popup close for a specific concept.
@@ -730,8 +796,8 @@ export function ChatView({
     setOpenPopups(prev => [...prev, newPopup])
     
     // Trigger explanation fetch if callback exists
-    onConceptClick?.(syntheticConcept)
-  }, [openPopups, onConceptClick])
+    onConceptClick?.(syntheticConcept, question)
+  }, [openPopups, onConceptClick, question])
 
   /**
    * Handles popup minimize state change.

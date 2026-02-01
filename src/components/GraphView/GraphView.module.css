@@ -1,0 +1,100 @@
+/**
+ * GraphView Component Styles
+ * ===========================
+ *
+ * Styling for the 3D knowledge graph visualization.
+ *
+ * Design:
+ * - Full viewport container (respects sidebar margins)
+ * - Transparent background to inherit app theme
+ * - Neobrutalist overlay elements
+ * - Stats display in corner
+ */
+
+/* Main container - fills available space */
+.container {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - var(--space-8));
+  min-height: 400px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* Canvas container */
+.container canvas {
+  display: block;
+}
+
+/* Empty state message */
+.emptyState {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.emptyHint {
+  margin-top: var(--space-2) !important;
+  font-size: var(--text-sm) !important;
+  color: var(--text-tertiary);
+}
+
+/* Stats overlay */
+.stats {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: oklch(from var(--bg-primary) l c h / 0.9);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--border-primary);
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+}
+
+.statItem::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Color indicators for each type */
+.statItem[data-type='question']::before {
+  background: #4488dd;
+}
+
+.statItem[data-type='concept']::before {
+  background: #aa66cc;
+}
+
+.statItem[data-type='stash']::before {
+  background: #44aa88;
+}
+
+.statItem[data-type='probe']::before {
+  background: #dd8844;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .stats {
+  background: oklch(from var(--bg-primary) l c h / 0.95);
+}

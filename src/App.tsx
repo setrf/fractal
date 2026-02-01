@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
+import { ViewModeToggle } from './components/ViewModeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
@@ -21,9 +22,15 @@ import { StashSidebar } from './components/StashSidebar'
 import { ProbeSidebar } from './components/ProbeSidebar'
 import { NotePopup } from './components/NotePopup'
 import { ConceptPopup } from './components/ConceptPopup'
+import { GraphView, type GraphViewHandle } from './components/GraphView'
+import { GraphControls } from './components/GraphControls'
+import { GraphNodePopup } from './components/GraphNodePopup'
 import type { ConceptExplanation } from './types/concept'
+import type { GraphNode } from './types/graph'
 import { StashProvider, useStashContext } from './context/StashContext'
 import { ProbeProvider, useProbeContext } from './context/ProbeContext'
+import { GraphProvider } from './context/GraphContext'
+import { ViewModeProvider, useViewModeContext } from './context/ViewModeContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
@@ -71,6 +78,24 @@ interface CanvasNote {
   sourceType?: 'note' | 'explanation' | 'question' | 'highlight' | 'chat-message'
 }
 
+const QUALITY_SCORE_MAX = 10
+const QUALITY_SCORE_EPSILON = 0.001
+const QUALITY_SCORE_IMPROVEMENT_RATIO = 0.1
+
+function normalizeWeaveScore(score: number | null | undefined): number | null {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return null
+  const normalized = Math.max(0, score)
+  return normalized >= QUALITY_SCORE_MAX
+    ? QUALITY_SCORE_MAX - QUALITY_SCORE_EPSILON
+    : normalized
+}
+
+function computeChildQualityScore(parentScore: number, baseScore: number | null): number {
+  const minHigher = parentScore + (QUALITY_SCORE_MAX - parentScore) * QUALITY_SCORE_IMPROVEMENT_RATIO
+  if (baseScore === null) return minHigher
+  return Math.max(baseScore, minHigher)
+}
+
 /**
  * State for a reopened explanation popup from stash.
  */
@@ -95,10 +120,10 @@ interface ReopenedExplanation {
  * The StashSidebar is available in all views.
  */
 function AppContent() {
-  // Get stash state for sidebar layout
-  const { isOpen: stashOpen, sidebarWidth } = useStashContext()
-  // Get probe state for sidebar layout
-  const { isOpen: probeOpen, sidebarWidth: probeSidebarWidth } = useProbeContext()
+  // Get stash state for sidebar layout and items for graph
+  const { isOpen: stashOpen, sidebarWidth, items: stashItems } = useStashContext()
+  // Get probe state for sidebar layout and probes for graph
+  const { isOpen: probeOpen, sidebarWidth: probeSidebarWidth, probes } = useProbeContext()
   // Initialize the question tree state and operations
   const {
     tree,
@@ -107,11 +132,12 @@ function AppContent() {
     addChildQuestion,
     setActiveNode,
     toggleNodeExpansion,
+    updateNodeMeta,
     reset,
   } = useQuestionTree()
 
   // AI question generation
-  const { generate, isLoading: aiLoading, error: aiError } = useAIQuestions()
+  const { generate, isLoading: aiLoading, error: aiError, lastMeta } = useAIQuestions()
   
   // Concept extraction and explanation
   const { extract: extractConcepts } = useConceptExtraction()
@@ -157,6 +183,16 @@ function AppContent() {
   const [minimizeAllTrigger, setMinimizeAllTrigger] = useState(0)
   const [closeAllTrigger, setCloseAllTrigger] = useState(0)
 
+  // View mode (traditional vs graph)
+  const { isGraphView } = useViewModeContext()
+  
+  // Graph node popup state
+  const [graphPopupNode, setGraphPopupNode] = useState<GraphNode | null>(null)
+  const [graphPopupPosition, setGraphPopupPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  
+  // Graph view ref for camera controls
+  const graphRef = useRef<GraphViewHandle | null>(null)
+
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatVisible ? 'chat' : 'tree'
   
@@ -196,15 +232,23 @@ function AppContent() {
   const handleGenerateAI = useCallback(async (parentId: string, question: string) => {
     setGeneratingNodeId(parentId)
     try {
-      const suggestions = await generate(question)
+      const { questions: suggestions, meta } = await generate(question)
+      const parent = tree.nodes[parentId]
+      const normalizedParentScore = normalizeWeaveScore(parent?.meta.qualityScore)
+      const parentScore = normalizedParentScore ?? 0
+      if (parent && parent.meta.qualityScore !== parentScore) {
+        updateNodeMeta(parentId, { qualityScore: parentScore })
+      }
+      const baseScore = normalizeWeaveScore(meta?.qualityScore)
+      const childScore = computeChildQualityScore(parentScore, baseScore)
       // Add each generated question as a child
       for (const suggestion of suggestions) {
-        addChildQuestion(parentId, suggestion)
+        addChildQuestion(parentId, suggestion, { qualityScore: childScore })
       }
     } finally {
       setGeneratingNodeId(null)
     }
-  }, [generate, addChildQuestion])
+  }, [generate, addChildQuestion, tree.nodes, updateNodeMeta])
 
   /**
    * Handles submission of the initial question.
@@ -246,21 +290,20 @@ function AppContent() {
   /**
    * Handles concept hover - fetches explanation.
    */
-  const handleConceptHover = useCallback((concept: ExtractedConcept) => {
-    // Get the question context from the current view
-    const questionContext = chatState?.question || rootNode?.text || ''
-    if (questionContext) {
-      fetchExplanation(concept.id, concept.normalizedName, questionContext)
+  const handleConceptHover = useCallback((concept: ExtractedConcept, questionContext?: string) => {
+    const context = questionContext || chatState?.question || rootNode?.text || ''
+    if (context) {
+      fetchExplanation(concept.id, concept.normalizedName, context)
     }
   }, [chatState, rootNode, fetchExplanation])
 
   /**
    * Handles concept click - same as hover for now, but could trigger sticky.
    */
-  const handleConceptClick = useCallback((concept: ExtractedConcept) => {
-    const questionContext = chatState?.question || rootNode?.text || ''
-    if (questionContext) {
-      fetchExplanation(concept.id, concept.normalizedName, questionContext)
+  const handleConceptClick = useCallback((concept: ExtractedConcept, questionContext?: string) => {
+    const context = questionContext || chatState?.question || rootNode?.text || ''
+    if (context) {
+      fetchExplanation(concept.id, concept.normalizedName, context)
     }
   }, [chatState, rootNode, fetchExplanation])
 
@@ -572,11 +615,43 @@ function AppContent() {
     setCloseAllTrigger(prev => prev + 1)
   }, [])
 
+  /**
+   * Handles click on a graph node - shows popup with details.
+   */
+  const handleGraphNodeClick = useCallback((node: GraphNode, event: MouseEvent) => {
+    setGraphPopupNode(node)
+    setGraphPopupPosition({ x: event.clientX, y: event.clientY })
+  }, [])
+
+  /**
+   * Closes the graph node popup.
+   */
+  const handleGraphPopupClose = useCallback(() => {
+    setGraphPopupNode(null)
+  }, [])
+
+  /**
+   * Handles Deep Dive action from graph popup.
+   */
+  const handleGraphDeepDive = useCallback((nodeId: string, question: string) => {
+    handleGraphPopupClose()
+    handleGenerateAI(nodeId, question)
+  }, [handleGraphPopupClose, handleGenerateAI])
+
+  /**
+   * Handles Chat action from graph popup.
+   */
+  const handleGraphChat = useCallback((nodeId: string, question: string) => {
+    handleGraphPopupClose()
+    handleLockIn(nodeId, question)
+  }, [handleGraphPopupClose, handleLockIn])
+
   // Build layout classes for both sidebars
   const layoutClasses = [
     'app-layout',
     stashOpen ? 'stash-open' : 'stash-collapsed',
     probeOpen ? 'probe-open' : 'probe-collapsed',
+    isGraphView ? 'graph-view' : 'traditional-view',
   ].join(' ')
 
   return (
@@ -586,8 +661,11 @@ function AppContent() {
       
       {/* Main content area */}
       <div className="main-content">
-        {/* Theme toggle - always visible in all views */}
-        <ThemeToggle />
+        {/* Theme toggle - always visible in all views, shifts with probe sidebar */}
+        <ThemeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
+        
+        {/* View mode toggle - always visible in all views, shifts with probe sidebar */}
+        <ViewModeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
         
         {/* Action buttons - fixed in upper left after stash (visible in all views) */}
         <div
@@ -679,11 +757,41 @@ function AppContent() {
         </div>
         
         {/* ============================================
+         * GRAPH VIEW
+         * 3D knowledge graph visualization of all entities.
+         * Shown when view mode is 'graph'.
+         * ============================================ */}
+        {isGraphView && (
+          <GraphProvider
+            tree={tree}
+            nodeConcepts={nodeConcepts}
+            stashItems={stashItems}
+            probes={probes}
+          >
+            <GraphView ref={graphRef} onNodeClick={handleGraphNodeClick} />
+            <GraphControls
+              onResetCamera={() => graphRef.current?.resetCamera?.()}
+              onZoomIn={() => graphRef.current?.zoomIn?.()}
+              onZoomOut={() => graphRef.current?.zoomOut?.()}
+            />
+            {graphPopupNode && (
+              <GraphNodePopup
+                node={graphPopupNode}
+                position={graphPopupPosition}
+                onClose={handleGraphPopupClose}
+                onDeepDive={handleGraphDeepDive}
+                onChat={handleGraphChat}
+              />
+            )}
+          </GraphProvider>
+        )}
+        
+        {/* ============================================
          * CHAT VIEW
          * Shown when a question is "locked in" for deep exploration.
          * Kept mounted (but hidden) to preserve popup state when switching views.
          * ============================================ */}
-        {chatState && (
+        {chatState && !isGraphView && (
           <div 
             key={chatState.nodeId}
             style={{ display: currentView === 'chat' ? 'block' : 'none' }}
@@ -709,7 +817,7 @@ function AppContent() {
         )}
 
         {/* Main content area for welcome and tree views */}
-        {currentView !== 'chat' && (
+        {currentView !== 'chat' && !isGraphView && (
           <main
             style={{
               display: 'flex',
@@ -748,14 +856,6 @@ function AppContent() {
                   >
                     Fractal
                   </h1>
-                  <p
-                    style={{
-                      fontSize: 'var(--text-base)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    A place for questions, not answers.
-                  </p>
                 </header>
                 
                 {/* Central question input */}
@@ -810,6 +910,19 @@ function AppContent() {
                     }}
                   >
                     AI Error: {aiError}
+                  </div>
+                )}
+
+                {lastMeta && (
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--text-tertiary)',
+                      marginBottom: 'var(--space-4)',
+                    }}
+                  >
+                    Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel}
                   </div>
                 )}
 
@@ -952,11 +1065,13 @@ function AppContent() {
  */
 function App() {
   return (
-    <StashProvider>
-      <ProbeProvider>
-        <AppContent />
-      </ProbeProvider>
-    </StashProvider>
+    <ViewModeProvider>
+      <StashProvider>
+        <ProbeProvider>
+          <AppContent />
+        </ProbeProvider>
+      </StashProvider>
+    </ViewModeProvider>
   )
 }
 

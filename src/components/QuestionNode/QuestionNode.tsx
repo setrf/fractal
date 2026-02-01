@@ -16,7 +16,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react'
-import type { QuestionNode as QuestionNodeType } from '../../types/question'
+import type { QuestionNode as QuestionNodeType, QuestionNodeAddOptions } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
@@ -48,7 +48,7 @@ interface QuestionNodeProps {
   /** Callback when node is clicked/selected */
   onSelect?: (nodeId: string) => void
   /** Callback when adding a child question */
-  onAddChild?: (parentId: string, question: string) => void
+  onAddChild?: (parentId: string, question: string, options?: QuestionNodeAddOptions) => void
   /** Callback when toggling expand/collapse */
   onToggleExpand?: (nodeId: string) => void
   /** Callback to generate AI suggestions for this question */
@@ -72,11 +72,11 @@ interface QuestionNodeProps {
   /** Legacy: Error loading concept explanation */
   conceptError?: string | null
   /** Callback when a concept is hovered */
-  onConceptHover?: (concept: ExtractedConcept) => void
+  onConceptHover?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when concept hover ends */
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
-  onConceptClick?: (concept: ExtractedConcept) => void
+  onConceptClick?: (concept: ExtractedConcept, questionContext?: string) => void
   /** Callback when user creates a highlight by selecting text */
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */
@@ -236,7 +236,7 @@ export function QuestionNode({
     // If global popup management is enabled, delegate to App
     if (onOpenPopup) {
       onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
-      onConceptHover?.(concept)
+      onConceptHover?.(concept, node.text)
       return
     }
     
@@ -268,8 +268,8 @@ export function QuestionNode({
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
-    onConceptHover?.(concept)
-  }, [openPopups, onConceptHover, onOpenPopup])
+    onConceptHover?.(concept, node.text)
+  }, [node.text, openPopups, onConceptHover, onOpenPopup])
 
   /**
    * Handles concept hover end - no-op since popups are persistent.
@@ -291,7 +291,7 @@ export function QuestionNode({
     // If global popup management is enabled, delegate to App
     if (onOpenPopup) {
       onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
-      onConceptClick?.(concept)
+      onConceptClick?.(concept, node.text)
       return
     }
     
@@ -323,8 +323,8 @@ export function QuestionNode({
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
-    onConceptClick?.(concept)
-  }, [openPopups, onConceptClick, onOpenPopup])
+    onConceptClick?.(concept, node.text)
+  }, [node.text, openPopups, onConceptClick, onOpenPopup])
 
   /**
    * Handles popup minimize state change.
@@ -391,8 +391,8 @@ export function QuestionNode({
     setOpenPopups(prev => [...prev, newPopup])
     
     // Trigger explanation fetch if callback exists
-    onConceptClick?.(syntheticConcept)
-  }, [openPopups, onConceptClick])
+    onConceptClick?.(syntheticConcept, node.text)
+  }, [node.text, openPopups, onConceptClick])
 
   /**
    * Handles text selection for user-created highlights.
@@ -404,25 +404,73 @@ export function QuestionNode({
       return
     }
 
-    const selectedText = selection.toString().trim()
+    const rawSelectedText = selection.toString()
+    const selectedText = rawSelectedText.trim()
     if (!selectedText || selectedText.length < 2) {
       return
     }
 
     // Check if selection is within our content area
     const range = selection.getRangeAt(0)
-    if (!contentRef.current.contains(range.commonAncestorContainer)) {
+    const textRoot = contentRef.current.querySelector(`.${styles.text}`) as HTMLElement | null
+    if (!textRoot || !textRoot.contains(range.commonAncestorContainer)) {
       return
     }
 
-    // Find the position of the selected text in the source
-    const startIndex = node.text.indexOf(selectedText)
-    if (startIndex === -1) {
+    const getTextOffset = (container: Node, offset: number): number | null => {
+      let node: Node | null = container
+      let nodeOffset = offset
+
+      if (node.nodeType !== Node.TEXT_NODE) {
+        const child = node.childNodes[offset]
+        if (child && child.nodeType === Node.TEXT_NODE) {
+          node = child
+          nodeOffset = 0
+        } else {
+          return null
+        }
+      }
+
+      const walker = document.createTreeWalker(
+        textRoot,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (textNode) => {
+            const parent = (textNode as Text).parentElement
+            if (parent?.closest('button')) {
+              return NodeFilter.FILTER_REJECT
+            }
+            return NodeFilter.FILTER_ACCEPT
+          },
+        }
+      )
+
+      let total = 0
+      let current = walker.nextNode()
+      while (current) {
+        if (current === node) {
+          const length = current.textContent?.length || 0
+          return total + Math.min(nodeOffset, length)
+        }
+        total += current.textContent?.length || 0
+        current = walker.nextNode()
+      }
+      return null
+    }
+
+    const startOffset = getTextOffset(range.startContainer, range.startOffset)
+    const endOffset = getTextOffset(range.endContainer, range.endOffset)
+    if (startOffset === null || endOffset === null) {
       return
     }
+
+    const leadingWhitespace = rawSelectedText.length - rawSelectedText.trimStart().length
+    const trailingWhitespace = rawSelectedText.length - rawSelectedText.trimEnd().length
+    const startIndex = startOffset + leadingWhitespace
+    const endIndex = endOffset - trailingWhitespace
+    if (endIndex <= startIndex) return
 
     // Check if this overlaps with an existing concept
-    const endIndex = startIndex + selectedText.length
     const overlapsExisting = concepts.some(
       c => (startIndex < c.endIndex && endIndex > c.startIndex)
     )
@@ -432,10 +480,11 @@ export function QuestionNode({
 
     // Automatically create the highlight (no intermediate step)
     if (onAddUserConcept) {
+      const selectedSlice = node.text.slice(startIndex, endIndex)
       const newConcept: ExtractedConcept = {
         id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-        text: selectedText,
-        normalizedName: selectedText.toLowerCase(),
+        text: selectedSlice,
+        normalizedName: selectedSlice.toLowerCase(),
         category: 'abstract' as ConceptCategory,
         startIndex,
         endIndex,
@@ -505,6 +554,13 @@ export function QuestionNode({
             <span className={styles.text}>{node.text}</span>
           )}
         </div>
+        {typeof node.meta.qualityScore === 'number' && (
+          <div className={styles.metaRow}>
+            <span className={styles.qualityBadge}>
+              Quality {node.meta.qualityScore.toFixed(2)} / 10
+            </span>
+          </div>
+        )}
 
         {/* Action buttons - horizontal row at bottom right */}
         <div className={styles.actions}>

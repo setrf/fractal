@@ -1,7 +1,5 @@
 # Fractal
 
-> A place for questions, not answers.
-
 Fractal is an interactive interface for creative exploration of curiosity. In a world full of answer engines—Google, LLMs, ChatGPT—there's no place designed specifically for **questions**. Fractal fills that gap.
 
 **The world is full of places to find answers. Fractal is a place to find questions.**
@@ -50,12 +48,21 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.6.0)
+### Current (v0.7.0)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
+- **3D Knowledge Graph View** — Alternative visualization showing all entities in a 3D force-directed graph
+  - Switch between traditional tree view and 3D graph via toggle button
+  - All entities visible: Questions, Concepts, Stash Items, Probes
+  - Custom 3D shapes per type: spheres, icosahedrons, cubes, tori
+  - Relationship-based clustering brings connected nodes together
+  - Click nodes for details and actions
+  - Zoom, pan, and rotate navigation
+  - Filter nodes by type
 - **Add Related Questions** — Click any node to add child questions
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
+- **Weave Eval Loop** — Each generation is scored (0–10) and logged in Weave; prompt variants auto-improve over time
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
@@ -141,24 +148,30 @@ The color system uses **zero chromatic colors** in the core UI:
 ### Frontend Component Hierarchy
 
 ```
-App (StashProvider + ProbeProvider)
+App (StashProvider + ProbeProvider + ViewModeProvider)
 ├── StashSidebar             # Collapsible left sidebar for stashed items
 │   └── StashItem            # Individual stashed item with probe selection
+├── ProbeSidebar             # Collapsible right sidebar for synthesis
+│   ├── ProbeTabBar          # Tab navigation for multiple probes
+│   └── ProbeChat            # Chat interface for active probe
+├── Global Popups
+│   ├── ConceptPopup         # Gwern-style explanation popups (global management)
+│   └── NotePopup            # Canvas notes and reopened stash items
 ├── Main Content
 │   ├── ThemeToggle          # Light/dark mode switch
+│   ├── ViewModeToggle       # Traditional/tree vs 3D graph
 │   ├── QuestionInput        # Initial question entry (shown when no root)
 │   ├── QuestionTree         # Branching visualization (shown when root exists)
 │   │   └── TreeBranch       # Recursive branch renderer
 │   │       └── QuestionNode # Individual question with actions + AI generate
 │   │           ├── StashButton         # Add question to stash
-│   │           ├── ConceptHighlighter  # Highlights concepts in question text
-│   │           └── ConceptPopup        # Gwern-style explanation popup
-│   └── ChatView             # Deep conversational exploration of a question
-│       ├── StashButton      # Add message to stash (on each message)
-│       └── ConceptHighlighter  # Highlights concepts in messages
-└── ProbeSidebar             # Collapsible right sidebar for synthesis
-    ├── ProbeTabBar          # Tab navigation for multiple probes
-    └── ProbeChat            # Chat interface for active probe
+│   │           └── ConceptHighlighter  # Highlights concepts in question text
+│   ├── ChatView             # Deep conversational exploration of a question
+│   │   ├── StashButton      # Add message to stash (on each message)
+│   │   └── MarkdownWithHighlights # Markdown rendering + concept highlights
+│   └── GraphView            # 3D graph view (when enabled)
+│       ├── GraphControls    # Camera + filters overlay
+│       └── GraphNodePopup   # Node details and actions
 ```
 
 ### Data Flow: Seed → Branch → Collect → Synthesize
@@ -178,6 +191,12 @@ ChatView ───── excerpts ────► Messages ───────
     ▼                               ▼                               ▼
 ConceptPopup ── explanations ► Explanations                  LLM Response
 ```
+
+### Weave Self-Improvement Loop
+
+Each question generation uses one of several prompt variants. We run a lightweight Weave-scored evaluation on the output and update a rolling average per variant. Over time, the system shifts toward higher-scoring prompts while still exploring alternatives.
+
+In the app, the latest **Weave score** and **prompt variant** are displayed in the tree view after each generation. Each generated child node stores a quality score and shows it directly on the node, with the graph popup surfacing it as well.
 
 ### Backend Architecture
 

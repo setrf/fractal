@@ -57,7 +57,8 @@ const FILTER_OPTIONS: (StashItemType | null)[] = [
  */
 export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   const {
-    items,
+    items: allItems,
+    displayedItems,
     removeItem,
     clearAll,
     exportToJSON,
@@ -248,6 +249,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     e.dataTransfer.setData('text/x-stash-reorder', String(index))
     // Also set the stash item ID for probe sidebar drops
     e.dataTransfer.setData('text/x-stash-item', itemId)
+    e.dataTransfer.setData('text/plain', itemId)
+    e.dataTransfer.setData('application/json', JSON.stringify({ id: itemId }))
     e.dataTransfer.effectAllowed = 'move'
     setDraggedIndex(index)
     setDraggedItemId(itemId)
@@ -278,15 +281,22 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     // Check if this is an internal reorder drag
     const isInternalDrag = e.dataTransfer.types.includes('text/x-stash-reorder')
     
-    if (isInternalDrag && draggedIndex !== null && draggedIndex !== toIndex) {
+    if (isInternalDrag && draggedItemId && draggedIndex !== null && draggedIndex !== toIndex) {
       e.preventDefault()
       e.stopPropagation()
-      reorderItem(draggedIndex, toIndex)
+      const toItem = displayedItems[toIndex]
+      if (!toItem) return
+
+      const fromIndex = allItems.findIndex(item => item.id === draggedItemId)
+      const toIndexFull = allItems.findIndex(item => item.id === toItem.id)
+      if (fromIndex === -1 || toIndexFull === -1) return
+
+      reorderItem(fromIndex, toIndexFull)
       setDraggedIndex(null)
       setDropTargetIndex(null)
     }
     // For external drags, don't stop propagation - let it bubble up to sidebar's handleDrop
-  }, [draggedIndex, reorderItem])
+  }, [allItems, displayedItems, draggedIndex, draggedItemId, reorderItem])
 
   const handleItemDragEnd = useCallback((e: React.DragEvent) => {
     // Check if dropped outside the sidebar - if so, remove the item
@@ -295,8 +305,14 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       const rect = sidebar.getBoundingClientRect()
       const isOutside = e.clientX < rect.left || e.clientX > rect.right ||
                         e.clientY < rect.top || e.clientY > rect.bottom
-      
-      if (isOutside) {
+
+      const probeSidebar = document.querySelector('[data-probe-sidebar="true"]') as HTMLElement | null
+      const probeRect = probeSidebar?.getBoundingClientRect()
+      const isOverProbe = !!probeRect &&
+        e.clientX >= probeRect.left && e.clientX <= probeRect.right &&
+        e.clientY >= probeRect.top && e.clientY <= probeRect.bottom
+
+      if (isOutside && !isOverProbe) {
         // Dropped outside - remove the item
         removeItem(draggedItemId)
       }
@@ -327,6 +343,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      data-stash-sidebar="true"
     >
       {/* Toggle button - always visible */}
       <button
@@ -435,7 +452,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
           <div
             className={`${styles.itemsList} ${isDragOver || externalDragHover ? styles.dragOver : ''}`}
           >
-            {items.length === 0 ? (
+            {displayedItems.length === 0 ? (
               <div className={styles.emptyState}>
                 <p className={styles.emptyText}>
                   {searchQuery || filterType
@@ -449,7 +466,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
                 </p>
               </div>
             ) : (
-              items.map((item, index) => (
+              displayedItems.map((item, index) => (
                 <div
                   key={item.id}
                   className={`${styles.itemWrapper} ${

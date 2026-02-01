@@ -16,6 +16,12 @@ export interface GenerateQuestionsResponse {
   data: {
     questions: string[]
     model: string
+    meta?: {
+      promptVariant: string
+      promptLabel: string
+      qualityScore: number | null
+      evalModel: string
+    }
     usage: {
       promptTokens: number
       completionTokens: number
@@ -59,7 +65,7 @@ export interface HealthResponse {
 export async function generateQuestions(
   question: string,
   model?: string
-): Promise<string[]> {
+): Promise<{ questions: string[]; meta: GenerateQuestionsResponse['data']['meta'] | null }> {
   const response = await fetch(`${API_BASE_URL}/api/generate`, {
     method: 'POST',
     headers: {
@@ -74,7 +80,10 @@ export async function generateQuestions(
   }
 
   const data: GenerateQuestionsResponse = await response.json()
-  return data.data.questions
+  return {
+    questions: data.data.questions,
+    meta: data.data.meta ?? null,
+  }
 }
 
 /**

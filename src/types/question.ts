@@ -69,6 +69,8 @@ export interface QuestionNode {
     isExpanded: boolean
     /** Whether this node is the currently focused/selected node */
     isActive: boolean
+    /** Quality score for this node (AI-scored or derived) */
+    qualityScore: number | null
   }
 }
 
@@ -157,7 +159,8 @@ export const generateId = (): string => {
 export const createQuestionNode = (
   text: string,
   parentId: string | null = null,
-  position: { x: number; y: number } = { x: 0, y: 0 }
+  position: { x: number; y: number } = { x: 0, y: 0 },
+  metaOverrides: Partial<QuestionNode['meta']> = {}
 ): QuestionNode => ({
   id: generateId(),
   text,
@@ -168,8 +171,14 @@ export const createQuestionNode = (
     createdAt: Date.now(),
     isExpanded: true,
     isActive: false,
+    qualityScore: null,
+    ...metaOverrides,
   },
 })
+
+export interface QuestionNodeAddOptions {
+  qualityScore?: number | null
+}
 
 /**
  * Adds a node to the tree immutably.

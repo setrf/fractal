@@ -10,15 +10,20 @@
  */
 
 import { useState, useCallback } from 'react'
-import { generateQuestions, isApiAvailable } from '../api'
+import { generateQuestions, isApiAvailable, type GenerateQuestionsResponse } from '../api'
 
 interface UseAIQuestionsResult {
   /** Generate related questions for a given question */
-  generate: (question: string) => Promise<string[]>
+  generate: (question: string) => Promise<{
+    questions: string[]
+    meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
+  }>
   /** Whether a generation is in progress */
   isLoading: boolean
   /** Error from the last generation attempt */
   error: string | null
+  /** Metadata from the last generation */
+  lastMeta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
   /** Whether the AI service is available */
   isAvailable: boolean
   /** Check if the AI service is available */
@@ -34,8 +39,8 @@ interface UseAIQuestionsResult {
  *   const { generate, isLoading, error } = useAIQuestions()
  *   
  *   const handleGenerate = async () => {
- *     const questions = await generate("What is consciousness?")
- *     console.log(questions)
+ *     const { questions, meta } = await generate("What is consciousness?")
+ *     console.log(questions, meta)
  *   }
  *   
  *   return (
@@ -50,6 +55,7 @@ export function useAIQuestions(): UseAIQuestionsResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAvailable, setIsAvailable] = useState(true)
+  const [lastMeta, setLastMeta] = useState<NonNullable<GenerateQuestionsResponse['data']['meta']> | null>(null)
 
   const checkAvailability = useCallback(async () => {
     const available = await isApiAvailable()
@@ -57,21 +63,25 @@ export function useAIQuestions(): UseAIQuestionsResult {
     return available
   }, [])
 
-  const generate = useCallback(async (question: string): Promise<string[]> => {
+  const generate = useCallback(async (question: string): Promise<{
+    questions: string[]
+    meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
+  }> => {
     setIsLoading(true)
     setError(null)
 
     try {
       console.log(`[AI] Generating questions for: "${question}"`)
-      const questions = await generateQuestions(question)
+      const { questions, meta } = await generateQuestions(question)
+      setLastMeta(meta)
       console.log(`[AI] Generated ${questions.length} questions`)
-      return questions
+      return { questions, meta }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       console.error('[AI] Generation failed:', errorMessage)
       setError(errorMessage)
       setIsAvailable(false)
-      return []
+      return { questions: [], meta: null }
     } finally {
       setIsLoading(false)
     }
@@ -81,6 +91,7 @@ export function useAIQuestions(): UseAIQuestionsResult {
     generate,
     isLoading,
     error,
+    lastMeta,
     isAvailable,
     checkAvailability,
   }

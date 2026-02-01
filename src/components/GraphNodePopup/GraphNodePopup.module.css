@@ -1,0 +1,202 @@
+/**
+ * GraphNodePopup Component Styles
+ * =================================
+ *
+ * Styling for the graph node detail popup.
+ *
+ * Design:
+ * - Floating popup with neobrutalist styling
+ * - Bold borders, hard edges
+ * - Type-specific color accents
+ * - Respects dark mode
+ */
+
+/* Semi-transparent backdrop */
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  /* No background - just for click detection */
+}
+
+/* Popup container */
+.popup {
+  position: absolute;
+  min-width: 280px;
+  max-width: 360px;
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  box-shadow: 4px 4px 0 var(--border-primary);
+  font-family: var(--font-mono);
+  z-index: 201;
+}
+
+/* Close button */
+.closeBtn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-primary);
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* Content area */
+.content {
+  padding: var(--space-4);
+}
+
+/* Type label */
+.typeLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.typeLabel[data-type='question'] {
+  color: #4488dd;
+}
+
+.typeLabel[data-type='concept'] {
+  color: #aa66cc;
+}
+
+.typeLabel[data-type='stash'] {
+  color: #44aa88;
+}
+
+.typeLabel[data-type='probe'] {
+  color: #dd8844;
+}
+
+/* Question content */
+.questionText {
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+/* Concept content */
+.conceptName {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.conceptText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 0 0 var(--space-3);
+}
+
+/* Stash content */
+.stashContent {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+/* Probe content */
+.probeName {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.probeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.probeColor {
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+}
+
+.probeColor[data-color='blue'] {
+  border-color: #4488dd;
+  color: #4488dd;
+}
+
+.probeColor[data-color='green'] {
+  border-color: #44aa88;
+  color: #44aa88;
+}
+
+.probeColor[data-color='yellow'] {
+  border-color: #ddaa44;
+  color: #ddaa44;
+}
+
+.probeColor[data-color='purple'] {
+  border-color: #aa66cc;
+  color: #aa66cc;
+}
+
+.probeColor[data-color='orange'] {
+  border-color: #dd8844;
+  color: #dd8844;
+}
+
+/* Metadata line */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-primary);
+}
+
+.actionBtn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.actionBtn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-primary);
+}

@@ -130,7 +130,7 @@ export function NotePopup({
   const titleInputRef = useRef<HTMLInputElement>(null)
   
   // Stash context
-  const { addItem, hasItem } = useStashContext()
+  const { addItem, hasItem, setExternalDragHover } = useStashContext()
   
   // Note content state
   const [title, setTitle] = useState(initialTitle)
@@ -231,14 +231,23 @@ export function NotePopup({
     if (!rect) return
     
     setIsDragging(true)
+    setExternalDragHover(true)
     setDragOffset({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     })
-  }, [isResizing])
+  }, [isResizing, setExternalDragHover])
   
   useEffect(() => {
     if (!isDragging) return
+
+    const isOverStash = (mouseX: number, mouseY: number): boolean => {
+      const sidebar = document.querySelector('aside[data-stash-sidebar="true"]')
+      if (!sidebar) return false
+      const rect = sidebar.getBoundingClientRect()
+      return mouseX >= rect.left && mouseX <= rect.right &&
+        mouseY >= rect.top && mouseY <= rect.bottom
+    }
     
     const handleMouseMove = (e: MouseEvent) => {
       const x = Math.max(0, Math.min(window.innerWidth - popupSize.width, e.clientX - dragOffset.x))
@@ -246,8 +255,22 @@ export function NotePopup({
       setPopupPosition({ x, y })
     }
     
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       setIsDragging(false)
+      setExternalDragHover(false)
+
+      if (isOverStash(e.clientX, e.clientY) && content.trim()) {
+        if (!isStashed) {
+          addItem({
+            type: 'note',
+            content: content.trim(),
+            metadata: {
+              title: title.trim() || undefined,
+            },
+          })
+        }
+        onClose()
+      }
     }
     
     document.addEventListener('mousemove', handleMouseMove)
@@ -256,8 +279,9 @@ export function NotePopup({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
+      setExternalDragHover(false)
     }
-  }, [isDragging, dragOffset, popupSize.width])
+  }, [isDragging, dragOffset, popupSize.width, setExternalDragHover, addItem, content, title, onClose, isStashed])
   
   // Resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent, edge: string) => {

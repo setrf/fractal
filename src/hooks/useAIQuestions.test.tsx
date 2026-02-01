@@ -73,7 +73,7 @@ describe('useAIQuestions Hook', () => {
     it('should set isLoading to true during generation', async () => {
       console.log('[TEST] Testing isLoading during generation')
       
-      let resolveGenerate: (value: string[]) => void
+      let resolveGenerate: (value: { questions: string[]; meta: null }) => void
       vi.mocked(api.generateQuestions).mockImplementation(
         () => new Promise((resolve) => { resolveGenerate = resolve })
       )
@@ -90,7 +90,7 @@ describe('useAIQuestions Hook', () => {
       
       // Resolve the promise
       await act(async () => {
-        resolveGenerate(['Q1?', 'Q2?'])
+        resolveGenerate({ questions: ['Q1?', 'Q2?'], meta: null })
       })
       
       console.log('[TEST] isLoading after call:', result.current.isLoading)
@@ -101,13 +101,14 @@ describe('useAIQuestions Hook', () => {
       console.log('[TEST] Testing question generation')
       
       const mockQuestions = ['Question A?', 'Question B?', 'Question C?']
-      vi.mocked(api.generateQuestions).mockResolvedValue(mockQuestions)
+      vi.mocked(api.generateQuestions).mockResolvedValue({ questions: mockQuestions, meta: null })
 
       const { result } = renderHook(() => useAIQuestions())
       
       let questions: string[] = []
       await act(async () => {
-        questions = await result.current.generate('What is AI?')
+        const resultValue = await result.current.generate('What is AI?')
+        questions = resultValue.questions
       })
       
       console.log('[TEST] Generated questions:', questions)
@@ -117,7 +118,7 @@ describe('useAIQuestions Hook', () => {
     it('should call API with correct question', async () => {
       console.log('[TEST] Testing API call parameters')
       
-      vi.mocked(api.generateQuestions).mockResolvedValue([])
+      vi.mocked(api.generateQuestions).mockResolvedValue({ questions: [], meta: null })
 
       const { result } = renderHook(() => useAIQuestions())
       
@@ -153,7 +154,8 @@ describe('useAIQuestions Hook', () => {
       
       let questions: string[] = []
       await act(async () => {
-        questions = await result.current.generate('Will this fail?')
+        const resultValue = await result.current.generate('Will this fail?')
+        questions = resultValue.questions
       })
       
       console.log('[TEST] Questions on failure:', questions)
@@ -182,7 +184,7 @@ describe('useAIQuestions Hook', () => {
       
       vi.mocked(api.generateQuestions)
         .mockRejectedValueOnce(new Error('First call failed'))
-        .mockResolvedValueOnce(['Success!'])
+        .mockResolvedValueOnce({ questions: ['Success!'], meta: null })
 
       const { result } = renderHook(() => useAIQuestions())
       

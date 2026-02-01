@@ -17,6 +17,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-01-31
+
+### Added
+
+#### 3D Knowledge Graph View
+An alternative visualization mode displaying all entities (Questions, Concepts, Stash Items, Probes) as interconnected nodes in a 3D force-directed graph with relationship-based clustering.
+
+- **ViewModeToggle Component** (`src/components/ViewModeToggle/`)
+  - Fixed position button next to ThemeToggle
+  - Switches between traditional tree view and 3D graph view
+  - Visual indicator for current mode
+  - Persists preference to localStorage
+
+- **GraphView Component** (`src/components/GraphView/`)
+  - Full 3D visualization using react-force-graph-3d
+  - Custom Three.js node rendering per entity type:
+    - Questions: Spheres with emissive glow
+    - Concepts: Icosahedrons with flat shading
+    - Stash Items: Cubes
+    - Probes: Tori (donut shapes)
+  - Force-directed layout with relationship-based clustering
+  - Interactive zoom, pan, and rotate controls
+  - Click nodes to focus camera and show details
+  - Stats overlay showing entity counts
+
+- **GraphControls Component** (`src/components/GraphControls/`)
+  - Camera controls (reset, zoom in/out)
+  - Node type visibility filters (checkboxes)
+  - Legend with color and shape indicators
+  - Keyboard shortcuts hint (Drag, Scroll, Click)
+
+- **GraphNodePopup Component** (`src/components/GraphNodePopup/`)
+  - Floating popup on node click
+  - Content adapts to node type:
+    - Questions: Full text, child count, Deep Dive/Chat actions
+    - Concepts: Name, category, explanation preview
+    - Stash Items: Content preview, type badge
+    - Probes: Name, color, message count
+
+#### Graph Data Layer
+- **Graph Types** (`src/types/graph.ts`)
+  - `GraphNode` interface with type, label, data, color, size, group
+  - `GraphEdge` interface with source, target, type, strength
+  - `GraphNodeType`: question, concept, stash, probe
+  - `GraphEdgeType`: question-child, question-concept, concept-related, stash-source, probe-stash
+  - `ViewMode`: traditional | graph
+  - `GraphFilters` for node visibility control
+  - Constants for sizing, widths, strengths
+
+- **useGraphData Hook** (`src/hooks/useGraphData.ts`)
+  - Aggregates data from question tree, concepts, stash, and probes
+  - Transforms entities into graph nodes with visual properties
+  - Builds edges based on relationships
+  - Deduplicates concepts by normalized name
+  - Supports filtering by node type
+  - Memoized computation for performance
+
+- **useViewMode Hook** (`src/hooks/useViewMode.ts`)
+  - Manages traditional/graph view state
+  - Persists to localStorage
+  - Applies data-view-mode attribute to document
+  - toggleViewMode() convenience function
+
+- **GraphContext** (`src/context/GraphContext.tsx`)
+  - Provides graph data globally
+  - Includes filter state and controls
+  - toggleNodeType() and resetFilters() functions
+
+#### Edge Types and Relationships
+- **question-child**: Tree structure between questions (strongest clustering)
+- **question-concept**: Links questions to their extracted concepts
+- **concept-related**: Connects related concepts
+- **stash-source**: Links stash items to their source entities
+- **probe-stash**: Connects probes to their selected stash items
+
+#### Visual Design
+- Node colors match existing design tokens (OKLCH)
+- Edge widths and colors vary by relationship type
+- Dark mode support via CSS custom properties
+- Neobrutalist styling on overlay controls
+- Graph background matches app theme
+
+#### Tests
+- `useViewMode.test.tsx` - 11 tests for view mode state management
+- `useGraphData.test.tsx` - 13 tests for graph data aggregation
+- `graph.test.ts` - 16 tests for type utilities and constants
+
+### Dependencies Added
+- `react-force-graph-3d` - 3D force-directed graph visualization
+- `three` - Three.js for 3D rendering
+- `@types/three` - TypeScript definitions
+
+---
+
 ## [0.6.0] - 2026-01-31
 
 ### Added
@@ -148,7 +242,7 @@ A dedicated sidebar for collecting and organizing excerpts, highlights, and conc
 #### Integration Points
 - **ConceptPopup** - Stash button in popup header to save explanations
 - **QuestionNode** - Stash button in action buttons to save questions
-- **ConceptHighlighter** - Stash button next to remove button on highlights
+- **ConceptHighlighter** - Remove button on highlights
 - **ChatView** - Stash button on messages (hover reveal)
 
 #### Drag-and-Drop Support
@@ -207,7 +301,7 @@ A dedicated sidebar for collecting and organizing excerpts, highlights, and conc
   - Tries multiple strategies: right, below, left, cascade
   - Minimized popups excluded from overlap detection
 - **Minimized popup stacking**
-  - Minimized popups stack in lower-left corner
+  - Minimized popups stack in lower-right corner
   - Proper spacing to prevent occlusion
   - Smooth animation transitions
 
@@ -257,7 +351,7 @@ A dedicated sidebar for collecting and organizing excerpts, highlights, and conc
   - **Multiple popups** - open popups for multiple concepts simultaneously
   - **Draggable** - move popup by dragging header
   - **Resizable** - resize by dragging edges/corners with visual indicators
-  - **Minimizable with stacking** - collapse popup to header-only, minimized popups stack in lower-left corner (Gwern-style), expand to restore original position
+  - **Minimizable with stacking** - collapse popup to header-only, minimized popups stack in lower-right corner (Gwern-style), expand to restore original position
   - **Persistent** - stays open until user clicks close button (no auto-dismiss)
   - Intelligent viewport positioning for initial display
   - Loading and error states

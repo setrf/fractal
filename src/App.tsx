@@ -119,6 +119,7 @@ function AppContent() {
 
   // View state for navigating between tree and chat
   const [chatState, setChatState] = useState<ChatState | null>(null)
+  const [chatVisible, setChatVisible] = useState(false)
   
   // Canvas note popups
   const [canvasNotes, setCanvasNotes] = useState<CanvasNote[]>([])
@@ -136,7 +137,7 @@ function AppContent() {
   const [closeAllTrigger, setCloseAllTrigger] = useState(0)
 
   // Determine current view
-  const currentView: AppView = !rootNode ? 'welcome' : chatState ? 'chat' : 'tree'
+  const currentView: AppView = !rootNode ? 'welcome' : chatVisible ? 'chat' : 'tree'
   
   // Extract concepts for root node when it changes
   useEffect(() => {
@@ -198,14 +199,19 @@ function AppContent() {
    * Handles "lock in" on a question to open the chat view.
    */
   const handleLockIn = useCallback((nodeId: string, question: string) => {
-    setChatState({ nodeId, question })
-  }, [])
+    // If this is a different question than the current chat, reset chat state
+    if (chatState?.nodeId !== nodeId) {
+      setChatState({ nodeId, question })
+    }
+    setChatVisible(true)
+  }, [chatState?.nodeId])
 
   /**
    * Returns from chat view to tree view.
+   * Keeps chatState so we can return to the same conversation.
    */
   const handleBackToTree = useCallback(() => {
-    setChatState(null)
+    setChatVisible(false)
   }, [])
 
   /**
@@ -548,7 +554,10 @@ function AppContent() {
          * Kept mounted (but hidden) to preserve popup state when switching views.
          * ============================================ */}
         {chatState && (
-          <div style={{ display: currentView === 'chat' ? 'block' : 'none' }}>
+          <div 
+            key={chatState.nodeId}
+            style={{ display: currentView === 'chat' ? 'block' : 'none' }}
+          >
             <ChatView
               question={chatState.question}
               onBack={handleBackToTree}

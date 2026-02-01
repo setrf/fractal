@@ -28,11 +28,24 @@ import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
 import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 import type { StashItem as StashItemData } from './types/stash'
+import type { PopupPosition } from './components/ConceptPopup'
+import { DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT, findNonOverlappingPosition } from './components/ConceptPopup'
 
 /**
  * View type for the application.
  */
 type AppView = 'welcome' | 'tree' | 'chat'
+
+/**
+ * State for an open concept popup.
+ */
+interface OpenPopup {
+  concept: ExtractedConcept
+  position: PopupPosition
+  isMinimized: boolean
+  /** Source view where the popup was opened */
+  sourceView: 'tree' | 'chat'
+}
 
 /**
  * State for the chat view.
@@ -128,9 +141,13 @@ function AppContent() {
   // Reopened explanation popups from stash
   const [reopenedExplanations, setReopenedExplanations] = useState<ReopenedExplanation[]>([])
   
+  // Global concept popups (from ChatView and QuestionTree)
+  const [globalPopups, setGlobalPopups] = useState<OpenPopup[]>([])
+  
   // Track which notes are minimized for stacking
   const minimizedNoteIds = canvasNotes.filter(n => n.isMinimized).map(n => n.id)
   const minimizedExplanationIds = reopenedExplanations.filter(e => e.isMinimized).map(e => e.id)
+  const minimizedGlobalPopupIds = globalPopups.filter(p => p.isMinimized).map(p => p.concept.id)
   
   // Trigger counters for minimize all / close all (propagated to child components)
   const [minimizeAllTrigger, setMinimizeAllTrigger] = useState(0)
@@ -276,7 +293,105 @@ function AppContent() {
     resetExplanation()
     setCanvasNotes([])
     setReopenedExplanations([])
+    setGlobalPopups([])
   }, [reset, resetExplanation])
+
+  /**
+   * Opens a global popup for a concept.
+   * Used by ChatView and QuestionTree to open popups that persist across views.
+   */
+  const handleOpenPopup = useCallback((concept: ExtractedConcept, position: { x: number; y: number }) => {
+    // Check if this concept already has an open popup
+    const existingPopup = globalPopups.find(p => 
+      p.concept.id === concept.id || p.concept.normalizedName === concept.normalizedName
+    )
+    if (existingPopup) return
+    
+    // Find non-overlapping position
+    const existingPositions = globalPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const newPosition = findNonOverlappingPosition(position.x, position.y, existingPositions)
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept,
+      position: newPosition,
+      isMinimized: false,
+      sourceView: chatVisible ? 'chat' : 'tree',
+    }
+    setGlobalPopups(prev => [...prev, newPopup])
+  }, [globalPopups, chatVisible])
+
+  /**
+   * Closes a global popup by concept ID.
+   */
+  const handleClosePopup = useCallback((conceptId: string) => {
+    setGlobalPopups(prev => prev.filter(p => p.concept.id !== conceptId))
+  }, [])
+
+  /**
+   * Handles minimize state change for a global popup.
+   */
+  const handlePopupMinimizeChange = useCallback((conceptId: string, isMinimized: boolean) => {
+    setGlobalPopups(prev => prev.map(p =>
+      p.concept.id === conceptId ? { ...p, isMinimized } : p
+    ))
+  }, [])
+
+  /**
+   * Opens a popup for a related concept.
+   */
+  const handleRelatedConceptClick = useCallback((conceptName: string) => {
+    // Check if this concept already has an open popup
+    const existingPopup = globalPopups.find(p => 
+      p.concept.normalizedName === conceptName.toLowerCase()
+    )
+    if (existingPopup) return
+    
+    // Create a synthetic concept for the related item
+    const syntheticConcept: ExtractedConcept = {
+      id: `related_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      text: conceptName,
+      normalizedName: conceptName.toLowerCase(),
+      category: 'abstract',
+      startIndex: -1,
+      endIndex: -1,
+    }
+    
+    // Find non-overlapping position near center
+    const existingPositions = globalPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const position = findNonOverlappingPosition(
+      window.innerWidth / 2 - DEFAULT_POPUP_WIDTH / 2,
+      window.innerHeight / 3,
+      existingPositions
+    )
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept: syntheticConcept,
+      position,
+      isMinimized: false,
+      sourceView: chatVisible ? 'chat' : 'tree',
+    }
+    setGlobalPopups(prev => [...prev, newPopup])
+    
+    // Trigger explanation fetch
+    const questionContext = chatState?.question || rootNode?.text || ''
+    if (questionContext) {
+      fetchExplanation(syntheticConcept.id, syntheticConcept.normalizedName, questionContext)
+    }
+  }, [globalPopups, chatVisible, chatState, rootNode, fetchExplanation])
 
   /**
    * Creates a new note popup in a centered position.
@@ -426,25 +541,29 @@ function AppContent() {
   }, [])
 
   /**
-   * Minimizes all open popups (canvas notes, explanations, and child component popups).
+   * Minimizes all open popups (canvas notes, explanations, global popups, and child component popups).
    */
   const handleMinimizeAll = useCallback(() => {
     // Minimize all canvas notes
     setCanvasNotes(prev => prev.map(note => ({ ...note, isMinimized: true })))
     // Minimize all reopened explanations
     setReopenedExplanations(prev => prev.map(exp => ({ ...exp, isMinimized: true })))
+    // Minimize all global popups
+    setGlobalPopups(prev => prev.map(p => ({ ...p, isMinimized: true })))
     // Trigger child components to minimize their popups
     setMinimizeAllTrigger(prev => prev + 1)
   }, [])
 
   /**
-   * Closes all open popups (canvas notes, explanations, and child component popups).
+   * Closes all open popups (canvas notes, explanations, global popups, and child component popups).
    */
   const handleCloseAll = useCallback(() => {
     // Close all canvas notes
     setCanvasNotes([])
     // Close all reopened explanations
     setReopenedExplanations([])
+    // Close all global popups
+    setGlobalPopups([])
     // Trigger child components to close their popups
     setCloseAllTrigger(prev => prev + 1)
   }, [])
@@ -519,7 +638,7 @@ function AppContent() {
             title="Minimize all popups"
             aria-label="Minimize all popups"
           >
-            ⌄ Min All
+            ⌄ Minimize All
           </button>
           <button
             onClick={handleCloseAll}
@@ -573,6 +692,7 @@ function AppContent() {
               extractConcepts={extractConcepts}
               minimizeAllTrigger={minimizeAllTrigger}
               closeAllTrigger={closeAllTrigger}
+              onOpenPopup={handleOpenPopup}
             />
           </div>
         )}
@@ -703,6 +823,7 @@ function AppContent() {
                   onRemoveConcept={handleRemoveConcept}
                   minimizeAllTrigger={minimizeAllTrigger}
                   closeAllTrigger={closeAllTrigger}
+                  onOpenPopup={handleOpenPopup}
                 />
 
                 {/* AI loading indicator */}
@@ -779,6 +900,33 @@ function AppContent() {
             minimizedStackIndex={minimizedExplanationIds.indexOf(item.id)}
           />
         ))}
+
+        {/* Global concept popups - persist across all views */}
+        {globalPopups.map((popup) => {
+          const explanation = allExplanations[popup.concept.id]
+          const loadingState = explanationLoadingStates[popup.concept.id]
+          const popupIsLoading = loadingState?.isLoading ?? false
+          const popupError = loadingState?.error ?? null
+          
+          // Calculate stack index for minimized popups
+          const minimizedStackIndex = minimizedGlobalPopupIds.indexOf(popup.concept.id)
+          
+          return (
+            <ConceptPopup
+              key={popup.concept.id}
+              concept={popup.concept}
+              explanation={explanation}
+              isLoading={popupIsLoading}
+              error={popupError}
+              position={popup.position}
+              onClose={() => handleClosePopup(popup.concept.id)}
+              onRelatedConceptClick={handleRelatedConceptClick}
+              onMinimizeChange={handlePopupMinimizeChange}
+              minimizedStackIndex={minimizedStackIndex >= 0 ? minimizedStackIndex : undefined}
+              externalIsMinimized={popup.isMinimized}
+            />
+          )
+        })}
       </div>
     </div>
   )

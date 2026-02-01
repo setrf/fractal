@@ -213,6 +213,9 @@ export interface ConceptPopupProps {
   
   /** Stack index when minimized (0 = bottom, 1 = above, etc.) */
   minimizedStackIndex?: number
+  
+  /** External control of minimize state (for global popup management) */
+  externalIsMinimized?: boolean
 }
 
 /**
@@ -248,6 +251,7 @@ export function ConceptPopup({
   onRelatedConceptClick,
   onMinimizeChange,
   minimizedStackIndex = 0,
+  externalIsMinimized,
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -260,10 +264,17 @@ export function ConceptPopup({
   const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_POPUP_WIDTH, height: DEFAULT_POPUP_HEIGHT })
   
   // Minimize state - stores previous height and position when minimized
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(externalIsMinimized ?? false)
   const [preMinimizeHeight, setPreMinimizeHeight] = useState(DEFAULT_POPUP_HEIGHT)
   const [preMinimizePosition, setPreMinimizePosition] = useState<PopupPosition | null>(null)
   const [preMinimizeWidth, setPreMinimizeWidth] = useState(DEFAULT_POPUP_WIDTH)
+  
+  // Sync with external minimize state when it changes
+  useEffect(() => {
+    if (externalIsMinimized !== undefined && externalIsMinimized !== isMinimized) {
+      setIsMinimized(externalIsMinimized)
+    }
+  }, [externalIsMinimized]) // Only depend on externalIsMinimized, not isMinimized to avoid loops
   
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
@@ -285,9 +296,23 @@ export function ConceptPopup({
   const combinedText = explanation ? `${explanation.summary}\n\n${explanation.context}` : ''
   const summaryLength = explanation?.summary.length || 0
 
-  // Initial position adjustment to stay within viewport
+  // Track if initial position has been set to avoid resetting on resize
+  const initialPositionSet = useRef(false)
+  const lastConceptId = useRef<string | null>(null)
+  
+  // Initial position adjustment to stay within viewport (only runs once per concept)
   useEffect(() => {
     if (!popupRef.current || !concept) return
+    
+    // Reset flag if concept changed (new popup for different concept)
+    if (lastConceptId.current !== concept.id) {
+      initialPositionSet.current = false
+      lastConceptId.current = concept.id
+    }
+    
+    // Only adjust position on initial mount, not on subsequent size changes
+    if (initialPositionSet.current) return
+    initialPositionSet.current = true
 
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
@@ -296,23 +321,23 @@ export function ConceptPopup({
     let newY = position.y
 
     // Horizontal adjustment
-    if (position.x + popupSize.width > viewportWidth - 20) {
-      newX = viewportWidth - popupSize.width - 20
+    if (position.x + DEFAULT_POPUP_WIDTH > viewportWidth - 20) {
+      newX = viewportWidth - DEFAULT_POPUP_WIDTH - 20
     }
     if (newX < 20) {
       newX = 20
     }
 
     // Vertical adjustment
-    if (position.y + popupSize.height > viewportHeight - 20) {
-      newY = position.y - popupSize.height - 10
+    if (position.y + DEFAULT_POPUP_HEIGHT > viewportHeight - 20) {
+      newY = position.y - DEFAULT_POPUP_HEIGHT - 10
     }
     if (newY < 20) {
       newY = 20
     }
 
     setPopupPosition({ x: newX, y: newY })
-  }, [position, concept, popupSize.width, popupSize.height])
+  }, [position, concept])
 
   // Handle Escape key to close
   useEffect(() => {

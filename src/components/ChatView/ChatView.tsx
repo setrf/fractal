@@ -65,6 +65,10 @@ interface ChatViewProps {
   minimizeAllTrigger?: number
   /** Trigger to close all popups (incremented each time close all is clicked) */
   closeAllTrigger?: number
+  
+  // Global popup management (lifted to App level for persistence)
+  /** Callback to open a popup at a given position (managed globally) */
+  onOpenPopup?: (concept: ExtractedConcept, position: { x: number; y: number }) => void
 }
 
 /**
@@ -105,6 +109,8 @@ export function ChatView({
   // Popup control triggers
   minimizeAllTrigger = 0,
   closeAllTrigger = 0,
+  // Global popup management
+  onOpenPopup,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -503,6 +509,14 @@ export function ChatView({
    * Positions new popups to avoid overlapping with existing ones.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
+    // If global popup management is enabled, delegate to App
+    if (onOpenPopup) {
+      onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
+      onConceptHover?.(concept)
+      return
+    }
+    
+    // Fallback to local popup management
     // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
     const existingPopup = openPopups.find(p => 
       p.concept.id === concept.id || p.concept.normalizedName === concept.normalizedName
@@ -531,7 +545,7 @@ export function ChatView({
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptHover?.(concept)
-  }, [openPopups, onConceptHover])
+  }, [openPopups, onConceptHover, onOpenPopup])
 
   /**
    * Handles concept hover end - no-op since popups are persistent.
@@ -550,6 +564,14 @@ export function ChatView({
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
     
+    // If global popup management is enabled, delegate to App
+    if (onOpenPopup) {
+      onOpenPopup(concept, { x: event.clientX + 10, y: event.clientY + 10 })
+      onConceptClick?.(concept)
+      return
+    }
+    
+    // Fallback to local popup management
     // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
     const existingPopup = openPopups.find(p => 
       p.concept.id === concept.id || p.concept.normalizedName === concept.normalizedName
@@ -578,7 +600,7 @@ export function ChatView({
     }
     setOpenPopups(prev => [...prev, newPopup])
     onConceptClick?.(concept)
-  }, [openPopups, onConceptClick])
+  }, [openPopups, onConceptClick, onOpenPopup])
 
   /**
    * Handles popup close for a specific concept.
@@ -679,7 +701,8 @@ export function ChatView({
       </header>
 
       {/* Concept explanation popups - multiple can be open */}
-      {openPopups.map((popup, _index) => {
+      {/* Only render locally if global popup management is NOT enabled */}
+      {!onOpenPopup && openPopups.map((popup, _index) => {
         // Get explanation for this specific popup from the maps, or fall back to legacy props
         const explanation = conceptExplanations[popup.concept.id] 
           || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)

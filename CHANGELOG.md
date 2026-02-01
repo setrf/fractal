@@ -27,6 +27,7 @@ Extends the concept highlighting functionality to chat messages, allowing users 
 - **Concept index validation** - Misaligned indices from LLM are now auto-corrected
 - **Extraction timing** - Added 500ms debounce to ensure message content is stable before extraction
 - **Text selection** - Moved draggable attribute to header only, enabling text selection in message content
+- **Popup resize position bug** - Resizing a popup no longer resets it to its initial position; popups now stay in place during resize operations
 
 ### Planned
 - Keyboard navigation enhancements

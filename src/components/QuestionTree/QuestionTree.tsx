@@ -70,6 +70,10 @@ interface QuestionTreeProps {
   minimizeAllTrigger?: number
   /** Trigger to close all popups */
   closeAllTrigger?: number
+  
+  // Global popup management (lifted to App level for persistence)
+  /** Callback to open a popup at a given position (managed globally) */
+  onOpenPopup?: (concept: ExtractedConcept, position: { x: number; y: number }) => void
 }
 
 /**
@@ -126,6 +130,10 @@ interface TreeBranchProps {
   minimizeAllTrigger?: number
   /** Trigger to close all popups */
   closeAllTrigger?: number
+  
+  // Global popup management (lifted to App level for persistence)
+  /** Callback to open a popup at a given position (managed globally) */
+  onOpenPopup?: (concept: ExtractedConcept, position: { x: number; y: number }) => void
 }
 
 /**
@@ -164,6 +172,7 @@ function TreeBranch({
   onRemoveConcept,
   minimizeAllTrigger,
   closeAllTrigger,
+  onOpenPopup,
 }: TreeBranchProps) {
   const childrenRef = useRef<HTMLDivElement>(null)
   const connectorRef = useRef<HTMLDivElement>(null)
@@ -246,6 +255,7 @@ function TreeBranch({
         onRemoveConcept={onRemoveConcept}
         minimizeAllTrigger={minimizeAllTrigger}
         closeAllTrigger={closeAllTrigger}
+        onOpenPopup={onOpenPopup}
       />
 
       {/* Render children if any and expanded */}
@@ -281,6 +291,7 @@ function TreeBranch({
               onRemoveConcept={onRemoveConcept}
               minimizeAllTrigger={minimizeAllTrigger}
               closeAllTrigger={closeAllTrigger}
+              onOpenPopup={onOpenPopup}
             />
           ))}
         </div>
@@ -326,6 +337,7 @@ export function QuestionTree({
   onRemoveConcept,
   minimizeAllTrigger,
   closeAllTrigger,
+  onOpenPopup,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -362,6 +374,7 @@ export function QuestionTree({
         onRemoveConcept={onRemoveConcept}
         minimizeAllTrigger={minimizeAllTrigger}
         closeAllTrigger={closeAllTrigger}
+        onOpenPopup={onOpenPopup}
       />
     </div>
   )

@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
+import { MarkdownWithHighlights } from '../MarkdownWithHighlights'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
 import { StashButton } from '../StashButton'
 import { useStashContext } from '../../context/StashContext'
@@ -866,22 +867,16 @@ export function ChatView({
                   ref={(el) => { messageRefs.current[index] = el }}
                   onMouseUp={() => handleTextSelection(index)}
                 >
-                  {msgConcepts.length > 0 ? (
-                    <ConceptHighlighter
-                      text={msg.content}
-                      concepts={msgConcepts}
-                      onConceptHover={handleConceptHover}
-                      onConceptLeave={handleConceptLeave}
-                      onConceptClick={handleConceptClick}
-                      onConceptRemove={(conceptId) => handleRemoveConcept(index, conceptId)}
-                    />
-                  ) : (
-                    <div className={styles.markdown}>
-                      <ReactMarkdown>
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
-                  )}
+                  {/* Always render markdown, with or without highlights */}
+                  <MarkdownWithHighlights
+                    content={msg.content}
+                    concepts={msgConcepts}
+                    onConceptHover={handleConceptHover}
+                    onConceptLeave={handleConceptLeave}
+                    onConceptClick={handleConceptClick}
+                    onConceptRemove={(conceptId) => handleRemoveConcept(index, conceptId)}
+                    className={styles.markdown}
+                  />
                 </div>
               </div>
             )

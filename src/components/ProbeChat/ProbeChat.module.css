@@ -1,0 +1,303 @@
+/**
+ * Styles for the ProbeChat component.
+ * Chat interface within the Probe sidebar.
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Selected items context area */
+.contextArea {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-width) solid var(--border-primary);
+  background: var(--bg-tertiary);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.contextHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.contextTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  margin: 0;
+}
+
+.contextCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.synthesizeButton {
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.synthesizeButton:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+/* Selected items list */
+.selectedItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.selectedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  max-width: 150px;
+}
+
+.selectedItemText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedItemRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.selectedItemRemove:hover {
+  color: var(--accent-error);
+}
+
+.noItems {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Messages area */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.messageRole {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.messageContent {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message.user .messageContent {
+  background: var(--bg-tertiary);
+}
+
+.message.assistant .messageContent {
+  background: var(--bg-primary);
+}
+
+/* Loading indicator */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+}
+
+.loadingDots {
+  display: flex;
+  gap: 4px;
+}
+
+.loadingDot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-tertiary);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.loadingDot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loadingDot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loadingDot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Empty state */
+.emptyMessages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.emptyText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* Input area */
+.inputArea {
+  padding: var(--space-3);
+  border-top: var(--border-width) solid var(--border-primary);
+  background: var(--bg-primary);
+}
+
+.inputWrapper {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.input {
+  flex: 1;
+  min-height: 60px;
+  max-height: 150px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-primary);
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.sendButton {
+  align-self: flex-end;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--text-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sendButton:hover:not(:disabled) {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+.messages::-webkit-scrollbar,
+.contextArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages::-webkit-scrollbar-track,
+.contextArea::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.messages::-webkit-scrollbar-thumb,
+.contextArea::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+}
+
+.messages::-webkit-scrollbar-thumb:hover,
+.contextArea::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}

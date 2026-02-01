@@ -242,9 +242,12 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   )
 
   // Item reorder handlers for INTERNAL reordering and removal
+  // Also supports dragging to Probe sidebar
   const handleItemDragStart = useCallback((e: React.DragEvent, index: number, itemId: string) => {
     // Set a custom type to identify internal reorder drags
     e.dataTransfer.setData('text/x-stash-reorder', String(index))
+    // Also set the stash item ID for probe sidebar drops
+    e.dataTransfer.setData('text/x-stash-item', itemId)
     e.dataTransfer.effectAllowed = 'move'
     setDraggedIndex(index)
     setDraggedItemId(itemId)

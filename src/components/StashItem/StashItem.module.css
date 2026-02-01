@@ -206,3 +206,92 @@
 .note .typeIcon {
   color: var(--concept-abstract-text);
 }
+
+/* ============================================
+ * Probe selection styles
+ * ============================================ */
+
+/* Checkbox for probe selection */
+.checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 2;
+}
+
+.checkbox:hover {
+  border-color: var(--border-strong);
+}
+
+.checkbox.checked {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.checkmark {
+  font-size: 10px;
+  color: var(--bg-primary);
+  line-height: 1;
+}
+
+/* Probe badges container */
+.probeBadges {
+  position: absolute;
+  top: 6px;
+  right: 28px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+}
+
+/* Individual probe badge (color dot) */
+.probeBadge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--bg-primary);
+}
+
+.probeBadge.blue {
+  background: var(--chart-1);
+}
+
+.probeBadge.green {
+  background: var(--chart-2);
+}
+
+.probeBadge.yellow {
+  background: var(--chart-3);
+}
+
+.probeBadge.purple {
+  background: var(--chart-4);
+}
+
+.probeBadge.orange {
+  background: var(--chart-5);
+}
+
+/* When item is selected for a probe, show accent border */
+.hasProbeSelection {
+  border-left-width: 4px;
+}
+
+/* Multi-color left border effect using gradient */
+.item.hasProbes {
+  border-left-color: transparent;
+}
+
+/* Adjust padding when checkbox is visible */
+.item.hasCheckbox {
+  padding-left: calc(var(--space-3) + 24px);
+}

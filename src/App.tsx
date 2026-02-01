@@ -18,10 +18,12 @@ import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
 import { StashSidebar } from './components/StashSidebar'
+import { ProbeSidebar } from './components/ProbeSidebar'
 import { NotePopup } from './components/NotePopup'
 import { ConceptPopup } from './components/ConceptPopup'
 import type { ConceptExplanation } from './types/concept'
 import { StashProvider, useStashContext } from './context/StashContext'
+import { ProbeProvider, useProbeContext } from './context/ProbeContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
@@ -95,6 +97,8 @@ interface ReopenedExplanation {
 function AppContent() {
   // Get stash state for sidebar layout
   const { isOpen: stashOpen, sidebarWidth } = useStashContext()
+  // Get probe state for sidebar layout
+  const { isOpen: probeOpen, sidebarWidth: probeSidebarWidth } = useProbeContext()
   // Initialize the question tree state and operations
   const {
     tree,
@@ -568,9 +572,16 @@ function AppContent() {
     setCloseAllTrigger(prev => prev + 1)
   }, [])
 
+  // Build layout classes for both sidebars
+  const layoutClasses = [
+    'app-layout',
+    stashOpen ? 'stash-open' : 'stash-collapsed',
+    probeOpen ? 'probe-open' : 'probe-collapsed',
+  ].join(' ')
+
   return (
-    <div className={`app-layout ${stashOpen ? 'stash-open' : 'stash-collapsed'}`}>
-      {/* Stash sidebar - always available */}
+    <div className={layoutClasses}>
+      {/* Stash sidebar - always available (left side) */}
       <StashSidebar onItemClick={handleStashItemClick} />
       
       {/* Main content area */}
@@ -928,18 +939,23 @@ function AppContent() {
           )
         })}
       </div>
+      
+      {/* Probe sidebar - always available (right side) */}
+      <ProbeSidebar />
     </div>
   )
 }
 
 /**
  * Root application component.
- * Wraps AppContent with the StashProvider for global stash access.
+ * Wraps AppContent with StashProvider and ProbeProvider for global access.
  */
 function App() {
   return (
     <StashProvider>
-      <AppContent />
+      <ProbeProvider>
+        <AppContent />
+      </ProbeProvider>
     </StashProvider>
   )
 }

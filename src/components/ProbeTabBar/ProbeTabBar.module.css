@@ -1,0 +1,170 @@
+/**
+ * Styles for the ProbeTabBar component.
+ * Horizontal tabs with color indicators for each probe.
+ */
+
+.tabBar {
+  display: flex;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-width) solid var(--border-primary);
+  overflow-x: auto;
+  background: var(--bg-tertiary);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-secondary);
+  border: var(--border-width) solid transparent;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tab:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+/* Color indicator dot */
+.colorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.colorDot.blue {
+  background: var(--chart-1);
+}
+
+.colorDot.green {
+  background: var(--chart-2);
+}
+
+.colorDot.yellow {
+  background: var(--chart-3);
+}
+
+.colorDot.purple {
+  background: var(--chart-4);
+}
+
+.colorDot.orange {
+  background: var(--chart-5);
+}
+
+/* Tab name */
+.tabName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* Delete button on tab */
+.tabDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-1);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-fast);
+}
+
+.tab:hover .tabDelete,
+.tab.active .tabDelete {
+  opacity: 1;
+}
+
+.tabDelete:hover {
+  color: var(--accent-error);
+}
+
+/* Rename input */
+.renameInput {
+  width: 80px;
+  padding: 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-focus);
+  outline: none;
+}
+
+/* Context menu */
+.contextMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 100px;
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  z-index: 1000;
+  box-shadow: 4px 4px 0 var(--border-primary);
+}
+
+.contextMenuItem {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.contextMenuItem:hover {
+  background: var(--bg-tertiary);
+}
+
+.contextMenuItem.danger {
+  color: var(--accent-error);
+}
+
+.contextMenuItem.danger:hover {
+  background: var(--accent-error-bg);
+}
+
+/* Scrollbar styling */
+.tabBar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabBar::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.tabBar::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+}
+
+.tabBar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}

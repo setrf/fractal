@@ -232,6 +232,164 @@ export const chat = weave.op(
 )
 
 // ============================================
+// PROBE CHAT FUNCTIONALITY
+// ============================================
+
+/**
+ * System prompt for Probe synthesis conversations.
+ * Emphasizes weaving together collected insights.
+ */
+const PROBE_SYSTEM_PROMPT = `You are an intellectual companion helping synthesize collected insights from an exploration journey.
+
+The user has gathered highlights, explanations, questions, and notes during their inquiry through the Fractal app. Your role is to:
+
+1. Help weave these fragments into coherent understanding
+2. Identify patterns and connections across the collected items
+3. Offer deeper insights that emerge from the combination of ideas
+4. Answer their specific questions while drawing on the context they've provided
+5. Suggest new directions for exploration based on the synthesis
+
+Be thoughtful and substantive. The user has already done significant exploration - help them take it further.`
+
+/**
+ * Stash item type for probe context.
+ */
+export interface ProbeStashItem {
+  id: string
+  type: 'highlight' | 'explanation' | 'question' | 'chat-message' | 'note'
+  content: string
+  metadata: {
+    summary?: string
+    context?: string
+    sourceQuestion?: string
+    title?: string
+    role?: string
+  }
+}
+
+/**
+ * Build context string from stash items.
+ */
+function buildProbeContext(stashItems: ProbeStashItem[]): string {
+  if (stashItems.length === 0) return ''
+
+  const sections: string[] = ['## Context from your exploration:\n']
+
+  const highlights = stashItems.filter(i => i.type === 'highlight')
+  const explanations = stashItems.filter(i => i.type === 'explanation')
+  const questions = stashItems.filter(i => i.type === 'question')
+  const notes = stashItems.filter(i => i.type === 'note')
+  const chatMessages = stashItems.filter(i => i.type === 'chat-message')
+
+  if (highlights.length > 0) {
+    sections.push('### Key Concepts')
+    highlights.forEach(item => {
+      const source = item.metadata.sourceQuestion
+        ? ` (from: "${item.metadata.sourceQuestion}")`
+        : ''
+      sections.push(`- **${item.content}**${source}`)
+    })
+    sections.push('')
+  }
+
+  if (explanations.length > 0) {
+    sections.push('### Explanations')
+    explanations.forEach(item => {
+      const summary = item.metadata.summary || item.content
+      sections.push(`- **${item.content}**: ${summary}`)
+    })
+    sections.push('')
+  }
+
+  if (questions.length > 0) {
+    sections.push('### Questions Explored')
+    questions.forEach(item => {
+      sections.push(`- ${item.content}`)
+    })
+    sections.push('')
+  }
+
+  if (notes.length > 0) {
+    sections.push('### Notes')
+    notes.forEach(item => {
+      const title = item.metadata.title ? `**${item.metadata.title}**: ` : ''
+      sections.push(`- ${title}${item.content}`)
+    })
+    sections.push('')
+  }
+
+  if (chatMessages.length > 0) {
+    sections.push('### Relevant Excerpts')
+    chatMessages.forEach(item => {
+      const role = item.metadata.role === 'assistant' ? 'AI' : 'You'
+      const truncated = item.content.length > 200 
+        ? item.content.slice(0, 200) + '...'
+        : item.content
+      sections.push(`- [${role}]: "${truncated}"`)
+    })
+    sections.push('')
+  }
+
+  return sections.join('\n')
+}
+
+/**
+ * Send a probe chat message with stash items as context.
+ * 
+ * @param messages - Conversation history
+ * @param stashItems - Selected stash items for context
+ * @param model - LLM model to use
+ */
+export const probeChat = weave.op(
+  async function probeChat(
+    messages: ChatMessage[],
+    stashItems: ProbeStashItem[],
+    model: string = config.defaultModel
+  ): Promise<ChatResponse> {
+    console.log(`[ProbeChat] Processing message with ${stashItems.length} stash items`)
+    console.log(`[ProbeChat] Conversation length: ${messages.length} messages`)
+    console.log(`[ProbeChat] Using model: ${model}`)
+
+    // Build context from stash items
+    const stashContext = buildProbeContext(stashItems)
+
+    // Build the full message array with system context
+    const systemContent = stashContext
+      ? `${PROBE_SYSTEM_PROMPT}\n\n${stashContext}`
+      : PROBE_SYSTEM_PROMPT
+
+    const fullMessages: ChatMessage[] = [
+      { role: 'system', content: systemContent },
+      ...messages,
+    ]
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: fullMessages,
+      temperature: 0.7,
+      max_tokens: 1500, // Slightly higher for synthesis
+    })
+
+    const content = response.choices[0]?.message?.content || ''
+
+    const result: ChatResponse = {
+      message: content,
+      model,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
+      },
+    }
+
+    console.log(`[ProbeChat] Response length: ${content.length} chars`)
+    console.log(`[ProbeChat] Token usage: ${result.usage.totalTokens}`)
+
+    return result
+  }
+)
+
+// ============================================
 // CONCEPT EXTRACTION FUNCTIONALITY
 // ============================================
 

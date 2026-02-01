@@ -17,11 +17,13 @@ import { Router, Request, Response } from 'express'
 import {
   generateRelatedQuestions,
   chat,
+  probeChat,
   listModels,
   checkInferenceHealth,
   extractConcepts,
   explainConcept,
   type ChatMessage,
+  type ProbeStashItem,
 } from './inference.js'
 
 export const router = Router()
@@ -147,6 +149,72 @@ router.post('/api/chat', async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('[API] Error in chat:', error)
+    
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Probe chat endpoint for synthesis conversations.
+ * 
+ * Request body:
+ * - messages: ChatMessage[] (required) - Conversation history
+ * - stashItems: ProbeStashItem[] (required) - Selected stash items for context
+ * - model: string (optional) - Model to use
+ * 
+ * Response:
+ * - message: string - AI response
+ * - model: string - Model used
+ * - usage: object - Token usage statistics
+ */
+router.post('/api/probe/chat', async (req: Request, res: Response) => {
+  try {
+    const { messages, stashItems, model } = req.body
+
+    if (!messages || !Array.isArray(messages)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'messages is required and must be an array',
+      })
+      return
+    }
+
+    if (!stashItems || !Array.isArray(stashItems)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'stashItems is required and must be an array',
+      })
+      return
+    }
+
+    // Validate message format
+    for (const msg of messages) {
+      if (!msg.role || !msg.content) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: 'Each message must have role and content',
+        })
+        return
+      }
+    }
+
+    console.log(`[API] POST /api/probe/chat - ${stashItems.length} stash items, ${messages.length} messages`)
+
+    const result = await probeChat(
+      messages as ChatMessage[],
+      stashItems as ProbeStashItem[],
+      model
+    )
+
+    res.json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    console.error('[API] Error in probe chat:', error)
     
     res.status(500).json({
       error: 'Internal Server Error',

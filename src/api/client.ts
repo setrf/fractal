@@ -262,6 +262,50 @@ export async function extractConcepts(
   return data.data.concepts
 }
 
+// ============================================
+// PROBE CHAT API
+// ============================================
+
+import type { StashItem } from '../types/stash'
+
+/**
+ * Send a probe chat message with stash items as context.
+ * 
+ * @param messages - Conversation history
+ * @param stashItems - Selected stash items for context
+ * @param model - Optional model override
+ * @returns The AI response message
+ * 
+ * @example
+ * ```ts
+ * const response = await sendProbeChatMessage(
+ *   [{ role: 'user', content: 'Synthesize these insights...' }],
+ *   selectedStashItems
+ * )
+ * ```
+ */
+export async function sendProbeChatMessage(
+  messages: ChatMessage[],
+  stashItems: StashItem[],
+  model?: string
+): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/probe/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ messages, stashItems, model }),
+  })
+
+  if (!response.ok) {
+    const error: ApiError = await response.json()
+    throw new Error(error.message || 'Failed to send probe message')
+  }
+
+  const data: ChatApiResponse = await response.json()
+  return data.data.message
+}
+
 /**
  * Get an explanation for a concept in context.
  * 

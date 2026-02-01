@@ -30,8 +30,9 @@
 }
 
 /* ============================================
- * APP LAYOUT WITH STASH SIDEBAR
+ * APP LAYOUT WITH SIDEBARS
  * Main layout structure for the application
+ * Stash on left, Probe on right
  * ============================================ */
 .app-layout {
   display: flex;
@@ -43,10 +44,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--transition-normal);
+  transition: margin-left var(--transition-normal), margin-right var(--transition-normal);
 }
 
-/* When stash sidebar is open, offset main content */
+/* When stash sidebar is open, offset main content left */
 .app-layout.stash-open .main-content {
   margin-left: var(--stash-width-expanded);
 }
@@ -54,6 +55,16 @@
 /* When stash sidebar is collapsed */
 .app-layout.stash-collapsed .main-content {
   margin-left: var(--stash-width-collapsed);
+}
+
+/* When probe sidebar is open, offset main content right */
+.app-layout.probe-open .main-content {
+  margin-right: var(--probe-width-expanded);
+}
+
+/* When probe sidebar is collapsed */
+.app-layout.probe-collapsed .main-content {
+  margin-right: var(--probe-width-collapsed);
 }
 
 /* ============================================

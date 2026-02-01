@@ -1,0 +1,208 @@
+/**
+ * MarkdownWithHighlights Styles
+ * 
+ * Combines markdown formatting with concept highlighting.
+ */
+
+.container {
+  /* Markdown content styles */
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* Markdown element styles */
+.container h1,
+.container h2,
+.container h3,
+.container h4,
+.container h5,
+.container h6 {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.container h1 { font-size: var(--text-2xl); }
+.container h2 { font-size: var(--text-xl); }
+.container h3 { font-size: var(--text-lg); }
+
+.container p {
+  margin-bottom: var(--space-3);
+}
+
+.container p:last-child {
+  margin-bottom: 0;
+}
+
+.container ul,
+.container ol {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
+}
+
+.container li {
+  margin-bottom: var(--space-1);
+}
+
+.container code {
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  padding: 0.1em 0.3em;
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+
+.container pre {
+  background: var(--bg-secondary);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: var(--space-3) 0;
+  border: 2px solid var(--border-primary);
+}
+
+.container pre code {
+  background: none;
+  padding: 0;
+}
+
+.container blockquote {
+  border-left: 3px solid var(--border-primary);
+  padding-left: var(--space-3);
+  margin: var(--space-3) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.container strong {
+  font-weight: 700;
+}
+
+.container em {
+  font-style: italic;
+}
+
+.container a {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.container a:hover {
+  text-decoration: none;
+}
+
+.container hr {
+  border: none;
+  border-top: 2px solid var(--border-primary);
+  margin: var(--space-4) 0;
+}
+
+/* Highlight styles */
+.highlight {
+  position: relative;
+  cursor: pointer;
+  padding: 0.1em 0.2em;
+  margin: 0 -0.1em;
+  border-radius: 2px;
+  transition: background-color var(--transition-fast);
+  background-color: var(--highlight-abstract);
+}
+
+.highlight:hover {
+  background-color: var(--highlight-abstract-hover);
+}
+
+/* Category-specific highlight colors - use :global for non-module class names */
+:global(.category-science) {
+  background-color: var(--highlight-science) !important;
+}
+
+:global(.category-science):hover {
+  background-color: var(--highlight-science-hover) !important;
+}
+
+:global(.category-philosophy) {
+  background-color: var(--highlight-philosophy) !important;
+}
+
+:global(.category-philosophy):hover {
+  background-color: var(--highlight-philosophy-hover) !important;
+}
+
+:global(.category-psychology) {
+  background-color: var(--highlight-psychology) !important;
+}
+
+:global(.category-psychology):hover {
+  background-color: var(--highlight-psychology-hover) !important;
+}
+
+:global(.category-technology) {
+  background-color: var(--highlight-technology) !important;
+}
+
+:global(.category-technology):hover {
+  background-color: var(--highlight-technology-hover) !important;
+}
+
+:global(.category-abstract) {
+  background-color: var(--highlight-abstract) !important;
+}
+
+:global(.category-abstract):hover {
+  background-color: var(--highlight-abstract-hover) !important;
+}
+
+/* Also style the concept-highlight class globally */
+:global(.concept-highlight) {
+  position: relative;
+  cursor: pointer;
+  padding: 0.1em 0.2em;
+  margin: 0 -0.1em;
+  border-radius: 2px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+/* White text for highlights in dark mode */
+[data-theme="dark"] :global(.concept-highlight),
+[data-theme="dark"] .highlight {
+  color: oklch(95% 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :global(.concept-highlight),
+  :root:not([data-theme="light"]) .highlight {
+    color: oklch(95% 0 0);
+  }
+}
+
+/* Remove button */
+.removeBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding: 0;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  vertical-align: super;
+  transition: all var(--transition-fast);
+}
+
+.removeBtn:hover {
+  color: var(--accent-error);
+  border-color: var(--accent-error);
+  background: var(--bg-secondary);
+}

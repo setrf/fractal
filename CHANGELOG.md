@@ -9,31 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-#### ChatView Concept Highlighting
-Extends the concept highlighting functionality to chat messages, allowing users to explore concepts within conversation context.
-
-- **Auto-extraction** - AI messages automatically have concepts extracted and highlighted
-- **Manual highlighting** - Users can select text in messages to create custom highlights
-- **Generate button** - Each message has a ✦ button to trigger AI concept extraction
-- **Remove highlights** - Individual highlights can be removed with × button
-- **Popup integration** - Clicking highlights opens concept explanation popups
-- **Markdown rendering** - Chat messages now render with full markdown formatting support
-
-### Fixed
-
-- **Theme toggle and Note button** now visible in Chat view (were previously hidden)
-- **Concept index validation** - Misaligned indices from LLM are now auto-corrected
-- **Extraction timing** - Added 500ms debounce to ensure message content is stable before extraction
-- **Text selection** - Moved draggable attribute to header only, enabling text selection in message content
-- **Popup resize position bug** - Resizing a popup no longer resets it to its initial position; popups now stay in place during resize operations
-- **First chat message highlight placement** - Fixed issue where highlights on the very first AI response would appear in wrong positions (e.g., "eloped in the" instead of "developed in the"). The fix uses a "closest occurrence" algorithm that finds ALL occurrences of a concept in the text and picks the one closest to where the LLM suggested it should be. Also increased delay for first message extraction from 500ms to 1000ms.
-
 ### Planned
+- Streaming responses for real-time feedback
 - Keyboard navigation enhancements
 - Model selection UI
 - Concept sub-trees (expand concepts into exploration branches)
+
+---
+
+## [0.6.0] - 2026-01-31
+
+### Added
+
+#### The Probe - Synthesis-Focused Conversations
+A major new feature enabling users to synthesize their collected Stash items into focused LLM conversations. Completes the Fractal journey: Seed → Branch → Collect → Synthesize.
+
+- **ProbeSidebar Component** (`src/components/ProbeSidebar/`)
+  - Collapsible right panel (400px expanded, 48px collapsed)
+  - Smooth slide animation for open/close
+  - Fixed position, symmetrical to StashSidebar
+  - Resizable width (300px-700px)
+  - Drag-and-drop zone for receiving Stash items
+
+- **ProbeTabBar Component** (`src/components/ProbeTabBar/`)
+  - Horizontal tabs with color indicators
+  - Maximum 5 probes (one per distinct color)
+  - Create new probe via "+" button
+  - Delete probe via "×" button on tab
+  - Inline rename via double-click
+  - Context menu on right-click
+
+- **ProbeChat Component** (`src/components/ProbeChat/`)
+  - Message history display with user/assistant distinction
+  - Selected Stash items shown as context pills
+  - "Synthesize" button to generate prompt from context
+  - Fully editable textarea for prompts
+  - Auto-scroll to latest messages
+  - Loading indicator during LLM calls
+
+#### Probe Features
+- **Multi-probe support** - Up to 5 concurrent probes with distinct colors (blue, green, yellow, purple, orange)
+- **Color-coded visual system** - Each probe has a unique color shown in tabs, badges, and borders
+- **Stash item selection** - Select items via checkboxes (when Probe is open) or drag-and-drop
+- **Multi-assignment** - Stash items can be assigned to multiple probes simultaneously
+- **Prompt synthesis** - Auto-generates structured prompts from selected context
+- **Editable prompts** - Users can modify synthesized prompts before sending
+- **Persistent conversations** - Probe conversations stored in localStorage
+- **Dedicated system prompt** - LLM optimized for synthesis and insight-weaving
+
+#### Stash Integration
+- **Checkbox selection** - Stash items show checkboxes when Probe sidebar is open
+- **Color-coded badges** - Small colored dots on Stash items indicate probe assignments
+- **Drag-to-Probe** - Drag Stash items directly onto Probe sidebar
+- **Overlay feedback** - "Add to [Probe Name]" overlay during drag
+
+#### Backend Enhancements
+- **POST /api/probe/chat** - New endpoint for probe conversations
+- **PROBE_SYSTEM_PROMPT** - Synthesis-focused system prompt for insight weaving
+- **Context builder** - Structures Stash items into coherent prompt sections
+
+#### State Management
+- **useProbe Hook** (`src/hooks/useProbe.ts`)
+  - Probe CRUD operations (create, delete, rename)
+  - Message management (add, update, clear)
+  - Stash item selection (add, remove, toggle)
+  - Prompt synthesis logic
+  - localStorage persistence with debouncing
+
+- **ProbeContext** (`src/context/ProbeContext.tsx`)
+  - Global probe state access
+  - Provider pattern for dependency injection
+
+#### Type Definitions
+- **Probe** - Core probe interface with id, name, color, messages, selectedStashItemIds
+- **ProbeMessage** - Message type with id, role, content, timestamp, sourceStashItemIds
+- **ProbeColor** - Union type for the 5 available colors
+- Utility functions for ID generation, validation, color management
+
+#### Layout Updates
+- **Symmetrical design** - Stash (left) and Probe (right) sidebars
+- **CSS variables** - `--probe-width-expanded`, `--probe-width-collapsed`
+- **Layout classes** - `probe-open`, `probe-collapsed` for margin adjustments
+- **Dual sidebar support** - Main content adjusts for both sidebars
+
+### Fixed
+
+- **Theme toggle and Note button** now visible in Chat view
+- **Concept index validation** - Misaligned indices from LLM auto-corrected
+- **Popup resize position bug** - Popups stay in place during resize
+- **First chat message highlight placement** - Uses "closest occurrence" algorithm
+- **Markdown with highlights** - New component preserves markdown while placing highlights
 
 ---
 

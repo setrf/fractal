@@ -7,12 +7,16 @@
  * - Metadata (timestamp, source context)
  * - Delete button
  * - Drag handle for reordering
+ * - Probe selection checkbox (when probe sidebar is open)
+ * - Probe assignment badges
  */
 
 import { useState, useCallback, type MouseEvent } from 'react'
 import styles from './StashItem.module.css'
 import type { StashItem as StashItemType, StashItemType as ItemType } from '../../types/stash'
 import { stashTypeIcons, stashTypeLabels } from '../../types/stash'
+import { useProbeContext } from '../../context/ProbeContext'
+import type { ProbeColor } from '../../types/probe'
 
 /**
  * Props for the StashItem component.
@@ -83,6 +87,9 @@ const truncate = (text: string, maxLength: number = 120): string => {
  *
  * Shows a preview of the stashed content with type indicator,
  * timestamp, and delete functionality.
+ * 
+ * When the Probe sidebar is open, shows a checkbox for selecting
+ * items to include in the active probe's context.
  *
  * @example
  * ```tsx
@@ -100,11 +107,34 @@ export function StashItem({
   onDragStart,
 }: StashItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  
+  // Probe context for selection functionality
+  const {
+    isOpen: isProbeOpen,
+    activeProbeId,
+    toggleStashItemForProbe,
+    isStashItemSelectedForProbe,
+    getProbesForStashItem,
+  } = useProbeContext()
+  
+  // Get probes that have this item selected
+  const assignedProbes = getProbesForStashItem(item.id)
+  const isSelectedForActiveProbe = activeProbeId 
+    ? isStashItemSelectedForProbe(activeProbeId, item.id) 
+    : false
 
   const handleClick = useCallback(() => {
     setIsExpanded(prev => !prev)
     onClick?.(item)
   }, [item, onClick])
+  
+  // Handle checkbox click for probe selection
+  const handleCheckboxClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (activeProbeId) {
+      toggleStashItemForProbe(activeProbeId, item.id)
+    }
+  }, [activeProbeId, item.id, toggleStashItemForProbe])
 
   const handleDelete = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -166,10 +196,13 @@ export function StashItem({
   const displayContent = getDisplayContent()
   const secondaryInfo = getSecondaryInfo()
   const typeClass = getTypeClass(item.type)
+  
+  // Show checkbox when probe sidebar is open
+  const showCheckbox = isProbeOpen && activeProbeId
 
   return (
     <div
-      className={`${styles.item} ${typeClass} ${isExpanded ? styles.expanded : ''}`}
+      className={`${styles.item} ${typeClass} ${isExpanded ? styles.expanded : ''} ${showCheckbox ? styles.hasCheckbox : ''} ${assignedProbes.length > 0 ? styles.hasProbes : ''}`}
       onClick={handleClick}
       draggable={draggable}
       onDragStart={handleDragStart}
@@ -182,6 +215,31 @@ export function StashItem({
         }
       }}
     >
+      {/* Checkbox for probe selection */}
+      {showCheckbox && (
+        <button
+          className={`${styles.checkbox} ${isSelectedForActiveProbe ? styles.checked : ''}`}
+          onClick={handleCheckboxClick}
+          aria-label={isSelectedForActiveProbe ? 'Remove from probe' : 'Add to probe'}
+          title={isSelectedForActiveProbe ? 'Remove from probe context' : 'Add to probe context'}
+        >
+          {isSelectedForActiveProbe && <span className={styles.checkmark}>✓</span>}
+        </button>
+      )}
+      
+      {/* Probe assignment badges */}
+      {assignedProbes.length > 0 && (
+        <div className={styles.probeBadges}>
+          {assignedProbes.map(probe => (
+            <span
+              key={probe.id}
+              className={`${styles.probeBadge} ${styles[probe.color]}`}
+              title={probe.name}
+            />
+          ))}
+        </div>
+      )}
+      
       {/* Delete button - upper right corner */}
       <button
         className={styles.deleteButton}

@@ -16,9 +16,12 @@
     "test:ci": "vitest run --reporter=verbose --coverage"
   },
   "dependencies": {
+    "@types/hast": "^3.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

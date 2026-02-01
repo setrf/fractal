@@ -1,0 +1,274 @@
+/**
+ * Styles for the ProbeSidebar component.
+ * Right-side collapsible panel with neobrutalist styling.
+ * Mirrors StashSidebar but positioned on the right.
+ */
+
+/* Sidebar container */
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-left: var(--border-width-strong) solid var(--border-primary);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: width var(--transition-normal);
+}
+
+/* Collapsed state */
+.collapsed {
+  width: 48px;
+}
+
+/* Open state */
+.open {
+  width: 400px; /* Default, overridden by inline style */
+}
+
+/* Disable transition during resize for smooth dragging */
+.resizing {
+  transition: none !important;
+}
+
+/* Resize handle - on left side for right sidebar */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 101;
+  transition: background var(--transition-fast);
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background: var(--border-focus);
+}
+
+/* Visual indicator on hover */
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 32px;
+  background: var(--border-primary);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.resizeHandle:hover::after {
+  opacity: 1;
+}
+
+/* Toggle button */
+.toggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  background: var(--bg-primary);
+  border: none;
+  border-bottom: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.toggleButton:hover {
+  background: var(--bg-tertiary);
+}
+
+.toggleIcon {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+/* Collapsed label */
+.collapsedLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.collapsedIcon {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.collapsedCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* Only show toggle icon when open */
+.open .toggleButton .collapsedLabel {
+  display: none;
+}
+
+.collapsed .toggleButton .toggleIcon {
+  display: none;
+}
+
+/* Main content area */
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-width) solid var(--border-primary);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.titleIcon {
+  font-size: var(--text-lg);
+}
+
+.count {
+  font-weight: 400;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+/* Create new probe button */
+.createButton {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.createButton:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.createButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Probe content placeholder */
+.probeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  flex: 1;
+}
+
+.emptyText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.createFirstButton {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--text-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.createFirstButton:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+/* Drag overlay */
+.dragOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(from var(--bg-primary) l c h / 0.9);
+  border: 3px dashed var(--border-strong);
+  z-index: 10;
+}
+
+.dragText {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Scrollbar styling */
+.probeContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.probeContent::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.probeContent::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+}
+
+.probeContent::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}

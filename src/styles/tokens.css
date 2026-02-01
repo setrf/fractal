@@ -76,6 +76,18 @@
   --concept-abstract: oklch(93% 0.02 0);        /* Near-gray, minimal tint */
   --concept-abstract-text: oklch(40% 0 0);
   
+  /* Highlight background colors for light mode */
+  --highlight-science: oklch(85% 0.08 250);       /* Blue highlight */
+  --highlight-science-hover: oklch(78% 0.12 250);
+  --highlight-philosophy: oklch(85% 0.08 310);    /* Purple highlight */
+  --highlight-philosophy-hover: oklch(78% 0.12 310);
+  --highlight-psychology: oklch(85% 0.08 150);    /* Green highlight */
+  --highlight-psychology-hover: oklch(78% 0.12 150);
+  --highlight-technology: oklch(85% 0.08 50);     /* Orange highlight */
+  --highlight-technology-hover: oklch(78% 0.12 50);
+  --highlight-abstract: oklch(88% 0.04 0);        /* Gray highlight */
+  --highlight-abstract-hover: oklch(82% 0.06 0);
+  
   /* ============================================
    * TYPOGRAPHY
    * Monospace-first with sans-serif fallback
@@ -153,6 +165,22 @@
   --stash-question: var(--concept-technology);
   --stash-chat: var(--concept-psychology);
   --stash-note: var(--concept-abstract);
+  
+  /* ============================================
+   * PROBE FEATURE TOKENS
+   * Right sidebar for synthesis conversations
+   * ============================================ */
+  --probe-width-expanded: 400px;
+  --probe-width-collapsed: 48px;
+  --probe-bg: var(--bg-secondary);
+  --probe-border: var(--border-primary);
+  
+  /* Probe color tokens - map to chart colors */
+  --probe-blue: var(--chart-1);
+  --probe-green: var(--chart-2);
+  --probe-yellow: var(--chart-3);
+  --probe-purple: var(--chart-4);
+  --probe-orange: var(--chart-5);
 }
 
 /* ============================================
@@ -189,6 +217,18 @@
   --concept-technology-text: oklch(75% 0.08 50);
   --concept-abstract: oklch(20% 0.02 0);
   --concept-abstract-text: oklch(70% 0 0);
+  
+  /* Highlight background colors for dark mode - brighter, more visible */
+  --highlight-science: oklch(42% 0.18 250);       /* Blue highlight */
+  --highlight-science-hover: oklch(50% 0.22 250);
+  --highlight-philosophy: oklch(42% 0.18 310);    /* Purple highlight */
+  --highlight-philosophy-hover: oklch(50% 0.22 310);
+  --highlight-psychology: oklch(42% 0.18 150);    /* Green highlight */
+  --highlight-psychology-hover: oklch(50% 0.22 150);
+  --highlight-technology: oklch(42% 0.18 50);     /* Orange highlight */
+  --highlight-technology-hover: oklch(50% 0.22 50);
+  --highlight-abstract: oklch(38% 0.08 0);        /* Gray highlight */
+  --highlight-abstract-hover: oklch(45% 0.10 0);
 }
 
 /* ============================================
@@ -224,5 +264,17 @@
     --concept-technology-text: oklch(75% 0.08 50);
     --concept-abstract: oklch(20% 0.02 0);
     --concept-abstract-text: oklch(70% 0 0);
+    
+    /* Highlight background colors for dark mode - brighter, more visible */
+    --highlight-science: oklch(42% 0.18 250);
+    --highlight-science-hover: oklch(50% 0.22 250);
+    --highlight-philosophy: oklch(42% 0.18 310);
+    --highlight-philosophy-hover: oklch(50% 0.22 310);
+    --highlight-psychology: oklch(42% 0.18 150);
+    --highlight-psychology-hover: oklch(50% 0.22 150);
+    --highlight-technology: oklch(42% 0.18 50);
+    --highlight-technology-hover: oklch(50% 0.22 50);
+    --highlight-abstract: oklch(38% 0.08 0);
+    --highlight-abstract-hover: oklch(45% 0.10 0);
   }
 }

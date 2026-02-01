@@ -4,13 +4,26 @@
 
 Fractal is an interactive interface for creative exploration of curiosity. In a world full of answer engines—Google, LLMs, ChatGPT—there's no place designed specifically for **questions**. Fractal fills that gap.
 
-Enter a question, and watch it branch into related sub-questions, creating an infinite mind-map of inquiry. Each question fractal into more questions, enabling you to explore tangents and follow your curiosity wherever it leads.
+**The world is full of places to find answers. Fractal is a place to find questions.**
+
+---
+
+## The Journey
+
+Fractal guides you through a four-stage intellectual journey:
+
+1. **Seed** — Enter a proto-question or concept that sparks your curiosity
+2. **Branch** — Watch as AI generates related questions, creating an exploration tree
+3. **Collect** — Gather valuable tidbits (highlights, explanations, notes) in your Stash
+4. **Synthesize** — Use the Probe to combine collected insights into focused inquiry
+
+This is not about finding "the answer." It's about discovering what you're truly curious about.
 
 ---
 
 ## Table of Contents
 
-- [Vision](#vision)
+- [The Journey](#the-journey)
 - [Features](#features)
 - [Design Philosophy](#design-philosophy)
 - [Architecture](#architecture)
@@ -23,19 +36,21 @@ Enter a question, and watch it branch into related sub-questions, creating an in
 
 ---
 
-## Vision
+## Philosophy
 
 The internet optimized for answers. But learning, creativity, and discovery are driven by **questions**. Fractal inverts the paradigm:
 
 - **Questions are first-class citizens** — Not stepping stones to answers, but destinations themselves
 - **Tangents are encouraged** — Every question branches into related questions
+- **Collection over consumption** — Gather fragments that resonate as you explore
+- **Synthesis over search** — Weave collected insights into coherent understanding
 - **Exploration over resolution** — The goal isn't to find "the answer" but to discover what you're truly curious about
 
 ---
 
 ## Features
 
-### Current (v0.5.0)
+### Current (v0.6.0)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
@@ -44,12 +59,20 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
-- **The Stash** — Collapsible sidebar for collecting and organizing excerpts, highlights, and concepts
+- **The Stash** — Collapsible left sidebar for collecting and organizing excerpts, highlights, and concepts
   - Stash highlights, explanations, questions, chat messages, and custom notes
   - Filter by type, search across all content
   - Export as JSON, clear all
-  - Drag-and-drop support
+  - Drag-and-drop support (reorder within, drag to Probe)
   - Browser localStorage persistence
+  - Checkbox selection for Probe integration
+- **The Probe** — Collapsible right sidebar for synthesis-focused conversations
+  - Multiple tabbed probes with distinct colors (up to 5)
+  - Select Stash items via checkboxes or drag-and-drop
+  - Auto-synthesize rich prompts from collected context
+  - Fully editable prompts before sending
+  - Persistent conversations in localStorage
+  - Color-coded badges on Stash items show assignments
 - **Expand/Collapse Branches** — Manage complexity by collapsing explored branches
 - **Light/Dark Mode** — Automatic system detection with manual toggle
 - **Keyboard Support** — Enter to submit, Escape to cancel
@@ -58,6 +81,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 ### Planned
 
 - Concept sub-trees — Expand concepts into their own exploration branches
+- Streaming responses for real-time feedback
 - Collaborative question exploration
 - Search within your question history
 
@@ -117,23 +141,42 @@ The color system uses **zero chromatic colors** in the core UI:
 ### Frontend Component Hierarchy
 
 ```
-App (StashProvider)
+App (StashProvider + ProbeProvider)
 ├── StashSidebar             # Collapsible left sidebar for stashed items
-│   └── StashItem            # Individual stashed item
-├── ThemeToggle              # Light/dark mode switch
-├── QuestionInput            # Initial question entry (shown when no root)
-├── QuestionTree             # Branching visualization (shown when root exists)
-│   └── TreeBranch           # Recursive branch renderer
-│       └── QuestionNode     # Individual question with actions + AI generate
-│           ├── StashButton         # Add question to stash
-│           ├── ConceptHighlighter  # Highlights concepts in question text
-│           │   └── StashButton     # Add highlight to stash
-│           └── ConceptPopup        # Gwern-style explanation popup
-│               └── StashButton     # Add explanation to stash
-└── ChatView                 # Deep conversational exploration of a question
-    ├── StashButton          # Add message to stash (on each message)
-    ├── ConceptHighlighter   # Highlights concepts in question header
-    └── ConceptPopup         # Gwern-style explanation popup
+│   └── StashItem            # Individual stashed item with probe selection
+├── Main Content
+│   ├── ThemeToggle          # Light/dark mode switch
+│   ├── QuestionInput        # Initial question entry (shown when no root)
+│   ├── QuestionTree         # Branching visualization (shown when root exists)
+│   │   └── TreeBranch       # Recursive branch renderer
+│   │       └── QuestionNode # Individual question with actions + AI generate
+│   │           ├── StashButton         # Add question to stash
+│   │           ├── ConceptHighlighter  # Highlights concepts in question text
+│   │           └── ConceptPopup        # Gwern-style explanation popup
+│   └── ChatView             # Deep conversational exploration of a question
+│       ├── StashButton      # Add message to stash (on each message)
+│       └── ConceptHighlighter  # Highlights concepts in messages
+└── ProbeSidebar             # Collapsible right sidebar for synthesis
+    ├── ProbeTabBar          # Tab navigation for multiple probes
+    └── ProbeChat            # Chat interface for active probe
+```
+
+### Data Flow: Seed → Branch → Collect → Synthesize
+
+```
+User Question                     Stash (Collection)           Probe (Synthesis)
+    │                                   │                           │
+    ▼                                   │                           │
+QuestionInput                           │                           │
+    │                                   │                           │
+    ▼                                   │                           │
+QuestionTree ─── concepts ───► Highlights ─────► Selected Items ────┤
+    │                               │                               │
+    ▼                               ▼                               ▼
+ChatView ───── excerpts ────► Messages ──────────────────► Synthesized Prompt
+    │                               │                               │
+    ▼                               ▼                               ▼
+ConceptPopup ── explanations ► Explanations                  LLM Response
 ```
 
 ### Backend Architecture
@@ -469,7 +512,7 @@ npm run test:verbose
 
 ## Roadmap
 
-### v0.5.0 — The Stash (Current)
+### v0.5.0 — The Stash
 - [x] Collapsible sidebar for collecting content
 - [x] Stash highlights, explanations, questions, chat messages
 - [x] Custom note creation
@@ -477,13 +520,23 @@ npm run test:verbose
 - [x] Drag-and-drop support
 - [x] Browser localStorage persistence
 
-### v0.6.0 — Enhanced AI
-- [ ] Suggest tangents based on context
+### v0.6.0 — The Probe (Current)
+- [x] Collapsible right sidebar for synthesis conversations
+- [x] Multiple tabbed probes with distinct colors
+- [x] Stash item selection via checkboxes and drag-and-drop
+- [x] Prompt synthesis from collected context
+- [x] Fully editable synthesized prompts
+- [x] Probe conversation persistence in localStorage
+- [x] Visual integration: color badges on Stash items
+- [x] Dedicated synthesis-focused LLM system prompt
+
+### v0.7.0 — Enhanced AI
+- [ ] Streaming responses for real-time feedback
 - [ ] Model selection UI
-- [ ] Streaming responses
+- [ ] Suggest tangents based on context
 - [ ] Concept sub-trees (expand concepts into exploration branches)
 
-### v0.7.0 — Enhanced Visualization
+### v0.8.0 — Enhanced Visualization
 - [ ] Zoom and pan navigation
 - [ ] Mini-map for large trees
 - [ ] Keyboard shortcuts for tree navigation

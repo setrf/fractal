@@ -137,6 +137,13 @@ export interface StashItem {
    * Can be used for filtering and grouping.
    */
   tags?: string[]
+
+  /**
+   * IDs of Probes this item is assigned to.
+   * Used for visual indicators and selection state.
+   * An item can be assigned to multiple Probes.
+   */
+  assignedProbeIds?: string[]
 }
 
 /**

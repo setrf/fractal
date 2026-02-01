@@ -76,6 +76,7 @@ export function GraphControls({
   return (
     <div
       className={styles.container}
+      data-onboarding="graph-controls"
       style={{
         right: `calc(${rightOffset}px + var(--space-4))`,
         transition: 'right var(--transition-normal)',

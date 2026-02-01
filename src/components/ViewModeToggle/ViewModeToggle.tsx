@@ -58,6 +58,7 @@ export function ViewModeToggle({ rightOffset = 16 }: ViewModeToggleProps) {
       aria-label={`Switch to ${isGraphView ? 'traditional' : 'graph'} view`}
       title={`Switch to ${isGraphView ? 'traditional tree' : '3D graph'} view`}
       data-view-mode={viewMode}
+      data-onboarding="view-toggle"
       style={{
         right: `calc(${totalRightOffset}px + var(--space-4))`,
         transition: 'right var(--transition-normal), border-color var(--transition-fast), background-color var(--transition-fast)',

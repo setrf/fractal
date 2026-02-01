@@ -344,6 +344,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-stash-sidebar="true"
+      data-onboarding="stash-sidebar"
     >
       {/* Toggle button - always visible */}
       <button
@@ -478,12 +479,14 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
                   onDragLeave={handleItemDragLeave}
                   onDrop={(e) => handleItemDrop(e, index)}
                   onDragEnd={(e) => handleItemDragEnd(e)}
+                  data-onboarding={index === 0 ? 'stash-item' : undefined}
                 >
                   <StashItem
                     item={item}
                     onDelete={removeItem}
                     onClick={onItemClick}
                     draggable={false}
+                    checkboxOnboardingId={index === 0 ? 'stash-checkbox' : undefined}
                   />
                 </div>
               ))

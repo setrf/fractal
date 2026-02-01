@@ -133,7 +133,11 @@ export function QuestionInput({
       <span ref={sizerRef} className={styles.sizer} aria-hidden="true" />
       
       {/* Input wrapper provides the bordered container with focus shadow */}
-      <div ref={wrapperRef} className={styles.inputWrapper}>
+      <div
+        ref={wrapperRef}
+        className={styles.inputWrapper}
+        data-onboarding="question-input"
+      >
         {/* Static question mark prompt */}
         <span className={styles.prompt}>?</span>
         

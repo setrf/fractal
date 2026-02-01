@@ -25,6 +25,7 @@ export function ModelSelector({ rightOffset = 16 }: ModelSelectorProps) {
   return (
     <div
       className={styles.wrapper}
+      data-onboarding="model-selector"
       style={{
         right: `calc(${rightOffset}px + var(--space-4))`,
         transition: 'right var(--transition-normal)',

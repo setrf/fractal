@@ -180,6 +180,7 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-probe-sidebar="true"
+      data-onboarding="probe-sidebar"
     >
       {/* Toggle button - always visible */}
       <button
@@ -217,6 +218,7 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
               disabled={!canCreateProbe}
               aria-label="Create new probe"
               title={canCreateProbe ? 'New Probe' : 'Max 5 probes reached'}
+              data-onboarding="probe-create"
             >
               +
             </button>

@@ -12,7 +12,7 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ViewModeToggle } from './components/ViewModeToggle'
 import { ModelSelector } from './components/ModelSelector'
@@ -26,6 +26,7 @@ import { ConceptPopup } from './components/ConceptPopup'
 import { GraphView, type GraphViewHandle } from './components/GraphView'
 import { GraphControls } from './components/GraphControls'
 import { GraphNodePopup } from './components/GraphNodePopup'
+import { OnboardingOverlay, type OnboardingStep } from './components/Onboarding'
 import type { ConceptExplanation } from './types/concept'
 import type { GraphNode } from './types/graph'
 import { StashProvider, useStashContext } from './context/StashContext'
@@ -37,6 +38,7 @@ import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
+import { useOnboarding } from './hooks/useOnboarding'
 import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 import type { StashItem as StashItemData } from './types/stash'
 import type { PopupPosition } from './components/ConceptPopup'
@@ -111,6 +113,15 @@ interface ReopenedExplanation {
 }
 
 /**
+ * Onboarding step configuration for the guided tour.
+ */
+interface OnboardingStepConfig extends OnboardingStep {
+  canProceed?: () => boolean
+  onEnter?: () => void
+  autoAdvance?: boolean
+}
+
+/**
  * Inner application content component.
  * 
  * Renders either:
@@ -123,9 +134,20 @@ interface ReopenedExplanation {
  */
 function AppContent() {
   // Get stash state for sidebar layout and items for graph
-  const { isOpen: stashOpen, sidebarWidth, items: stashItems } = useStashContext()
+  const {
+    isOpen: stashOpen,
+    sidebarWidth,
+    items: stashItems,
+    setIsOpen: setStashOpen,
+  } = useStashContext()
   // Get probe state for sidebar layout and probes for graph
-  const { isOpen: probeOpen, sidebarWidth: probeSidebarWidth, probes } = useProbeContext()
+  const {
+    isOpen: probeOpen,
+    sidebarWidth: probeSidebarWidth,
+    probes,
+    activeProbe,
+    setIsOpen: setProbeOpen,
+  } = useProbeContext()
   // Initialize the question tree state and operations
   const {
     tree,
@@ -210,6 +232,186 @@ function AppContent() {
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatVisible ? 'chat' : 'tree'
+
+  const stashCount = stashItems.length
+  const probeCount = probes.length
+  const rootChildCount = rootNode?.childIds.length ?? 0
+  const rootConceptCount = rootNode ? (nodeConcepts[rootNode.id]?.length ?? 0) : 0
+  const hasPopup = globalPopups.length > 0
+  const activeProbeSelectedCount = activeProbe?.selectedStashItemIds.length ?? 0
+  const activeProbeMessageCount = activeProbe?.messages.length ?? 0
+
+  const onboardingSteps = useMemo<OnboardingStepConfig[]>(
+    () => [
+      {
+        id: 'welcome',
+        title: 'Welcome to Fractal',
+        body:
+          'Fractal helps you discover better questions, not just answers.\n' +
+          'This tour walks through the core flow used in the demo and judging.',
+      },
+      {
+        id: 'seed-question',
+        title: 'Start with a seed question',
+        body:
+          'Type a question you are genuinely curious about, then press Enter.\n' +
+          'We will build the exploration tree from it.',
+        selector: '[data-onboarding="question-input"]',
+        canProceed: () => Boolean(rootNode),
+        autoAdvance: true,
+      },
+      {
+        id: 'deep-dive',
+        title: 'Generate branches with AI',
+        body:
+          'Click Deep dive to generate related questions.\n' +
+          'This uses W&B Inference with Weave tracing.',
+        selector: '[data-onboarding="deep-dive"]',
+        canProceed: () => rootChildCount > 0,
+        autoAdvance: true,
+      },
+      {
+        id: 'weave-score',
+        title: 'Weave quality score',
+        body:
+          'Each generation is scored by an LLM judge for depth and diversity.\n' +
+          'The score feeds the self-improvement loop.',
+        selector: '[data-onboarding="weave-score"]',
+        canProceed: () => Boolean(lastMeta),
+      },
+      {
+        id: 'concept-highlights',
+        title: 'Concept highlights',
+        body:
+          'Concepts are extracted from your questions and highlighted inline.\n' +
+          'Hover or click to explore them.',
+        selector: '[data-onboarding="question-text"]',
+        canProceed: () => rootConceptCount > 0,
+      },
+      {
+        id: 'concept-popups',
+        title: 'Popups and related concepts',
+        body:
+          'Open a concept popup to read the summary and context.\n' +
+          'Use related concepts to branch your exploration.',
+        selector: '[data-onboarding="concept-popup"]',
+        canProceed: () => hasPopup,
+      },
+      {
+        id: 'stash-item',
+        title: 'Stash important artifacts',
+        body:
+          'Stash questions, highlights, or explanations for later synthesis.\n' +
+          'Try stashing at least one item.',
+        selector: '[data-onboarding="stash-button"]',
+        canProceed: () => stashCount > 0,
+      },
+      {
+        id: 'stash-sidebar',
+        title: 'Browse your Stash',
+        body:
+          'The Stash collects everything you want to keep.\n' +
+          'Filter, search, and open items from here.',
+        selector: '[data-onboarding="stash-sidebar"]',
+        canProceed: () => stashOpen,
+        onEnter: () => setStashOpen(true),
+      },
+      {
+        id: 'probe-create',
+        title: 'Create a Probe',
+        body:
+          'Probes synthesize your Stash into focused conversations.\n' +
+          'Create a probe to begin.',
+        selector: '[data-onboarding="probe-create"]',
+        canProceed: () => probeCount > 0,
+        onEnter: () => setProbeOpen(true),
+      },
+      {
+        id: 'probe-select',
+        title: 'Select Stash context',
+        body:
+          'Use the checkbox to add Stash items into the active probe.\n' +
+          'Select at least one item to continue.',
+        selector: '[data-onboarding="stash-checkbox"]',
+        canProceed: () => activeProbeSelectedCount > 0,
+        onEnter: () => setStashOpen(true),
+      },
+      {
+        id: 'probe-synthesize',
+        title: 'Synthesize and send',
+        body:
+          'Click Synthesize to build a structured prompt, then send.\n' +
+          'You are now running a context-rich LLM query.',
+        selector: '[data-onboarding="probe-synthesize"]',
+        canProceed: () => activeProbeMessageCount > 0,
+        onEnter: () => setProbeOpen(true),
+      },
+      {
+        id: 'model-selection',
+        title: 'Model selection',
+        body:
+          'Swap the model used for generation, chat, and evaluation.\n' +
+          'This lets you compare outputs during the demo.',
+        selector: '[data-onboarding="model-selector"]',
+      },
+      {
+        id: 'graph-view',
+        title: '3D knowledge graph',
+        body:
+          'Switch to Graph view to visualize questions, concepts, stash items, and probes.\n' +
+          'This is the narrative map for the demo.',
+        selector: '[data-onboarding="view-toggle"]',
+        canProceed: () => isGraphView,
+      },
+      {
+        id: 'finish',
+        title: 'You are ready to demo',
+        body:
+          'You have walked the full Fractal loop.\n' +
+          'Restart this tour anytime from the top-left controls.',
+      },
+    ],
+    [
+      rootNode,
+      rootChildCount,
+      rootConceptCount,
+      lastMeta,
+      hasPopup,
+      stashCount,
+      stashOpen,
+      probeCount,
+      activeProbeSelectedCount,
+      activeProbeMessageCount,
+      isGraphView,
+      setStashOpen,
+      setProbeOpen,
+    ]
+  )
+
+  const onboarding = useOnboarding({
+    totalSteps: onboardingSteps.length,
+    autoStart: true,
+    storageKey: 'fractal_onboarding_v1',
+    version: 'v1',
+  })
+
+  const activeOnboardingStep = onboardingSteps[onboarding.currentStep] ?? null
+  const canProceedOnboarding = activeOnboardingStep?.canProceed
+    ? activeOnboardingStep.canProceed()
+    : true
+  const onboardingButtonLabel = onboarding.hasCompleted ? 'Restart Onboarding' : 'Start Onboarding'
+
+  useEffect(() => {
+    if (!onboarding.isOpen || !activeOnboardingStep) return
+    activeOnboardingStep.onEnter?.()
+  }, [onboarding.isOpen, onboarding.currentStep, activeOnboardingStep])
+
+  useEffect(() => {
+    if (!onboarding.isOpen || !activeOnboardingStep?.autoAdvance) return
+    if (!canProceedOnboarding) return
+    const timer = setTimeout(() => onboarding.next(), 600)
+    return () => clearTimeout(timer)
+  }, [onboarding.isOpen, onboarding.next, activeOnboardingStep?.autoAdvance, canProceedOnboarding])
   
   // Extract concepts for root node when it changes
   useEffect(() => {
@@ -772,6 +974,31 @@ function AppContent() {
           >
             × Close All
           </button>
+          <button
+            onClick={onboarding.restart}
+            style={{
+              padding: 'var(--space-2) var(--space-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              background: 'var(--bg-primary)',
+              border: 'var(--border-width) solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+            title="Start the onboarding tour"
+            aria-label="Start onboarding tour"
+          >
+            {onboardingButtonLabel}
+          </button>
         </div>
         
         {/* ============================================
@@ -944,6 +1171,7 @@ function AppContent() {
                       color: 'var(--text-tertiary)',
                       marginBottom: 'var(--space-4)',
                     }}
+                    data-onboarding="weave-score"
                   >
                     Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel}
                   </div>
@@ -1074,6 +1302,19 @@ function AppContent() {
             />
           )
         })}
+
+        <OnboardingOverlay
+          isOpen={onboarding.isOpen}
+          step={activeOnboardingStep}
+          stepIndex={onboarding.currentStep}
+          totalSteps={onboardingSteps.length}
+          canProceed={canProceedOnboarding}
+          onNext={onboarding.next}
+          onPrev={onboarding.prev}
+          onSkip={onboarding.skip}
+          onRestart={onboarding.restart}
+          onClose={onboarding.skip}
+        />
       </div>
       
       {/* Probe sidebar - always available (right side) */}

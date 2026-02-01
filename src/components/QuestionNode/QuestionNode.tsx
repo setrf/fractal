@@ -538,6 +538,7 @@ export function QuestionNode({
           ref={contentRef}
           className={styles.content}
           onMouseUp={onAddUserConcept ? handleTextSelect : undefined}
+          data-onboarding={isRoot ? 'question-text' : undefined}
         >
           <span className={styles.prefix}>?</span>
           {concepts.length > 0 ? (
@@ -562,12 +563,17 @@ export function QuestionNode({
             </span>
           )}
           {/* Stash button - add question to stash */}
-          <StashButton
-            onClick={handleStashQuestion}
-            isStashed={isQuestionStashed}
-            size="small"
-            className={styles.stashBtn}
-          />
+          <span
+            data-onboarding={isRoot ? 'stash-button' : undefined}
+            style={{ display: 'contents' }}
+          >
+            <StashButton
+              onClick={handleStashQuestion}
+              isStashed={isQuestionStashed}
+              size="small"
+              className={styles.stashBtn}
+            />
+          </span>
           
           {/* Expand/collapse button - only shown if node has children */}
           {hasChildren && (
@@ -588,6 +594,7 @@ export function QuestionNode({
               disabled={isGenerating}
               aria-label="Generate AI suggestions"
               title="Generate related questions to explore"
+              data-onboarding={isRoot ? 'deep-dive' : undefined}
             >
               <span className={styles.icon}>{isGenerating ? '◌' : '✦'}</span>
               <span>Deep dive</span>

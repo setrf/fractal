@@ -369,7 +369,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
   }
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div ref={containerRef} className={styles.container} data-onboarding="graph-view">
       {/* Empty state */}
       {graphData.nodes.length === 0 && (
         <div className={styles.emptyState}>

@@ -36,6 +36,9 @@ export interface StashItemProps {
 
   /** Drag start handler for reordering */
   onDragStart?: (e: React.DragEvent, item: StashItemType) => void
+
+  /** Optional onboarding anchor for probe selection checkbox */
+  checkboxOnboardingId?: string
 }
 
 /**
@@ -105,6 +108,7 @@ export function StashItem({
   onClick,
   draggable = false,
   onDragStart,
+  checkboxOnboardingId,
 }: StashItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
@@ -222,6 +226,7 @@ export function StashItem({
           onClick={handleCheckboxClick}
           aria-label={isSelectedForActiveProbe ? 'Remove from probe' : 'Add to probe'}
           title={isSelectedForActiveProbe ? 'Remove from probe context' : 'Add to probe context'}
+          data-onboarding={checkboxOnboardingId}
         >
           {isSelectedForActiveProbe && <span className={styles.checkmark}>✓</span>}
         </button>

@@ -1,0 +1,139 @@
+/**
+ * Onboarding Overlay Styles
+ * =========================
+ *
+ * Neobrutalist guided tour overlay with spotlight and step card.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.highlight {
+  position: fixed;
+  border: var(--border-width-strong) solid var(--text-primary);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  pointer-events: none;
+  transition: all var(--transition-normal);
+}
+
+.card {
+  position: fixed;
+  max-width: min(360px, 90vw);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  box-shadow: 6px 6px 0 var(--border-primary);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  pointer-events: auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.stepCount {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.body p {
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.leftActions,
+.rightActions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.button,
+.buttonGhost,
+.buttonPrimary,
+.closeButton {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border: var(--border-width) solid var(--border-primary);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.buttonGhost {
+  color: var(--text-secondary);
+}
+
+.buttonPrimary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+.buttonPrimary:disabled {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.closeButton {
+  padding: var(--space-1) var(--space-2);
+  line-height: 1;
+  font-size: var(--text-sm);
+}
+
+.button:hover,
+.buttonGhost:hover,
+.closeButton:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  background: var(--text-secondary);
+  border-color: var(--text-secondary);
+}

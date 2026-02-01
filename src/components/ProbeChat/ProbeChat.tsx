@@ -138,6 +138,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
               className={styles.synthesizeButton}
               onClick={handleSynthesize}
               title="Generate prompt from selected items"
+              data-onboarding="probe-synthesize"
             >
               Synthesize
             </button>
@@ -225,6 +226,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
             onKeyDown={handleKeyDown}
             placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
             disabled={sending}
+            data-onboarding="probe-input"
           />
           <button
             className={styles.sendButton}

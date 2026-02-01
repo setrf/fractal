@@ -774,6 +774,7 @@ export function ConceptPopup({
       role="dialog"
       aria-label={`Concept explanation: ${concept.normalizedName}`}
       aria-live="polite"
+      data-onboarding={!isMinimized ? 'concept-popup' : undefined}
     >
       {/* Resize handles - only show when not minimized */}
       {!isMinimized && (

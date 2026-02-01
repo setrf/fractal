@@ -554,16 +554,13 @@ export function QuestionNode({
             <span className={styles.text}>{node.text}</span>
           )}
         </div>
-        {typeof node.meta.qualityScore === 'number' && (
-          <div className={styles.metaRow}>
+        {/* Action buttons - horizontal row at bottom right */}
+        <div className={styles.actions}>
+          {typeof node.meta.qualityScore === 'number' && (
             <span className={styles.qualityBadge}>
               Quality {node.meta.qualityScore.toFixed(2)} / 10
             </span>
-          </div>
-        )}
-
-        {/* Action buttons - horizontal row at bottom right */}
-        <div className={styles.actions}>
+          )}
           {/* Stash button - add question to stash */}
           <StashButton
             onClick={handleStashQuestion}

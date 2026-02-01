@@ -93,13 +93,11 @@
   word-break: break-word; /* Handle long words */
 }
 
-/* Meta row for quality score */
-.metaRow {
-  display: flex;
-  justify-content: flex-start;
-}
-
 .qualityBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-secondary);

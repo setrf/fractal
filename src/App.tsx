@@ -12,12 +12,13 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
 import { StashSidebar } from './components/StashSidebar'
+import { NotePopup } from './components/NotePopup'
 import { StashProvider, useStashContext } from './context/StashContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
@@ -36,6 +37,18 @@ type AppView = 'welcome' | 'tree' | 'chat'
 interface ChatState {
   nodeId: string
   question: string
+}
+
+/**
+ * State for a canvas note popup.
+ */
+interface CanvasNote {
+  id: string
+  x: number
+  y: number
+  title: string
+  content: string
+  isMinimized: boolean
 }
 
 /**
@@ -89,6 +102,13 @@ function AppContent() {
 
   // View state for navigating between tree and chat
   const [chatState, setChatState] = useState<ChatState | null>(null)
+  
+  // Canvas note popups
+  const [canvasNotes, setCanvasNotes] = useState<CanvasNote[]>([])
+  const noteIdCounter = useRef(0)
+  
+  // Track which notes are minimized for stacking
+  const minimizedNoteIds = canvasNotes.filter(n => n.isMinimized).map(n => n.id)
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatState ? 'chat' : 'tree'
@@ -223,7 +243,53 @@ function AppContent() {
     setNodeConcepts({})
     setChatState(null)
     resetExplanation()
+    setCanvasNotes([])
   }, [reset, resetExplanation])
+
+  /**
+   * Creates a new note popup at the click position.
+   */
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    // Only create note if clicking directly on the main element (not children)
+    if (e.target !== e.currentTarget) return
+    
+    const id = `note-${Date.now()}-${noteIdCounter.current++}`
+    const newNote: CanvasNote = {
+      id,
+      x: e.clientX - 150, // Center the popup on click
+      y: e.clientY - 50,
+      title: '',
+      content: '',
+      isMinimized: false,
+    }
+    
+    setCanvasNotes(prev => [...prev, newNote])
+  }, [])
+
+  /**
+   * Updates a note's content.
+   */
+  const handleNoteUpdate = useCallback((id: string, title: string, content: string) => {
+    setCanvasNotes(prev => prev.map(note => 
+      note.id === id ? { ...note, title, content } : note
+    ))
+  }, [])
+
+  /**
+   * Closes a note popup.
+   */
+  const handleNoteClose = useCallback((id: string) => {
+    setCanvasNotes(prev => prev.filter(note => note.id !== id))
+  }, [])
+
+  /**
+   * Handles minimize state change for a note.
+   */
+  const handleNoteMinimizeChange = useCallback((id: string, isMinimized: boolean) => {
+    setCanvasNotes(prev => prev.map(note =>
+      note.id === id ? { ...note, isMinimized } : note
+    ))
+  }, [])
 
   return (
     <div className={`app-layout ${stashOpen ? 'stash-open' : 'stash-collapsed'}`}>
@@ -258,12 +324,14 @@ function AppContent() {
         {/* Main content area for welcome and tree views */}
         {currentView !== 'chat' && (
           <main
+            onClick={handleCanvasClick}
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               minHeight: '100vh',
               padding: 'var(--space-4)',
+              cursor: 'crosshair',
             }}
           >
             {currentView === 'welcome' ? (
@@ -423,6 +491,21 @@ function AppContent() {
             )}
           </main>
         )}
+
+        {/* Canvas note popups */}
+        {canvasNotes.map(note => (
+          <NotePopup
+            key={note.id}
+            id={note.id}
+            position={{ x: note.x, y: note.y }}
+            initialTitle={note.title}
+            initialContent={note.content}
+            onClose={() => handleNoteClose(note.id)}
+            onUpdate={handleNoteUpdate}
+            onMinimizeChange={handleNoteMinimizeChange}
+            minimizedStackIndex={minimizedNoteIds.indexOf(note.id)}
+          />
+        ))}
       </div>
     </div>
   )

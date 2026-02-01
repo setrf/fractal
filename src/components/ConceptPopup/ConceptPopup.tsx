@@ -634,6 +634,16 @@ export function ConceptPopup({
     e.dataTransfer.effectAllowed = 'copy'
   }, [concept, explanation])
 
+  /**
+   * Handles drag end - closes popup if dropped successfully into stash.
+   */
+  const handlePopupDragEnd = useCallback((e: React.DragEvent) => {
+    // dropEffect is 'copy' or 'move' if drop was successful, 'none' if cancelled
+    if (e.dataTransfer.dropEffect !== 'none') {
+      onClose()
+    }
+  }, [onClose])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -725,6 +735,7 @@ export function ConceptPopup({
         onMouseUp={handleContentMouseUp}
         draggable={!!explanation}
         onDragStart={handlePopupDragStart}
+        onDragEnd={handlePopupDragEnd}
       >
         {isLoading && (
           <div className={styles.loading}>

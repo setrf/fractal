@@ -133,26 +133,29 @@ export function StashSidebar() {
   }, [clearAll])
 
   // Drag and drop handlers
-  const handleDragOver = useCallback((e: DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'copy'
     setIsDragOver(true)
   }, [])
 
-  const handleDragLeave = useCallback((e: DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setIsDragOver(false)
   }, [])
 
   const handleDrop = useCallback(
-    (e: DragEvent) => {
+    (e: React.DragEvent<HTMLElement>) => {
       e.preventDefault()
+      e.stopPropagation()
       setIsDragOver(false)
 
       try {
         const data = e.dataTransfer.getData('application/json')
+        console.log('[StashSidebar] Drop received, data:', data)
         if (data) {
           const item = JSON.parse(data) as StashItemInput
+          console.log('[StashSidebar] Parsed item:', item)
           addItem(item)
         }
       } catch (error) {

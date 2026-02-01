@@ -156,21 +156,6 @@ export function QuestionNode({
       },
     })
   }, [addItem, node.text, node.id])
-  
-  /**
-   * Handles drag start for dragging question to stash.
-   */
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    const itemData = {
-      type: 'question',
-      content: node.text,
-      metadata: {
-        questionId: node.id,
-      },
-    }
-    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
-    e.dataTransfer.effectAllowed = 'copy'
-  }, [node.text, node.id])
 
   /**
    * Handles click on the node body to select it.
@@ -453,8 +438,6 @@ export function QuestionNode({
         role="button"
         aria-label={`Question: ${node.text}`}
         aria-expanded={hasChildren ? node.meta.isExpanded : undefined}
-        draggable
-        onDragStart={handleDragStart}
       >
         {/* Question content with prefix */}
         <div 

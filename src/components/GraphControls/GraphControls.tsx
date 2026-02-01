@@ -24,6 +24,8 @@ export interface GraphControlsProps {
   onZoomIn?: () => void
   /** Callback to zoom out */
   onZoomOut?: () => void
+  /** Right offset in pixels (to account for probe sidebar) */
+  rightOffset?: number
 }
 
 /**
@@ -43,6 +45,7 @@ export function GraphControls({
   onResetCamera,
   onZoomIn,
   onZoomOut,
+  rightOffset = 16,
 }: GraphControlsProps) {
   const { filters, toggleNodeType, counts } = useGraphContext()
 
@@ -71,7 +74,13 @@ export function GraphControls({
   }
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={{
+        right: `calc(${rightOffset}px + var(--space-4))`,
+        transition: 'right var(--transition-normal)',
+      }}
+    >
       {/* Camera controls */}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Camera</div>

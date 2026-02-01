@@ -12,7 +12,7 @@
 
 /* Main container */
 .container {
-  position: absolute;
+  position: fixed;
   top: var(--space-8);
   right: var(--space-4);
   display: flex;

@@ -31,6 +31,8 @@ export interface GraphViewProps {
   width?: number
   /** Height of the graph container (defaults to 100vh minus header) */
   height?: number
+  /** Left offset in pixels (to account for stash sidebar) */
+  leftOffset?: number
 }
 
 export interface GraphViewHandle {
@@ -229,7 +231,7 @@ function getHexFromNodeType(type: GraphNodeType): string {
  * Main 3D Graph visualization component.
  */
 export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function GraphView(
-  { onNodeClick, width, height }: GraphViewProps,
+  { onNodeClick, width, height, leftOffset = 16 }: GraphViewProps,
   ref
 ) {
   const graphRef = useRef<ForceGraph3DInstance>()
@@ -409,7 +411,13 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
       )}
 
       {/* Stats overlay */}
-      <div className={styles.stats}>
+      <div
+        className={styles.stats}
+        style={{
+          left: `calc(${leftOffset}px + var(--space-4))`,
+          transition: 'left var(--transition-normal)',
+        }}
+      >
         <span className={styles.statItem} data-type="question">
           {counts.question} Questions
         </span>

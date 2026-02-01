@@ -786,11 +786,16 @@ function AppContent() {
             stashItems={stashItems}
             probes={probes}
           >
-            <GraphView ref={graphRef} onNodeClick={handleGraphNodeClick} />
+            <GraphView
+              ref={graphRef}
+              onNodeClick={handleGraphNodeClick}
+              leftOffset={stashOpen ? sidebarWidth : 48}
+            />
             <GraphControls
               onResetCamera={() => graphRef.current?.resetCamera?.()}
               onZoomIn={() => graphRef.current?.zoomIn?.()}
               onZoomOut={() => graphRef.current?.zoomOut?.()}
+              rightOffset={probeOpen ? probeSidebarWidth : 48}
             />
             {graphPopupNode && (
               <GraphNodePopup

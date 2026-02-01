@@ -50,7 +50,7 @@
 
 /* Stats overlay */
 .stats {
-  position: absolute;
+  position: fixed;
   bottom: var(--space-4);
   left: var(--space-4);
   display: flex;

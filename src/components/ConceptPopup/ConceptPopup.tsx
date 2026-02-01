@@ -596,7 +596,8 @@ export function ConceptPopup({
       return
     }
 
-    const selectedText = selection.toString().trim()
+    const rawSelectedText = selection.toString()
+    const selectedText = rawSelectedText.trim()
     if (!selectedText || selectedText.length < 2) {
       return
     }
@@ -607,13 +608,97 @@ export function ConceptPopup({
       return
     }
 
-    // Find the position in the combined text
-    const startIndex = combinedText.indexOf(selectedText)
-    if (startIndex === -1) {
+    const resolveSection = (node: Node): { element: HTMLElement; type: 'summary' | 'context' } | null => {
+      const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
+      if (!element) return null
+
+      const summaryEl = element.closest(`.${styles.summary}`)
+      if (summaryEl && contentRef.current?.contains(summaryEl)) {
+        return { element: summaryEl as HTMLElement, type: 'summary' }
+      }
+
+      const contextEl = element.closest(`.${styles.context}`)
+      if (contextEl && contentRef.current?.contains(contextEl)) {
+        return { element: contextEl as HTMLElement, type: 'context' }
+      }
+
+      return null
+    }
+
+    const startSection = resolveSection(range.startContainer)
+    const endSection = resolveSection(range.endContainer)
+    if (!startSection || !endSection || startSection.type !== endSection.type) {
       return
     }
 
-    const endIndex = startIndex + selectedText.length
+    const textRoot = startSection.element
+    const getTextOffset = (container: Node, offset: number): number | null => {
+      let node: Node | null = container
+      let nodeOffset = offset
+
+      if (node.nodeType !== Node.TEXT_NODE) {
+        const child = node.childNodes[offset]
+        if (child && child.nodeType === Node.TEXT_NODE) {
+          node = child
+          nodeOffset = 0
+        } else {
+          return null
+        }
+      }
+
+      const walker = document.createTreeWalker(
+        textRoot,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (textNode) => {
+            const parent = (textNode as Text).parentElement
+            if (parent?.closest('button')) {
+              return NodeFilter.FILTER_REJECT
+            }
+            return NodeFilter.FILTER_ACCEPT
+          },
+        }
+      )
+
+      let total = 0
+      let current = walker.nextNode()
+      while (current) {
+        if (current === node) {
+          const length = current.textContent?.length || 0
+          return total + Math.min(nodeOffset, length)
+        }
+        total += current.textContent?.length || 0
+        current = walker.nextNode()
+      }
+      return null
+    }
+
+    const startOffset = getTextOffset(range.startContainer, range.startOffset)
+    const endOffset = getTextOffset(range.endContainer, range.endOffset)
+    if (startOffset === null || endOffset === null) {
+      return
+    }
+
+    const leadingWhitespace = rawSelectedText.length - rawSelectedText.trimStart().length
+    const trailingWhitespace = rawSelectedText.length - rawSelectedText.trimEnd().length
+    let startIndex = startOffset + leadingWhitespace
+    let endIndex = endOffset - trailingWhitespace
+    if (endIndex <= startIndex) {
+      return
+    }
+
+    let localStartIndex = startIndex
+    if (startSection.type === 'context') {
+      const contextOffset = summaryLength + 2
+      startIndex += contextOffset
+      endIndex += contextOffset
+      localStartIndex = startIndex - contextOffset
+    }
+
+    const sectionText = startSection.type === 'summary'
+      ? explanation?.summary || ''
+      : explanation?.context || ''
+    const selectedSlice = sectionText.slice(localStartIndex, localStartIndex + (endIndex - startIndex))
     
     // Check for overlap with existing concepts
     const allConcepts = [...popupConcepts, ...userHighlights]
@@ -627,8 +712,8 @@ export function ConceptPopup({
     // Create new user highlight
     const newHighlight: ExtractedConcept = {
       id: `user_popup_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      text: selectedText,
-      normalizedName: selectedText.toLowerCase(),
+      text: selectedSlice || selectedText,
+      normalizedName: (selectedSlice || selectedText).toLowerCase(),
       category: 'abstract' as ConceptCategory,
       startIndex,
       endIndex,
@@ -636,7 +721,7 @@ export function ConceptPopup({
     
     setUserHighlights(prev => [...prev, newHighlight])
     window.getSelection()?.removeAllRanges()
-  }, [combinedText, popupConcepts, userHighlights])
+  }, [popupConcepts, userHighlights, summaryLength, explanation])
 
   /**
    * Removes a user-created highlight from the popup.

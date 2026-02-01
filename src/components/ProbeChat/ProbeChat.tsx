@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
 import styles from './ProbeChat.module.css'
 import { useProbeContext } from '../../context/ProbeContext'
 import { useStashContext } from '../../context/StashContext'
@@ -189,7 +190,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
                   {message.role === 'user' ? 'You' : 'AI'}
                 </span>
                 <div className={styles.messageContent}>
-                  {message.content}
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
               </div>
             ))

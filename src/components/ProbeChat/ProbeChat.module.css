@@ -142,8 +142,87 @@
   font-size: var(--text-sm);
   color: var(--text-primary);
   line-height: var(--leading-normal);
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Markdown styling within messages */
+.messageContent p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.messageContent p:last-child {
+  margin-bottom: 0;
+}
+
+.messageContent strong {
+  font-weight: 600;
+}
+
+.messageContent em {
+  font-style: italic;
+}
+
+.messageContent code {
+  background: var(--bg-tertiary);
+  padding: 2px 4px;
+  font-size: 0.9em;
+}
+
+.messageContent pre {
+  background: var(--bg-tertiary);
+  padding: var(--space-2);
+  margin: var(--space-2) 0;
+  overflow-x: auto;
+  border: 1px solid var(--border-primary);
+}
+
+.messageContent pre code {
+  background: none;
+  padding: 0;
+}
+
+.messageContent ul,
+.messageContent ol {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+.messageContent li {
+  margin: var(--space-1) 0;
+}
+
+.messageContent h1,
+.messageContent h2,
+.messageContent h3,
+.messageContent h4,
+.messageContent h5,
+.messageContent h6 {
+  font-weight: 600;
+  margin: var(--space-3) 0 var(--space-2) 0;
+}
+
+.messageContent h1:first-child,
+.messageContent h2:first-child,
+.messageContent h3:first-child {
+  margin-top: 0;
+}
+
+.messageContent blockquote {
+  border-left: 3px solid var(--border-primary);
+  padding-left: var(--space-3);
+  margin: var(--space-2) 0;
+  color: var(--text-secondary);
+}
+
+.messageContent a {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.messageContent hr {
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  margin: var(--space-3) 0;
 }
 
 .message.user .messageContent {

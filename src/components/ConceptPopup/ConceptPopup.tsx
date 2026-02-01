@@ -329,8 +329,9 @@ export function ConceptPopup({
   // ===== DRAG HANDLERS =====
   
   const handleDragStart = useCallback((e: React.MouseEvent) => {
-    // Only drag from header, not from buttons
-    if ((e.target as HTMLElement).closest('button')) return
+    // Only drag from header, not from buttons or draggable elements (like stash handle)
+    if ((e.target as HTMLElement).closest('button') ||
+        (e.target as HTMLElement).closest('[draggable="true"]')) return
     
     e.preventDefault()
     setIsDragging(true)

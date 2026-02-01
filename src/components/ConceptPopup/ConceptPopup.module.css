@@ -41,7 +41,7 @@
 .popup.minimized {
   min-height: auto;
   min-width: auto;
-  /* Stacked in lower-left corner when minimized */
+  /* Stacked in lower-right corner when minimized (avoids stash sidebar) */
   transition: left 200ms ease-out, top 200ms ease-out, width 200ms ease-out;
 }
 

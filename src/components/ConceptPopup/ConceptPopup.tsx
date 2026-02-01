@@ -64,7 +64,7 @@ export const DEFAULT_POPUP_HEIGHT = 400
 const MINIMIZED_WIDTH = 220
 const MINIMIZED_ESTIMATED_HEIGHT = 70  // Approximate header height (includes padding + category badge)
 const STACK_MARGIN = 8
-const STACK_LEFT_OFFSET = 20
+const STACK_RIGHT_OFFSET = 20  // Offset from right edge (avoids stash sidebar)
 const STACK_BOTTOM_OFFSET = 20
 
 /**
@@ -444,12 +444,14 @@ export function ConceptPopup({
     [onRelatedConceptClick]
   )
 
-  // Calculate stacked position for minimized popup
+  // Calculate stacked position for minimized popup (lower-right corner)
   const getMinimizedPosition = useCallback((): PopupPosition => {
+    const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
+    const x = viewportWidth - STACK_RIGHT_OFFSET - MINIMIZED_WIDTH
     const y = viewportHeight - STACK_BOTTOM_OFFSET - MINIMIZED_ESTIMATED_HEIGHT - 
               (minimizedStackIndex * (MINIMIZED_ESTIMATED_HEIGHT + STACK_MARGIN))
-    return { x: STACK_LEFT_OFFSET, y }
+    return { x, y }
   }, [minimizedStackIndex])
 
   // Handle minimize toggle
@@ -467,7 +469,7 @@ export function ConceptPopup({
       setPreMinimizePosition(popupPosition)
       setPreMinimizeWidth(popupSize.width)
       setPreMinimizeHeight(popupSize.height)
-      // Move to stacked position in lower-left
+      // Move to stacked position in lower-right
       setPopupPosition(getMinimizedPosition())
       setPopupSize({ width: MINIMIZED_WIDTH, height: MINIMIZED_ESTIMATED_HEIGHT })
       setIsMinimized(true)

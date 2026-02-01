@@ -227,10 +227,12 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
   const handleItemDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault()
-    e.stopPropagation()
+    // Only handle reordering if we're dragging an internal item
     if (draggedIndex !== null && draggedIndex !== index) {
+      e.stopPropagation()
       setDropTargetIndex(index)
     }
+    // Otherwise let it bubble up to sidebar for external drops
   }, [draggedIndex])
 
   const handleItemDragLeave = useCallback(() => {
@@ -239,14 +241,15 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
   const handleItemDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     e.preventDefault()
-    e.stopPropagation()
     
+    // Only handle reordering if we're dragging an internal item
     if (draggedIndex !== null && draggedIndex !== toIndex) {
+      e.stopPropagation()
       reorderItem(draggedIndex, toIndex)
+      setDraggedIndex(null)
+      setDropTargetIndex(null)
     }
-    
-    setDraggedIndex(null)
-    setDropTargetIndex(null)
+    // Otherwise let it bubble up to sidebar for external drops
   }, [draggedIndex, reorderItem])
 
   const handleItemDragEnd = useCallback(() => {

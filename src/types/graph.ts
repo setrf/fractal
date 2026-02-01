@@ -99,12 +99,14 @@ export interface GraphNode {
   y?: number
   z?: number
 
-  /**
-   * Optional: Velocity for physics simulation.
-   */
   vx?: number
   vy?: number
   vz?: number
+
+  /**
+   * Optional: Global visual scale multiplier.
+   */
+  visualScale?: number
 }
 
 /**

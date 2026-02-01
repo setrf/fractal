@@ -57,8 +57,10 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - All entities visible: Questions, Concepts, Stash Items, Probes
   - Custom 3D shapes per type: spheres, icosahedrons, cubes, tori
   - Relationship-based clustering brings connected nodes together
+  - **Advanced Dynamics Controls**: Adjust Distance, Repulsion, Gravity, and Friction
+  - **Visual Scale**: Global multiplier for node and label sizes
   - **Bloom effect** for visual depth and "wow" factor
-  - **Sprite labels** for instant identification of nodes
+  - **Smart Multiline Labels**: Full question text visible as sprites without truncation
   - Click nodes for details and actions
   - Zoom, pan, and rotate navigation
   - Filter nodes by type

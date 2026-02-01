@@ -8,7 +8,7 @@
  * - Legend showing node types and colors
  */
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useGraphContext } from '../../context/GraphContext'
 import type { GraphNodeType } from '../../types/graph'
 import { nodeTypeLabels } from '../../types/graph'
@@ -47,7 +47,23 @@ export function GraphControls({
   onZoomOut,
   rightOffset = 16,
 }: GraphControlsProps) {
-  const { filters, toggleNodeType, counts } = useGraphContext()
+  const {
+    filters,
+    toggleNodeType,
+    counts,
+    linkDistanceMult,
+    setLinkDistanceMult,
+    repulsionMult,
+    setRepulsionMult,
+    centeringMult,
+    setCenteringMult,
+    frictionMult,
+    setFrictionMult,
+    visualScale,
+    setVisualScale
+  } = useGraphContext()
+
+  const [showSettings, setShowSettings] = useState(false)
 
   // Handle filter toggle
   const handleFilterToggle = useCallback(
@@ -110,8 +126,97 @@ export function GraphControls({
           >
             −
           </button>
+          <button
+            className={`${styles.controlBtn} ${showSettings ? styles.active : ''}`}
+            onClick={() => setShowSettings(!showSettings)}
+            title="Graph Settings"
+            aria-label="Graph settings"
+          >
+            ⚙
+          </button>
         </div>
       </div>
+
+      {/* Settings Panel - Nested here so it inherits rightOffset positioning context or stays relative to button */}
+      {showSettings && (
+        <div className={styles.settingsPanel}>
+          <div className={styles.sectionTitle}>Dynamics</div>
+          <div className={styles.settingsGroup}>
+            <div className={styles.settingRow}>
+              <label>Distance</label>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={linkDistanceMult}
+                onChange={(e) => setLinkDistanceMult(parseFloat(e.target.value))}
+              />
+              <span>{Math.round(linkDistanceMult * 100)}%</span>
+            </div>
+            <div className={styles.settingRow}>
+              <label>Repulsion</label>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value={repulsionMult}
+                onChange={(e) => setRepulsionMult(parseFloat(e.target.value))}
+              />
+              <span>{Math.round(repulsionMult * 100)}%</span>
+            </div>
+            <div className={styles.settingRow}>
+              <label>Gravity</label>
+              <input
+                type="range"
+                min="0.1"
+                max="5"
+                step="0.1"
+                value={centeringMult}
+                onChange={(e) => setCenteringMult(parseFloat(e.target.value))}
+              />
+              <span>{Math.round(centeringMult * 100)}%</span>
+            </div>
+            <div className={styles.settingRow}>
+              <label>Friction</label>
+              <input
+                type="range"
+                min="0.5"
+                max="4"
+                step="0.1"
+                value={frictionMult}
+                onChange={(e) => setFrictionMult(parseFloat(e.target.value))}
+              />
+              <span>{Math.round(frictionMult * 100)}%</span>
+            </div>
+            <div className={styles.settingRow}>
+              <label>Visual Scale</label>
+              <input
+                type="range"
+                min="0.2"
+                max="3"
+                step="0.1"
+                value={visualScale}
+                onChange={(e) => setVisualScale(parseFloat(e.target.value))}
+              />
+              <span>{Math.round(visualScale * 100)}%</span>
+            </div>
+          </div>
+          <button
+            className={styles.resetBtn}
+            onClick={() => {
+              setLinkDistanceMult(1.0)
+              setRepulsionMult(1.0)
+              setCenteringMult(1.0)
+              setFrictionMult(1.0)
+              setVisualScale(1.0)
+            }}
+          >
+            Reset All
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className={styles.section}>

@@ -98,3 +98,92 @@
 [data-theme='dark'] .stats {
   background: oklch(from var(--bg-primary) l c h / 0.95);
 }
+
+/* Control Panel Styles */
+.controlsToggle {
+  position: fixed;
+  top: var(--space-20); /* Below view switch */
+  right: var(--space-4);
+  z-index: 100;
+}
+
+.controlButton {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.controlButton:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0 var(--border-primary);
+}
+
+.controlPanel {
+  position: fixed;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  width: 260px;
+  background: oklch(from var(--bg-primary) l c h / 0.95);
+  border: var(--border-width) solid var(--border-primary);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-mono);
+  box-shadow: 8px 8px 0 var(--border-primary);
+  z-index: 99;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.controlGroup label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+}
+
+.controlGroup input[type='range'] {
+  width: 100%;
+  accent-color: var(--text-primary);
+  cursor: pointer;
+}
+
+.controlValue {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.resetButton {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: transparent;
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.resetButton:hover {
+  background: var(--bg-secondary);
+  box-shadow: 4px 4px 0 var(--border-primary);
+  transform: translate(-2px, -2px);
+}

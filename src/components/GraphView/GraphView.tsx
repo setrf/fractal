@@ -2,24 +2,17 @@
  * @fileoverview 3D Knowledge Graph visualization component.
  *
  * Uses react-force-graph-3d to render an interactive 3D graph of all
- * entities (Questions, Concepts, Stash Items, Probes) with force-directed
- * layout and relationship-based clustering.
+ * entities (Questions, Concepts, Stash Items, Probes).
  *
- * Features:
- * - Custom 3D shapes per node type (spheres, icosahedrons, cubes, tori)
- * - Color-coded nodes based on entity type and category
- * - Interactive node clicking for popups
- * - Zoom/pan/rotate navigation
- * - Clustering based on relationships
- * - Bloom effect for "wow" factor
- * - Particle flows on edges
+ * Design: "Information Dense Beauty"
+ * - Swiss/Neobrutalist influence: sharp edges, monospace fonts
+ * - Legible information tags instead of flashy 3D primitives
+ * - Clean, structured layout with relationship clustering
  */
 
 import { useRef, useCallback, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from 'react'
-import ForceGraph3D, { type ForceGraph3DInstance } from 'react-force-graph-3d'
+import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
-// @ts-expect-error - No types for three/examples currently configured
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
 import SpriteText from 'three-spritetext'
 import { useGraphContext } from '../../context/GraphContext'
 import type { GraphNode, GraphEdge, GraphNodeType } from '../../types/graph'
@@ -151,58 +144,65 @@ function resolveNodeColor(node: GraphNode): string {
   return resolved
 }
 
+/**
+ * Creates a "Swiss Design" tag node object.
+ */
 function createNodeObject(node: GraphNode): THREE.Object3D {
-  const baseSize = 5 * node.size
-  let geometry: THREE.BufferGeometry
+  const color = resolveNodeColor(node)
 
-  // Different shapes for different node types
-  switch (node.type) {
-    case 'question':
-      geometry = new THREE.SphereGeometry(baseSize, 32, 32)
-      break
-    case 'concept':
-      geometry = new THREE.IcosahedronGeometry(baseSize, 0)
-      break
-    case 'stash':
-      geometry = new THREE.BoxGeometry(baseSize * 1.5, baseSize * 1.5, baseSize * 1.5)
-      break
-    case 'probe':
-      geometry = new THREE.TorusGeometry(baseSize, baseSize * 0.4, 8, 16)
-      break
-    default:
-      geometry = new THREE.SphereGeometry(baseSize, 16, 16)
-  }
-
-  const material = new THREE.MeshPhongMaterial({
-    color: resolveNodeColor(node),
-    shininess: 100,
-    transparent: true,
-    opacity: 0.9,
-  })
+  // Wrap long labels without truncation
+  const wrappedLabel = wrapLabel(node.label, 40)
+  const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1)
+  const fullText = `${wrappedLabel}\n[${typeLabel}]`
 
   const group = new THREE.Group()
-  const mesh = new THREE.Mesh(geometry, material)
+
+  // 1. Icon/Marker Geometry
+  const baseSize = node.type === 'question' ? 4 : 2
+  const markerSize = baseSize * (node.visualScale || 1)
+  const geometry = new THREE.SphereGeometry(markerSize, 16, 16)
+  const markerMaterial = new THREE.MeshBasicMaterial({ color })
+  const mesh = new THREE.Mesh(geometry, markerMaterial)
   group.add(mesh)
 
-  // Add label as sprite text
-  const sprite = new SpriteText(truncateLabel(node.label, 30))
-  sprite.color = '#ffffff'
-  sprite.textHeight = 3
-  sprite.position.set(0, baseSize + 6, 0)
-  sprite.backgroundColor = 'rgba(0,0,0,0.5)'
-  sprite.padding = 2
+  // 2. Label Sprite
+  const sprite = new SpriteText(fullText)
+  sprite.color = 'rgba(255, 255, 255, 0.95)'
+  sprite.fontFace = 'Inter, sans-serif'
+  sprite.textHeight = 2.5 * (node.visualScale || 1)
+  sprite.fontWeight = '500'
+  sprite.center = new THREE.Vector2(0.5, 1)
+
+  sprite.backgroundColor = 'rgba(0,0,0,0.6)'
+  sprite.padding = [3, 4]
   sprite.borderRadius = 2
+  sprite.borderWidth = 0
+
+  sprite.position.set(0, - (markerSize + 3), 0)
   group.add(sprite)
 
   return group
 }
 
 /**
- * Helper to truncate labels for 3D sprite.
+ * Helper to wrap text into multiple lines.
  */
-function truncateLabel(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength - 3) + '...'
+function wrapLabel(text: string, maxLineLength: number): string {
+  if (!text) return ''
+  const words = text.split(' ')
+  const lines: string[] = []
+  let currentLine = words[0]
+
+  for (let i = 1; i < words.length; i++) {
+    if (currentLine.length + 1 + words[i].length <= maxLineLength) {
+      currentLine += ' ' + words[i]
+    } else {
+      lines.push(currentLine)
+      currentLine = words[i]
+    }
+  }
+  lines.push(currentLine)
+  return lines.join('\n')
 }
 
 /**
@@ -225,40 +225,51 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
   { onNodeClick, width, height, leftOffset = 16 }: GraphViewProps,
   ref
 ) {
-  const graphRef = useRef<ForceGraph3DInstance>()
+  const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const { graphData, counts } = useGraphContext()
+  const {
+    graphData,
+    counts,
+    linkDistanceMult,
+    repulsionMult,
+    centeringMult,
+    frictionMult,
+    visualScale
+  } = useGraphContext()
 
-  useImperativeHandle(ref, () => {
-    const resetCamera = () => {
+  useImperativeHandle(ref, () => ({
+    resetCamera: () => {
       graphRef.current?.zoomToFit?.(600, 80)
-    }
-
-    const adjustZoom = (factor: number) => {
+    },
+    zoomIn: () => {
       const camera = graphRef.current?.camera()
       if (!camera) return
       const current = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
       const distance = current.length()
       if (distance === 0) return
       const direction = current.normalize()
-      const targetDistance = distance * factor
-      const newPosition = direction.multiplyScalar(targetDistance)
       graphRef.current?.cameraPosition(
-        { x: newPosition.x, y: newPosition.y, z: newPosition.z },
+        { x: direction.x * distance * 0.8, y: direction.y * distance * 0.8, z: direction.z * distance * 0.8 },
+        { x: 0, y: 0, z: 0 },
+        300
+      )
+    },
+    zoomOut: () => {
+      const camera = graphRef.current?.camera()
+      if (!camera) return
+      const current = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+      const distance = current.length()
+      if (distance === 0) return
+      const direction = current.normalize()
+      graphRef.current?.cameraPosition(
+        { x: direction.x * distance * 1.25, y: direction.y * distance * 1.25, z: direction.z * distance * 1.25 },
         { x: 0, y: 0, z: 0 },
         300
       )
     }
+  }), [])
 
-    return {
-      resetCamera,
-      zoomIn: () => adjustZoom(0.8),
-      zoomOut: () => adjustZoom(1.25),
-    }
-  }, [])
-
-  // Update dimensions on resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -268,120 +279,74 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
         })
       }
     }
-
     updateDimensions()
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
   }, [width, height])
 
-  // Configure bloom effect
+  // Configure forces
   useEffect(() => {
     if (!graphRef.current) return
-    
-    // Safety check for post-processing support
-    const composer = graphRef.current.postProcessingComposer()
-    if (!composer) return
-
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.8,  // strength
-      0.3,  // radius
-      0.2   // threshold
-    )
-    composer.addPass(bloomPass)
-    
-    // Cleanup not easily possible with current ref API, but effects are additive
-    // Ideally we'd remove pass on unmount
-  }, [])
-
-  // Configure forces for clustering
-  useEffect(() => {
-    if (!graphRef.current) return
-
     const fg = graphRef.current
 
     // Configure link force for distance based on edge type
     fg.d3Force('link')
       ?.distance((link: GraphEdge) => {
+        let baseDist = 100
         switch (link.type) {
-          case 'question-child':
-            return 50
-          case 'question-concept':
-            return 80
-          case 'concept-related':
-            return 120
-          case 'stash-source':
-            return 100
-          case 'probe-stash':
-            return 90
-          default:
-            return 100
+          case 'question-child': baseDist = 80; break
+          case 'question-concept': baseDist = 100; break
+          case 'concept-related': baseDist = 120; break
+          case 'stash-source': baseDist = 90; break
+          case 'probe-stash': baseDist = 80; break
+          default: baseDist = 100; break
         }
+        return baseDist * linkDistanceMult
       })
-      .strength((link: GraphEdge) => link.strength * 0.5)
+      .strength((link: GraphEdge) => link.strength * 0.7)
 
-    // Increase charge for better spacing
-    fg.d3Force('charge')?.strength(-150)
+    // Scale repulsion relative to distance to maintain consistent "pressure"
+    fg.d3Force('charge')?.strength(-100 * repulsionMult * Math.pow(linkDistanceMult, 1.5))
 
-    // Add some centering force
-    fg.d3Force('center')?.strength(0.05)
-  }, [graphData])
+    // Centering force
+    fg.d3Force('center')?.strength(0.5 * centeringMult)
+  }, [graphData, linkDistanceMult, repulsionMult, centeringMult])
 
-  // Handle node click
   const handleNodeClick = useCallback(
     (node: GraphNode, event: MouseEvent) => {
-      if (onNodeClick) {
-        onNodeClick(node, event)
-      }
-
-      // Focus camera on clicked node
+      if (onNodeClick) onNodeClick(node, event)
       if (graphRef.current && node.x !== undefined && node.y !== undefined && node.z !== undefined) {
-        const distance = 150
+        const distance = 250
         const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z)
-
         graphRef.current.cameraPosition(
-          {
-            x: node.x * distRatio,
-            y: node.y * distRatio,
-            z: node.z * distRatio,
-          },
+          { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
           { x: node.x, y: node.y, z: node.z },
-          1000 // Animation duration
+          1000
         )
       }
     },
     [onNodeClick]
   )
 
-  // Get link color based on type
-  const getLinkColor = useCallback((link: GraphEdge) => {
-    return EDGE_COLORS[link.type] || '#666666'
-  }, [])
+  const getLinkColor = useCallback((link: GraphEdge) => EDGE_COLORS[link.type] || '#666666', [])
+  const getLinkWidth = useCallback((link: GraphEdge) => EDGE_WIDTHS[link.type] || 1, [])
 
-  // Get link width based on type
-  const getLinkWidth = useCallback((link: GraphEdge) => {
-    return EDGE_WIDTHS[link.type] || 1
-  }, [])
-
-  // Resolve CSS variables/OKLCH to RGB for library compatibility
   const resolvedNodes = useMemo(
     () => graphData.nodes.map(node => ({ ...node, color: resolveNodeColor(node) })),
     [graphData.nodes]
   )
 
-  // Transform graph data for react-force-graph (needs source/target as objects or ids)
-  const transformedData = {
-    nodes: resolvedNodes,
+  const transformedData = useMemo(() => ({
+    nodes: resolvedNodes.map(node => ({ ...node, visualScale })),
     links: graphData.edges.map((edge) => ({
       ...edge,
       source: edge.source,
       target: edge.target,
     })),
-  }
+  }), [resolvedNodes, graphData.edges, visualScale])
 
   return (
     <div ref={containerRef} className={styles.container} data-onboarding="graph-view">
-      {/* Empty state */}
       {graphData.nodes.length === 0 && (
         <div className={styles.emptyState}>
           <p>No entities to visualize yet.</p>
@@ -391,41 +356,31 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
         </div>
       )}
 
-      {/* 3D Graph */}
       {graphData.nodes.length > 0 && (
         <ForceGraph3D
           ref={graphRef}
           graphData={transformedData}
           width={dimensions.width}
           height={dimensions.height}
-          backgroundColor="rgba(0, 0, 0, 0)" // Keep transparent for app background
-          // Node configuration
-          nodeLabel={(node: GraphNode) => ''} // Disable default tooltip in favor of sprite
+          backgroundColor="rgba(0, 0, 0, 0)"
+          nodeLabel={() => ''}
           nodeColor={(node: GraphNode) => resolveNodeColor(node)}
           nodeThreeObject={createNodeObject}
           nodeThreeObjectExtend={false}
           onNodeClick={handleNodeClick}
-          // Link configuration
           linkColor={getLinkColor}
           linkWidth={getLinkWidth}
           linkOpacity={0.4}
-          // Particle effects on links
-          linkDirectionalParticles={2}
-          linkDirectionalParticleWidth={2}
-          linkDirectionalParticleSpeed={0.005}
-          linkDirectionalParticleColor={() => '#ffffff'}
-          // Physics configuration
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
-          cooldownTime={3000}
-          warmupTicks={50}
-          // Camera configuration
+          linkDirectionalParticles={0}
+          d3AlphaDecay={0.01}
+          d3VelocityDecay={0.5 * frictionMult}
+          cooldownTime={5000}
+          warmupTicks={100}
           enableNavigationControls={true}
           showNavInfo={false}
         />
       )}
 
-      {/* Stats overlay */}
       <div
         className={styles.stats}
         style={{
@@ -433,18 +388,10 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
           transition: 'left var(--transition-normal)',
         }}
       >
-        <span className={styles.statItem} data-type="question">
-          {counts.question} Questions
-        </span>
-        <span className={styles.statItem} data-type="concept">
-          {counts.concept} Concepts
-        </span>
-        <span className={styles.statItem} data-type="stash">
-          {counts.stash} Stash
-        </span>
-        <span className={styles.statItem} data-type="probe">
-          {counts.probe} Probes
-        </span>
+        <span className={styles.statItem} data-type="question">{counts.question} Questions</span>
+        <span className={styles.statItem} data-type="concept">{counts.concept} Concepts</span>
+        <span className={styles.statItem} data-type="stash">{counts.stash} Stash</span>
+        <span className={styles.statItem} data-type="probe">{counts.probe} Probes</span>
       </div>
     </div>
   )

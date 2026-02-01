@@ -40,6 +40,26 @@ export interface GraphContextValue extends UseGraphDataReturn {
   toggleNodeType: (type: GraphNodeType) => void
   /** Reset filters to default (all visible) */
   resetFilters: () => void
+  /** Link distance multiplier */
+  linkDistanceMult: number
+  /** Repulsion multiplier */
+  repulsionMult: number
+  /** Centering strength multiplier */
+  centeringMult: number
+  /** Friction / Velocity decay multiplier */
+  frictionMult: number
+  /** Global visual scale (nodes/text) */
+  visualScale: number
+  /** Set link distance multiplier */
+  setLinkDistanceMult: (val: number) => void
+  /** Set repulsion multiplier */
+  setRepulsionMult: (val: number) => void
+  /** Set centering multiplier */
+  setCenteringMult: (val: number) => void
+  /** Set friction multiplier */
+  setFrictionMult: (val: number) => void
+  /** Set visual scale */
+  setVisualScale: (val: number) => void
 }
 
 /**
@@ -52,9 +72,19 @@ const defaultContextValue: GraphContextValue = {
   isLoading: false,
   counts: { question: 0, concept: 0, stash: 0, probe: 0 },
   filters: DEFAULT_GRAPH_FILTERS,
-  setFilters: () => {},
-  toggleNodeType: () => {},
-  resetFilters: () => {},
+  setFilters: () => { },
+  toggleNodeType: () => { },
+  resetFilters: () => { },
+  linkDistanceMult: 1.0,
+  repulsionMult: 1.0,
+  centeringMult: 1.0,
+  frictionMult: 1.0,
+  visualScale: 1.0,
+  setLinkDistanceMult: () => { },
+  setRepulsionMult: () => { },
+  setCenteringMult: () => { },
+  setFrictionMult: () => { },
+  setVisualScale: () => { },
 }
 
 /**
@@ -84,6 +114,13 @@ export function GraphProvider({
 }: GraphProviderProps) {
   // Filter state
   const [filters, setFilters] = useState<GraphFilters>(DEFAULT_GRAPH_FILTERS)
+
+  // Force state
+  const [linkDistanceMult, setLinkDistanceMult] = useState(1.0)
+  const [repulsionMult, setRepulsionMult] = useState(1.0)
+  const [centeringMult, setCenteringMult] = useState(1.0)
+  const [frictionMult, setFrictionMult] = useState(1.0)
+  const [visualScale, setVisualScale] = useState(1.0)
 
   // Compute graph data with current filters
   const graphDataResult = useGraphData({
@@ -121,8 +158,28 @@ export function GraphProvider({
       setFilters,
       toggleNodeType,
       resetFilters,
+      linkDistanceMult,
+      setLinkDistanceMult,
+      repulsionMult,
+      setRepulsionMult,
+      centeringMult,
+      setCenteringMult,
+      frictionMult,
+      setFrictionMult,
+      visualScale,
+      setVisualScale,
     }),
-    [graphDataResult, filters, toggleNodeType, resetFilters]
+    [
+      graphDataResult,
+      filters,
+      toggleNodeType,
+      resetFilters,
+      linkDistanceMult,
+      repulsionMult,
+      centeringMult,
+      frictionMult,
+      visualScale
+    ]
   )
 
   return (

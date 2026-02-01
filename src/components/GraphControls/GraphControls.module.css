@@ -13,13 +13,15 @@
 /* Main container */
 .container {
   position: fixed;
-  top: calc(var(--space-4) + 48px + var(--space-12));
+  top: calc(var(--space-4) + 48px + var(--space-4));
+  /* Just below header */
   right: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   font-family: var(--font-mono);
-  z-index: 50;
+  z-index: 1000;
+  /* Ensure it's above everything */
 }
 
 /* Section container */
@@ -62,8 +64,11 @@
   color: var(--text-primary);
 }
 
-.controlBtn:active {
+.controlBtn:active,
+.controlBtn.active {
   background: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 /* Filter list */
@@ -170,6 +175,71 @@
 
 /* Dark mode adjustments */
 [data-theme='dark'] .section,
-[data-theme='dark'] .shortcuts {
+[data-theme='dark'] .shortcuts,
+[data-theme='dark'] .settingsPanel {
   background: oklch(from var(--bg-primary) l c h / 0.98);
+}
+
+/* Settings Panel */
+.settingsPanel {
+  position: absolute;
+  top: 0;
+  right: calc(100% + var(--space-3));
+  /* Positioned to the LEFT of the main controls */
+  width: 200px;
+  background: oklch(from var(--bg-primary) l c h / 0.95);
+  border: var(--border-width) solid var(--border-primary);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: -4px 4px 0 var(--border-primary);
+}
+
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settingRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settingRow label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.settingRow input[type='range'] {
+  width: 100%;
+  accent-color: var(--text-primary);
+  cursor: pointer;
+}
+
+.settingRow span {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.resetBtn {
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.resetBtn:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }

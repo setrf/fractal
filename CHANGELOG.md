@@ -17,6 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.2] - 2026-02-01
+
+### Added
+
+#### Advanced Graph Dynamics
+- **Unified Controls Group**: Moved graph settings (⚙) into the primary camera control cluster for better visibility and layout stability.
+- **Global Force Management**: Migrated graph physics parameters to `GraphContext`, ensuring the 3D simulation and UI stay in perfect sync.
+- **Expanded Dynamics Controls**:
+  - **Distance**: Fine-tune link spacing.
+  - **Repulsion**: Adjust global separation pressure.
+  - **Gravity**: Control the centering pull strength.
+  - **Friction**: Adjust velocity decay for faster stabilization.
+  - **Visual Scale**: Global multiplier for node and label sizes.
+- **Physics Stabilization**: Implemented a power-scaled relationship between distance and repulsion to prevent "drifting" and ensure structural integrity at extreme settings.
+
+#### 3D Visual Refinement
+- **Automatic Label Wrapping**: Implemented a smart label wrapper that keeps long question text fully legible in 3D space without truncation.
+- **Information Density Tuning**: Reduced default node and text sizes for a more sophisticated, "diagrammatic" aesthetic.
+- **Visual Scale multiplier**: Dynamically resize all 3D entities via the control panel.
+
+---
+
 ## [0.7.1] - 2026-02-01
 
 ### Added

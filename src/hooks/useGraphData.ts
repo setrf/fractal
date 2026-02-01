@@ -33,7 +33,6 @@ import {
   type GraphFilters,
   type GraphNodeType,
   DEFAULT_GRAPH_FILTERS,
-  truncateLabel,
   NODE_SIZE_MULTIPLIERS,
   EDGE_STRENGTHS,
 } from '../types/graph'
@@ -141,7 +140,7 @@ export function useGraphData(input: GraphDataInput): UseGraphDataReturn {
         graphNodes.push({
           id: questionNode.id,
           type: 'question',
-          label: truncateLabel(questionNode.text, 40),
+          label: questionNode.text,
           data: questionNode,
           color: NODE_TYPE_COLORS.question,
           size: NODE_SIZE_MULTIPLIERS.question * sizeMultiplier,
@@ -209,7 +208,7 @@ export function useGraphData(input: GraphDataInput): UseGraphDataReturn {
         graphNodes.push({
           id: item.id,
           type: 'stash',
-          label: truncateLabel(item.content, 30),
+          label: item.content,
           data: item,
           color: NODE_TYPE_COLORS.stash,
           size: NODE_SIZE_MULTIPLIERS.stash,

@@ -329,24 +329,24 @@ export function ConceptPopup({
   // ===== DRAG HANDLERS =====
   
   const handleDragStart = useCallback((e: React.MouseEvent) => {
-    // Only drag from header, not from buttons or draggable elements (like stash handle)
+    // Only drag from header, not from buttons or draggable elements
     if ((e.target as HTMLElement).closest('button') ||
         (e.target as HTMLElement).closest('[draggable="true"]')) return
     
     e.preventDefault()
     setIsDragging(true)
+    setExternalDragHover(true) // Show stash overlay when drag starts
     setDragOffset({
       x: e.clientX - popupPosition.x,
       y: e.clientY - popupPosition.y,
     })
-  }, [popupPosition])
+  }, [popupPosition, setExternalDragHover])
 
   useEffect(() => {
     if (!isDragging) return
 
-    // Check if mouse is over the stash sidebar (works for both open and collapsed states)
+    // Check if mouse is over the stash sidebar (for drop detection)
     const isOverStash = (mouseX: number): boolean => {
-      // Find the stash sidebar element
       const sidebar = document.querySelector('aside')
       if (!sidebar) return false
       const rect = sidebar.getBoundingClientRect()
@@ -357,15 +357,11 @@ export function ConceptPopup({
       const newX = Math.max(0, Math.min(e.clientX - dragOffset.x, window.innerWidth - popupSize.width))
       const newY = Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - 50))
       setPopupPosition({ x: newX, y: newY })
-      
-      // Check if dragging over stash and update visual feedback
-      const overStash = isOverStash(e.clientX)
-      setExternalDragHover(overStash)
     }
 
     const handleMouseUp = (e: MouseEvent) => {
       setIsDragging(false)
-      setExternalDragHover(false)
+      setExternalDragHover(false) // Hide stash overlay when drag ends
       
       // If dropped over stash, add the item
       if (isOverStash(e.clientX) && concept && explanation) {

@@ -617,38 +617,6 @@ export function ConceptPopup({
   // Check if explanation is already stashed
   const isStashed = concept ? hasItem(concept.normalizedName, 'explanation') : false
 
-  /**
-   * Handles drag start for dragging popup to stash.
-   * Only works if we have an explanation loaded.
-   */
-  const handlePopupDragStart = useCallback((e: React.DragEvent) => {
-    if (!concept || !explanation) return
-    
-    const itemData = {
-      type: 'explanation',
-      content: concept.normalizedName,
-      metadata: {
-        summary: explanation.summary,
-        context: explanation.context,
-        relatedConcepts: explanation.relatedConcepts,
-        conceptCategory: concept.category,
-        normalizedName: concept.normalizedName,
-      },
-    }
-    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
-    e.dataTransfer.effectAllowed = 'copy'
-  }, [concept, explanation])
-
-  /**
-   * Handles drag end - closes popup if dropped successfully into stash.
-   */
-  const handlePopupDragEnd = useCallback((e: React.DragEvent) => {
-    // dropEffect is 'copy' or 'move' if drop was successful, 'none' if cancelled
-    if (e.dataTransfer.dropEffect !== 'none') {
-      onClose()
-    }
-  }, [onClose])
-
   // Don't render if no concept
   if (!concept) return null
 
@@ -738,9 +706,6 @@ export function ConceptPopup({
         ref={contentRef}
         className={styles.content}
         onMouseUp={handleContentMouseUp}
-        draggable={!!explanation}
-        onDragStart={handlePopupDragStart}
-        onDragEnd={handlePopupDragEnd}
       >
         {isLoading && (
           <div className={styles.loading}>

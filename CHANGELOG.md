@@ -19,6 +19,14 @@ Extends the concept highlighting functionality to chat messages, allowing users 
 - **Generate button** - Each message has a ✦ button to trigger AI concept extraction
 - **Remove highlights** - Individual highlights can be removed with × button
 - **Popup integration** - Clicking highlights opens concept explanation popups
+- **Markdown rendering** - Chat messages now render with full markdown formatting support
+
+### Fixed
+
+- **Theme toggle and Note button** now visible in Chat view (were previously hidden)
+- **Concept index validation** - Misaligned indices from LLM are now auto-corrected
+- **Extraction timing** - Added 500ms debounce to ensure message content is stable before extraction
+- **Text selection** - Moved draggable attribute to header only, enabling text selection in message content
 
 ### Planned
 - Keyboard navigation enhancements

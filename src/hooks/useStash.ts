@@ -110,6 +110,12 @@ export interface UseStashReturn {
 
   /** Set external drag hover state (for popups being dragged to stash) */
   setExternalDragHover: (hovering: boolean) => void
+
+  /** Current width of the sidebar (when open) */
+  sidebarWidth: number
+
+  /** Set sidebar width (for resize) */
+  setSidebarWidth: (width: number) => void
 }
 
 /**
@@ -166,6 +172,7 @@ export function useStash(): UseStashReturn {
   const [filterType, setFilterType] = useState<StashItemType | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [externalDragHover, setExternalDragHover] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(320)
 
   // Debounce timer ref
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -397,5 +404,7 @@ export function useStash(): UseStashReturn {
     reorderItem,
     externalDragHover,
     setExternalDragHover,
+    sidebarWidth,
+    setSidebarWidth,
   }
 }

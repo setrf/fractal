@@ -81,7 +81,7 @@ interface ReopenedExplanation {
  */
 function AppContent() {
   // Get stash state for sidebar layout
-  const { isOpen: stashOpen } = useStashContext()
+  const { isOpen: stashOpen, sidebarWidth } = useStashContext()
   // Initialize the question tree state and operations
   const {
     tree,
@@ -458,7 +458,7 @@ function AppContent() {
           style={{
             position: 'fixed',
             top: 'var(--space-3)',
-            left: stashOpen ? 'calc(320px + var(--space-3))' : 'calc(48px + var(--space-3))',
+            left: stashOpen ? `calc(${sidebarWidth}px + var(--space-3))` : 'calc(48px + var(--space-3))',
             display: 'flex',
             gap: 'var(--space-2)',
             zIndex: 99,

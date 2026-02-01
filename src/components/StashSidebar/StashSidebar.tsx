@@ -71,6 +71,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     addItem,
     reorderItem,
     externalDragHover,
+    sidebarWidth,
+    setSidebarWidth,
   } = useStashContext()
 
   const [isDragOver, setIsDragOver] = useState(false)
@@ -84,7 +86,6 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   
   // Resize state
-  const [sidebarWidth, setSidebarWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const resizeStartX = useRef(0)

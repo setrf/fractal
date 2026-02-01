@@ -80,6 +80,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   
   // Drag-to-reorder state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   
   // Resize state
@@ -239,12 +240,13 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     [addItem]
   )
 
-  // Item reorder handlers for INTERNAL reordering
-  const handleItemDragStart = useCallback((e: React.DragEvent, index: number) => {
+  // Item reorder handlers for INTERNAL reordering and removal
+  const handleItemDragStart = useCallback((e: React.DragEvent, index: number, itemId: string) => {
     // Set a custom type to identify internal reorder drags
     e.dataTransfer.setData('text/x-stash-reorder', String(index))
     e.dataTransfer.effectAllowed = 'move'
     setDraggedIndex(index)
+    setDraggedItemId(itemId)
   }, [])
 
   const handleItemDragOver = useCallback((e: React.DragEvent, index: number) => {
@@ -282,10 +284,24 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     // For external drags, don't stop propagation - let it bubble up to sidebar's handleDrop
   }, [draggedIndex, reorderItem])
 
-  const handleItemDragEnd = useCallback(() => {
+  const handleItemDragEnd = useCallback((e: React.DragEvent) => {
+    // Check if dropped outside the sidebar - if so, remove the item
+    const sidebar = sidebarRef.current
+    if (sidebar && draggedItemId) {
+      const rect = sidebar.getBoundingClientRect()
+      const isOutside = e.clientX < rect.left || e.clientX > rect.right ||
+                        e.clientY < rect.top || e.clientY > rect.bottom
+      
+      if (isOutside) {
+        // Dropped outside - remove the item
+        removeItem(draggedItemId)
+      }
+    }
+    
     setDraggedIndex(null)
+    setDraggedItemId(null)
     setDropTargetIndex(null)
-  }, [])
+  }, [draggedItemId, removeItem])
 
   // Get filter label
   const getFilterLabel = (type: StashItemType | null): string => {
@@ -436,11 +452,11 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
                     draggedIndex === index ? styles.dragging : ''
                   } ${dropTargetIndex === index ? styles.dropTarget : ''}`}
                   draggable
-                  onDragStart={(e) => handleItemDragStart(e, index)}
+                  onDragStart={(e) => handleItemDragStart(e, index, item.id)}
                   onDragOver={(e) => handleItemDragOver(e, index)}
                   onDragLeave={handleItemDragLeave}
                   onDrop={(e) => handleItemDrop(e, index)}
-                  onDragEnd={handleItemDragEnd}
+                  onDragEnd={(e) => handleItemDragEnd(e)}
                 >
                   <StashItem
                     item={item}

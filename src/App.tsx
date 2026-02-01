@@ -545,24 +545,27 @@ function AppContent() {
         {/* ============================================
          * CHAT VIEW
          * Shown when a question is "locked in" for deep exploration.
+         * Kept mounted (but hidden) to preserve popup state when switching views.
          * ============================================ */}
-        {currentView === 'chat' && chatState && (
-          <ChatView
-            question={chatState.question}
-            onBack={handleBackToTree}
-            onSendMessage={handleSendChatMessage}
-            concepts={nodeConcepts[chatState.nodeId] || []}
-            conceptExplanations={allExplanations}
-            conceptLoadingStates={explanationLoadingStates}
-            conceptExplanation={conceptExplanation}
-            isConceptLoading={explanationLoading}
-            conceptError={explanationError}
-            onConceptHover={handleConceptHover}
-            onConceptClick={handleConceptClick}
-            extractConcepts={extractConcepts}
-            minimizeAllTrigger={minimizeAllTrigger}
-            closeAllTrigger={closeAllTrigger}
-          />
+        {chatState && (
+          <div style={{ display: currentView === 'chat' ? 'block' : 'none' }}>
+            <ChatView
+              question={chatState.question}
+              onBack={handleBackToTree}
+              onSendMessage={handleSendChatMessage}
+              concepts={nodeConcepts[chatState.nodeId] || []}
+              conceptExplanations={allExplanations}
+              conceptLoadingStates={explanationLoadingStates}
+              conceptExplanation={conceptExplanation}
+              isConceptLoading={explanationLoading}
+              conceptError={explanationError}
+              onConceptHover={handleConceptHover}
+              onConceptClick={handleConceptClick}
+              extractConcepts={extractConcepts}
+              minimizeAllTrigger={minimizeAllTrigger}
+              closeAllTrigger={closeAllTrigger}
+            />
+          </div>
         )}
 
         {/* Main content area for welcome and tree views */}

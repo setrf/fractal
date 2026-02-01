@@ -236,19 +236,58 @@ export function ChatView({
    */
   const validateAndFixConcepts = useCallback((text: string, concepts: ExtractedConcept[]): ExtractedConcept[] => {
     return concepts.map(concept => {
-      // Check if indices are valid
+      // First, check if the indices are within bounds
+      if (concept.startIndex < 0 || concept.endIndex > text.length || concept.startIndex >= concept.endIndex) {
+        // Invalid indices, try to find the text
+        const searchText = concept.text.toLowerCase()
+        const lowerText = text.toLowerCase()
+        const newStartIndex = lowerText.indexOf(searchText)
+        
+        if (newStartIndex === -1) {
+          // Try a more flexible match - look for partial matches
+          const words = concept.text.split(/\s+/)
+          if (words.length > 0) {
+            const firstWord = words[0].toLowerCase()
+            const partialIndex = lowerText.indexOf(firstWord)
+            if (partialIndex !== -1) {
+              // Found partial match, use original text length from that position
+              return {
+                ...concept,
+                startIndex: partialIndex,
+                endIndex: Math.min(partialIndex + concept.text.length, text.length),
+              }
+            }
+          }
+          return null
+        }
+        
+        return {
+          ...concept,
+          startIndex: newStartIndex,
+          endIndex: newStartIndex + concept.text.length,
+        }
+      }
+      
+      // Check if indices match the concept text
       const extractedText = text.slice(concept.startIndex, concept.endIndex)
       if (extractedText.toLowerCase() === concept.text.toLowerCase()) {
         return concept // Indices are correct
       }
       
-      // Try to find the correct position
+      // Indices are within bounds but don't match - find correct position
       const searchText = concept.text.toLowerCase()
       const lowerText = text.toLowerCase()
       const newStartIndex = lowerText.indexOf(searchText)
       
       if (newStartIndex === -1) {
-        // Can't find the text, skip this concept
+        // The exact text wasn't found - try finding text at the given indices
+        // and use that as the concept text instead
+        if (extractedText.length > 2) {
+          return {
+            ...concept,
+            text: extractedText,
+          }
+        }
         return null
       }
       

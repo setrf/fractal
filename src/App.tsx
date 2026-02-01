@@ -250,20 +250,20 @@ function AppContent() {
   }, [reset, resetExplanation])
 
   /**
-   * Creates a new note popup at the click position.
+   * Creates a new note popup in a centered position.
    */
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    // Only create note if clicking directly on the main element (not children)
-    if (e.target !== e.currentTarget) return
-    
+  const handleCreateNote = useCallback(() => {
     const id = `note-${Date.now()}-${noteIdCounter.current++}`
+    const x = Math.max(100, (window.innerWidth - 300) / 2)
+    const y = Math.max(100, (window.innerHeight - 300) / 3)
     const newNote: CanvasNote = {
       id,
-      x: e.clientX - 150, // Center the popup on click
-      y: e.clientY - 50,
+      x,
+      y,
       title: '',
       content: '',
       isMinimized: false,
+      sourceType: 'note',
     }
     
     setCanvasNotes(prev => [...prev, newNote])
@@ -380,6 +380,39 @@ function AppContent() {
         {/* Theme toggle - always visible (except in chat view which has its own layout) */}
         {currentView !== 'chat' && <ThemeToggle />}
         
+        {/* New Note button - fixed in upper left after stash */}
+        {currentView !== 'chat' && (
+          <button
+            onClick={handleCreateNote}
+            style={{
+              position: 'fixed',
+              top: 'var(--space-3)',
+              left: stashOpen ? 'calc(320px + var(--space-3))' : 'calc(48px + var(--space-3))',
+              padding: 'var(--space-2) var(--space-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              background: 'var(--bg-primary)',
+              border: 'var(--border-width) solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              zIndex: 99,
+              transition: 'left var(--transition-normal), border-color 0.2s, color 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+            title="Create a new note"
+            aria-label="Create new note"
+          >
+            + Note
+          </button>
+        )}
+        
         {/* ============================================
          * CHAT VIEW
          * Shown when a question is "locked in" for deep exploration.
@@ -403,14 +436,12 @@ function AppContent() {
         {/* Main content area for welcome and tree views */}
         {currentView !== 'chat' && (
           <main
-            onClick={handleCanvasClick}
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               minHeight: '100vh',
               padding: 'var(--space-4)',
-              cursor: 'crosshair',
             }}
           >
             {currentView === 'welcome' ? (

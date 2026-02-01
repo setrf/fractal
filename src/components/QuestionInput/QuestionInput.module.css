@@ -83,13 +83,15 @@
   display: none;
 }
 
-/* Submit button - arrow icon */
+/* Submit button - arrow icon, vertically centered */
 .submit {
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: center; /* Center vertically within the wrapper */
+  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xl);
   font-weight: 700;

@@ -203,10 +203,13 @@ export function ChatView({
   /**
    * Handles concept hover - opens a new popup.
    * Multiple popups can be open at the same time.
+   * Prevents duplicates by checking normalizedName (same concept = same popup).
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
-    // Check if this concept already has an open popup
-    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
+    const existingPopup = openPopups.find(p => 
+      p.concept.id === concept.id || p.concept.normalizedName === concept.normalizedName
+    )
     if (existingPopup) return
     
     // Add new popup
@@ -230,12 +233,15 @@ export function ChatView({
 
   /**
    * Handles concept click - opens popup if not already open.
+   * Prevents duplicates by checking normalizedName (same concept = same popup).
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
     
-    // Check if this concept already has an open popup
-    const existingPopup = openPopups.find(p => p.concept.id === concept.id)
+    // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
+    const existingPopup = openPopups.find(p => 
+      p.concept.id === concept.id || p.concept.normalizedName === concept.normalizedName
+    )
     if (existingPopup) return
     
     // Add new popup

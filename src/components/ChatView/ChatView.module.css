@@ -168,14 +168,47 @@
   flex-direction: row-reverse;
 }
 
-/* Stash button on messages - visible on hover */
-.messageStashBtn {
+/* Message actions container */
+.messageActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
-.message:hover .messageStashBtn {
+.message:hover .messageActions {
   opacity: 1;
+}
+
+/* AI Generate Highlights button */
+.generateBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.generateBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.generateBtn:disabled {
+  cursor: wait;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Stash button on messages */
+.messageStashBtn {
+  /* inherits from messageActions visibility */
 }
 
 .messageContent {

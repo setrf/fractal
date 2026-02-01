@@ -11,10 +11,11 @@
  * - Fixed input at bottom
  * - Auto-scroll to latest message
  * - Concept highlighting in question header with popups
+ * - Auto and manual highlighting of concepts in messages
  */
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
-import type { ChatMessage, ExtractedConcept, ConceptExplanation } from '../../api'
+import type { ChatMessage, ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
 import { StashButton } from '../StashButton'
@@ -53,6 +54,10 @@ interface ChatViewProps {
   onConceptLeave?: () => void
   /** Callback when a concept is clicked */
   onConceptClick?: (concept: ExtractedConcept) => void
+  
+  // Message concept highlighting props
+  /** Function to extract concepts from text */
+  extractConcepts?: (text: string) => Promise<ExtractedConcept[]>
 }
 
 /**
@@ -89,6 +94,7 @@ export function ChatView({
   onConceptHover,
   onConceptLeave,
   onConceptClick,
+  extractConcepts,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -96,6 +102,13 @@ export function ChatView({
   const [initialQuerySent, setInitialQuerySent] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Message-specific concepts (messageIndex -> concepts)
+  const [messageConcepts, setMessageConcepts] = useState<Record<number, ExtractedConcept[]>>({})
+  // Track which messages are currently extracting
+  const [extractingMessages, setExtractingMessages] = useState<Set<number>>(new Set())
+  // Track ref for text selection
+  const messageRefs = useRef<Record<number, HTMLDivElement | null>>({})
   
   // Stash context for adding messages to stash
   const { addItem, hasItem } = useStashContext()
@@ -192,6 +205,142 @@ export function ChatView({
 
     sendInitialQuery()
   }, [initialQuerySent, onSendMessage])
+
+  /**
+   * Auto-extract concepts for new messages (assistant messages only).
+   * User messages are typically short and less interesting to highlight.
+   */
+  useEffect(() => {
+    if (!extractConcepts) return
+    
+    messages.forEach((msg, index) => {
+      // Only auto-extract for assistant messages
+      if (msg.role !== 'assistant') return
+      // Skip if already extracted or currently extracting
+      if (messageConcepts[index] !== undefined || extractingMessages.has(index)) return
+      
+      setExtractingMessages(prev => new Set(prev).add(index))
+      
+      extractConcepts(msg.content).then(extracted => {
+        setMessageConcepts(prev => ({ ...prev, [index]: extracted }))
+        setExtractingMessages(prev => {
+          const next = new Set(prev)
+          next.delete(index)
+          return next
+        })
+      }).catch(() => {
+        // On error, set empty array to prevent retry
+        setMessageConcepts(prev => ({ ...prev, [index]: [] }))
+        setExtractingMessages(prev => {
+          const next = new Set(prev)
+          next.delete(index)
+          return next
+        })
+      })
+    })
+  }, [messages, extractConcepts, messageConcepts, extractingMessages])
+
+  /**
+   * Handles generating AI highlights for a specific message.
+   */
+  const handleGenerateHighlights = useCallback(async (messageIndex: number) => {
+    if (!extractConcepts || extractingMessages.has(messageIndex)) return
+    
+    const msg = messages[messageIndex]
+    if (!msg) return
+    
+    setExtractingMessages(prev => new Set(prev).add(messageIndex))
+    
+    try {
+      const extracted = await extractConcepts(msg.content)
+      setMessageConcepts(prev => ({ ...prev, [messageIndex]: extracted }))
+    } finally {
+      setExtractingMessages(prev => {
+        const next = new Set(prev)
+        next.delete(messageIndex)
+        return next
+      })
+    }
+  }, [extractConcepts, messages, extractingMessages])
+
+  /**
+   * Handles adding a user-created concept highlight via text selection.
+   */
+  const handleAddUserConcept = useCallback((messageIndex: number, concept: ExtractedConcept) => {
+    setMessageConcepts(prev => {
+      const existing = prev[messageIndex] || []
+      // Add the new concept and sort by position
+      const updated = [...existing, concept].sort((a, b) => a.startIndex - b.startIndex)
+      return { ...prev, [messageIndex]: updated }
+    })
+  }, [])
+
+  /**
+   * Handles removing a concept from a message.
+   */
+  const handleRemoveConcept = useCallback((messageIndex: number, conceptId: string) => {
+    setMessageConcepts(prev => {
+      const existing = prev[messageIndex] || []
+      const updated = existing.filter(c => c.id !== conceptId)
+      return { ...prev, [messageIndex]: updated }
+    })
+  }, [])
+
+  /**
+   * Handles text selection to create a manual highlight.
+   */
+  const handleTextSelection = useCallback((messageIndex: number) => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+    
+    const selectedText = selection.toString().trim()
+    if (!selectedText || selectedText.length < 2) return
+    
+    // Get the message element
+    const messageEl = messageRefs.current[messageIndex]
+    if (!messageEl) return
+    
+    // Check if selection is within this message
+    const range = selection.getRangeAt(0)
+    if (!messageEl.contains(range.commonAncestorContainer)) return
+    
+    // Calculate indices relative to the message content
+    const msg = messages[messageIndex]
+    if (!msg) return
+    
+    const fullText = msg.content
+    const startIndex = fullText.indexOf(selectedText)
+    if (startIndex === -1) return
+    
+    // Check for overlap with existing concepts
+    const existing = messageConcepts[messageIndex] || []
+    const endIndex = startIndex + selectedText.length
+    const hasOverlap = existing.some(c => 
+      (startIndex >= c.startIndex && startIndex < c.endIndex) ||
+      (endIndex > c.startIndex && endIndex <= c.endIndex) ||
+      (startIndex <= c.startIndex && endIndex >= c.endIndex)
+    )
+    if (hasOverlap) {
+      selection.removeAllRanges()
+      return
+    }
+    
+    // Create new concept
+    const newConcept: ExtractedConcept = {
+      id: `user_msg${messageIndex}_${Date.now()}`,
+      text: selectedText,
+      normalizedName: selectedText.toLowerCase(),
+      category: 'abstract' as ConceptCategory,
+      startIndex,
+      endIndex,
+    }
+    
+    handleAddUserConcept(messageIndex, newConcept)
+    selection.removeAllRanges()
+    
+    // Also trigger explanation fetch if callback exists
+    onConceptClick?.(newConcept)
+  }, [messages, messageConcepts, handleAddUserConcept, onConceptClick])
 
   /**
    * Handle sending a message.
@@ -469,29 +618,63 @@ export function ChatView({
             </p>
           </div>
         ) : (
-          messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`${styles.message} ${styles[msg.role]}`}
-              draggable
-              onDragStart={(e) => handleMessageDragStart(e, msg, index)}
-            >
-              <div className={styles.messageHeader}>
-                <div className={styles.messageRole}>
-                  {msg.role === 'user' ? 'You' : 'AI'}
+          messages.map((msg, index) => {
+            const msgConcepts = messageConcepts[index] || []
+            const isExtracting = extractingMessages.has(index)
+            
+            return (
+              <div
+                key={index}
+                className={`${styles.message} ${styles[msg.role]}`}
+                draggable
+                onDragStart={(e) => handleMessageDragStart(e, msg, index)}
+              >
+                <div className={styles.messageHeader}>
+                  <div className={styles.messageRole}>
+                    {msg.role === 'user' ? 'You' : 'AI'}
+                  </div>
+                  <div className={styles.messageActions}>
+                    {/* AI Generate Highlights button */}
+                    {extractConcepts && (
+                      <button
+                        className={styles.generateBtn}
+                        onClick={() => handleGenerateHighlights(index)}
+                        disabled={isExtracting}
+                        title={isExtracting ? 'Extracting concepts...' : 'Generate AI highlights'}
+                        aria-label="Generate AI highlights"
+                      >
+                        {isExtracting ? '◌' : '✦'}
+                      </button>
+                    )}
+                    <StashButton
+                      onClick={() => handleStashMessage(msg, index)}
+                      isStashed={hasItem(msg.content, 'chat-message')}
+                      size="small"
+                      className={styles.messageStashBtn}
+                    />
+                  </div>
                 </div>
-                <StashButton
-                  onClick={() => handleStashMessage(msg, index)}
-                  isStashed={hasItem(msg.content, 'chat-message')}
-                  size="small"
-                  className={styles.messageStashBtn}
-                />
+                <div 
+                  className={styles.messageContent}
+                  ref={(el) => { messageRefs.current[index] = el }}
+                  onMouseUp={() => handleTextSelection(index)}
+                >
+                  {msgConcepts.length > 0 ? (
+                    <ConceptHighlighter
+                      text={msg.content}
+                      concepts={msgConcepts}
+                      onConceptHover={handleConceptHover}
+                      onConceptLeave={handleConceptLeave}
+                      onConceptClick={handleConceptClick}
+                      onConceptRemove={(conceptId) => handleRemoveConcept(index, conceptId)}
+                    />
+                  ) : (
+                    msg.content
+                  )}
+                </div>
               </div>
-              <div className={styles.messageContent}>
-                {msg.content}
-              </div>
-            </div>
-          ))
+            )
+          })
         )}
         
         {/* Loading indicator */}

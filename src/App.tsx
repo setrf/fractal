@@ -475,6 +475,7 @@ function AppContent() {
             conceptError={explanationError}
             onConceptHover={handleConceptHover}
             onConceptClick={handleConceptClick}
+            extractConcepts={extractConcepts}
           />
         )}
 

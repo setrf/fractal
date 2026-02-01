@@ -28,6 +28,7 @@ Extends the concept highlighting functionality to chat messages, allowing users 
 - **Extraction timing** - Added 500ms debounce to ensure message content is stable before extraction
 - **Text selection** - Moved draggable attribute to header only, enabling text selection in message content
 - **Popup resize position bug** - Resizing a popup no longer resets it to its initial position; popups now stay in place during resize operations
+- **First chat message highlight placement** - Fixed issue where highlights on the very first AI response would appear in wrong positions (e.g., "eloped in the" instead of "developed in the"). The fix uses a "closest occurrence" algorithm that finds ALL occurrences of a concept in the text and picks the one closest to where the LLM suggested it should be. Also increased delay for first message extraction from 500ms to 1000ms.
 
 ### Planned
 - Keyboard navigation enhancements

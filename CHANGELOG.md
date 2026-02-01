@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### ChatView Concept Highlighting
+Extends the concept highlighting functionality to chat messages, allowing users to explore concepts within conversation context.
+
+- **Auto-extraction** - AI messages automatically have concepts extracted and highlighted
+- **Manual highlighting** - Users can select text in messages to create custom highlights
+- **Generate button** - Each message has a ✦ button to trigger AI concept extraction
+- **Remove highlights** - Individual highlights can be removed with × button
+- **Popup integration** - Clicking highlights opens concept explanation popups
+
 ### Planned
 - Keyboard navigation enhancements
 - Model selection UI

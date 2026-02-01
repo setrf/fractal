@@ -253,7 +253,7 @@ export function ConceptPopup({
   const headerRef = useRef<HTMLDivElement>(null)
   
   // Stash context for adding explanations to stash
-  const { addItem, hasItem, setExternalDragHover, isOpen: stashIsOpen } = useStashContext()
+  const { addItem, hasItem, setExternalDragHover } = useStashContext()
   
   // Position and size state
   const [popupPosition, setPopupPosition] = useState(position)
@@ -344,9 +344,8 @@ export function ConceptPopup({
   useEffect(() => {
     if (!isDragging) return
 
-    // Check if mouse is over the stash sidebar
+    // Check if mouse is over the stash sidebar (works for both open and collapsed states)
     const isOverStash = (mouseX: number): boolean => {
-      if (!stashIsOpen) return false
       // Find the stash sidebar element
       const sidebar = document.querySelector('aside')
       if (!sidebar) return false
@@ -393,7 +392,7 @@ export function ConceptPopup({
       document.removeEventListener('mouseup', handleMouseUp)
       setExternalDragHover(false)
     }
-  }, [isDragging, dragOffset, popupSize.width, stashIsOpen, setExternalDragHover, concept, explanation, addItem, onClose])
+  }, [isDragging, dragOffset, popupSize.width, setExternalDragHover, concept, explanation, addItem, onClose])
 
   // ===== RESIZE HANDLERS =====
 

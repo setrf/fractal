@@ -206,7 +206,16 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     // Only handle for external drags
     if (isExternalDrag(e)) {
       e.preventDefault()
-      setIsDragOver(false)
+      // Only set isDragOver to false if we're actually leaving the sidebar
+      // (not just moving between child elements)
+      const sidebar = sidebarRef.current
+      const relatedTarget = e.relatedTarget as Node | null
+      if (sidebar && relatedTarget && !sidebar.contains(relatedTarget)) {
+        setIsDragOver(false)
+      } else if (!relatedTarget) {
+        // relatedTarget is null when leaving the window
+        setIsDragOver(false)
+      }
     }
   }, [isExternalDrag])
 
@@ -247,8 +256,11 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       if (draggedIndex !== null && draggedIndex !== index) {
         setDropTargetIndex(index)
       }
+    } else {
+      // For external drags, still need to call preventDefault to allow drop
+      // but let the event bubble up for the sidebar to handle
+      e.preventDefault()
     }
-    // For external drags, let it bubble up to sidebar handlers
   }, [draggedIndex])
 
   const handleItemDragLeave = useCallback(() => {
@@ -266,7 +278,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       setDraggedIndex(null)
       setDropTargetIndex(null)
     }
-    // For external drags, let it bubble up to sidebar handlers
+    // For external drags, don't stop propagation - let it bubble up to sidebar's handleDrop
   }, [draggedIndex, reorderItem])
 
   const handleItemDragEnd = useCallback(() => {

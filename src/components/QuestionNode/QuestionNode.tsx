@@ -439,7 +439,7 @@ export function QuestionNode({
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons - horizontal row at bottom right */}
         <div className={styles.actions}>
           {/* Expand/collapse button - only shown if node has children */}
           {hasChildren && (

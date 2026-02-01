@@ -16,7 +16,7 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
-import { ConceptPopup, type PopupPosition } from '../ConceptPopup'
+import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
 import styles from './ChatView.module.css'
 
 /**
@@ -204,6 +204,7 @@ export function ChatView({
    * Handles concept hover - opens a new popup.
    * Multiple popups can be open at the same time.
    * Prevents duplicates by checking normalizedName (same concept = same popup).
+   * Positions new popups to avoid overlapping with existing ones.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
@@ -212,10 +213,24 @@ export function ChatView({
     )
     if (existingPopup) return
     
+    // Find non-overlapping position for new popup
+    const existingPositions = openPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const position = findNonOverlappingPosition(
+      event.clientX + 10,
+      event.clientY + 10,
+      existingPositions
+    )
+    
     // Add new popup
     const newPopup: OpenPopup = {
       concept,
-      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      position,
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
@@ -234,6 +249,7 @@ export function ChatView({
   /**
    * Handles concept click - opens popup if not already open.
    * Prevents duplicates by checking normalizedName (same concept = same popup).
+   * Positions new popups to avoid overlapping with existing ones.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
@@ -244,10 +260,24 @@ export function ChatView({
     )
     if (existingPopup) return
     
+    // Find non-overlapping position for new popup
+    const existingPositions = openPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const position = findNonOverlappingPosition(
+      event.clientX + 10,
+      event.clientY + 10,
+      existingPositions
+    )
+    
     // Add new popup
     const newPopup: OpenPopup = {
       concept,
-      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      position,
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])

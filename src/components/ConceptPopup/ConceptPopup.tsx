@@ -50,8 +50,8 @@ export interface PopupSize {
  */
 const MIN_WIDTH = 280
 const MIN_HEIGHT = 200
-const DEFAULT_WIDTH = 320
-const DEFAULT_HEIGHT = 400
+export const DEFAULT_POPUP_WIDTH = 320
+export const DEFAULT_POPUP_HEIGHT = 400
 
 /**
  * Minimized popup dimensions for stacking.
@@ -62,6 +62,122 @@ const MINIMIZED_ESTIMATED_HEIGHT = 70  // Approximate header height (includes pa
 const STACK_MARGIN = 8
 const STACK_LEFT_OFFSET = 20
 const STACK_BOTTOM_OFFSET = 20
+
+/**
+ * Spacing between popups when avoiding overlap.
+ */
+const POPUP_SPACING = 20
+
+/**
+ * Finds a non-overlapping position for a new popup.
+ * Tries the initial position first, then offsets to avoid existing popups.
+ * 
+ * @param initialX - Preferred X position (e.g., from mouse click)
+ * @param initialY - Preferred Y position
+ * @param existingPopups - Array of existing popup positions and sizes
+ * @param popupWidth - Width of the new popup (default: DEFAULT_POPUP_WIDTH)
+ * @param popupHeight - Height of the new popup (default: DEFAULT_POPUP_HEIGHT)
+ * @returns Non-overlapping position { x, y }
+ */
+export function findNonOverlappingPosition(
+  initialX: number,
+  initialY: number,
+  existingPopups: Array<{ x: number; y: number; width?: number; height?: number; isMinimized?: boolean }>,
+  popupWidth: number = DEFAULT_POPUP_WIDTH,
+  popupHeight: number = DEFAULT_POPUP_HEIGHT
+): PopupPosition {
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  // Filter out minimized popups (they're in the corner, not blocking main area)
+  const activePopups = existingPopups.filter(p => !p.isMinimized)
+  
+  // If no active popups, just ensure we're within viewport bounds
+  if (activePopups.length === 0) {
+    return {
+      x: Math.min(Math.max(20, initialX), viewportWidth - popupWidth - 20),
+      y: Math.min(Math.max(20, initialY), viewportHeight - popupHeight - 20),
+    }
+  }
+  
+  /**
+   * Check if a position overlaps with any existing popup.
+   */
+  const overlapsAny = (x: number, y: number): boolean => {
+    const newRect = {
+      left: x,
+      right: x + popupWidth,
+      top: y,
+      bottom: y + popupHeight,
+    }
+    
+    return activePopups.some(popup => {
+      const existingRect = {
+        left: popup.x,
+        right: popup.x + (popup.width || DEFAULT_POPUP_WIDTH),
+        top: popup.y,
+        bottom: popup.y + (popup.height || DEFAULT_POPUP_HEIGHT),
+      }
+      
+      // Check for overlap
+      return !(
+        newRect.right < existingRect.left ||
+        newRect.left > existingRect.right ||
+        newRect.bottom < existingRect.top ||
+        newRect.top > existingRect.bottom
+      )
+    })
+  }
+  
+  /**
+   * Clamp position to viewport bounds.
+   */
+  const clamp = (x: number, y: number): PopupPosition => ({
+    x: Math.min(Math.max(20, x), viewportWidth - popupWidth - 20),
+    y: Math.min(Math.max(20, y), viewportHeight - popupHeight - 20),
+  })
+  
+  // Try initial position
+  let pos = clamp(initialX, initialY)
+  if (!overlapsAny(pos.x, pos.y)) {
+    return pos
+  }
+  
+  // Try offsetting to the right of existing popups
+  const rightmostPopup = activePopups.reduce((max, p) => 
+    Math.max(max, p.x + (p.width || DEFAULT_POPUP_WIDTH)), 0
+  )
+  pos = clamp(rightmostPopup + POPUP_SPACING, initialY)
+  if (!overlapsAny(pos.x, pos.y)) {
+    return pos
+  }
+  
+  // Try offsetting below existing popups
+  const bottommostPopup = activePopups.reduce((max, p) => 
+    Math.max(max, p.y + (p.height || DEFAULT_POPUP_HEIGHT)), 0
+  )
+  pos = clamp(initialX, bottommostPopup + POPUP_SPACING)
+  if (!overlapsAny(pos.x, pos.y)) {
+    return pos
+  }
+  
+  // Try left of leftmost popup
+  const leftmostPopup = activePopups.reduce((min, p) => Math.min(min, p.x), viewportWidth)
+  pos = clamp(leftmostPopup - popupWidth - POPUP_SPACING, initialY)
+  if (!overlapsAny(pos.x, pos.y)) {
+    return pos
+  }
+  
+  // Try cascading position (offset from last popup)
+  const lastPopup = activePopups[activePopups.length - 1]
+  pos = clamp(lastPopup.x + 40, lastPopup.y + 40)
+  if (!overlapsAny(pos.x, pos.y)) {
+    return pos
+  }
+  
+  // Fallback: use cascading position even if it overlaps
+  return pos
+}
 
 /**
  * Props for the ConceptPopup component.
@@ -134,13 +250,13 @@ export function ConceptPopup({
   
   // Position and size state
   const [popupPosition, setPopupPosition] = useState(position)
-  const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT })
+  const [popupSize, setPopupSize] = useState<PopupSize>({ width: DEFAULT_POPUP_WIDTH, height: DEFAULT_POPUP_HEIGHT })
   
   // Minimize state - stores previous height and position when minimized
   const [isMinimized, setIsMinimized] = useState(false)
-  const [preMinimizeHeight, setPreMinimizeHeight] = useState(DEFAULT_HEIGHT)
+  const [preMinimizeHeight, setPreMinimizeHeight] = useState(DEFAULT_POPUP_HEIGHT)
   const [preMinimizePosition, setPreMinimizePosition] = useState<PopupPosition | null>(null)
-  const [preMinimizeWidth, setPreMinimizeWidth] = useState(DEFAULT_WIDTH)
+  const [preMinimizeWidth, setPreMinimizeWidth] = useState(DEFAULT_POPUP_WIDTH)
   
   // Drag state
   const [isDragging, setIsDragging] = useState(false)

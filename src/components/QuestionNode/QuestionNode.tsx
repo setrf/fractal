@@ -19,7 +19,7 @@ import { useState, useCallback, useRef, useEffect, KeyboardEvent } from 'react'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
-import { ConceptPopup, type PopupPosition } from '../ConceptPopup'
+import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
 import styles from './QuestionNode.module.css'
 
 /**
@@ -190,6 +190,7 @@ export function QuestionNode({
    * Handles concept hover - opens a new popup.
    * Multiple popups can be open at the same time.
    * Prevents duplicates by checking normalizedName (same concept = same popup).
+   * Positions new popups to avoid overlapping with existing ones.
    */
   const handleConceptHover = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     // Check if this concept already has an open popup (by normalizedName to prevent duplicates)
@@ -198,10 +199,24 @@ export function QuestionNode({
     )
     if (existingPopup) return
     
+    // Find non-overlapping position for new popup
+    const existingPositions = openPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const position = findNonOverlappingPosition(
+      event.clientX + 10,
+      event.clientY + 10,
+      existingPositions
+    )
+    
     // Add new popup
     const newPopup: OpenPopup = {
       concept,
-      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      position,
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])
@@ -220,6 +235,7 @@ export function QuestionNode({
   /**
    * Handles concept click - opens popup if not already open.
    * Prevents duplicates by checking normalizedName (same concept = same popup).
+   * Positions new popups to avoid overlapping with existing ones.
    */
   const handleConceptClick = useCallback((concept: ExtractedConcept, event: React.MouseEvent) => {
     event.stopPropagation()
@@ -230,10 +246,24 @@ export function QuestionNode({
     )
     if (existingPopup) return
     
+    // Find non-overlapping position for new popup
+    const existingPositions = openPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    const position = findNonOverlappingPosition(
+      event.clientX + 10,
+      event.clientY + 10,
+      existingPositions
+    )
+    
     // Add new popup
     const newPopup: OpenPopup = {
       concept,
-      position: { x: event.clientX + 10, y: event.clientY + 10 },
+      position,
       isMinimized: false,
     }
     setOpenPopups(prev => [...prev, newPopup])

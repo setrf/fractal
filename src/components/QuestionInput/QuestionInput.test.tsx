@@ -40,10 +40,11 @@ describe('QuestionInput Component', () => {
       const input = screen.getByRole('textbox', { name: /enter your question/i })
       
       console.log(`[TEST] Input found: ${!!input}`)
-      console.log(`[TEST] Input type: ${input.getAttribute('type')}`)
+      console.log(`[TEST] Input tag: ${input.tagName.toLowerCase()}`)
       
       expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('type', 'text')
+      // Using textarea for dynamic resizing
+      expect(input.tagName.toLowerCase()).toBe('textarea')
     })
 
     it('should render the submit button', () => {

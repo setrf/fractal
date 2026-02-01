@@ -16,10 +16,8 @@
  * - Vertical stack: input wrapper + hint text
  */
 
-/* Container - centers content and constrains width */
+/* Container - centers content with dynamic width */
 .container {
-  width: 100%;
-  max-width: 600px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -28,13 +26,15 @@
 
 /* Input wrapper - the bordered box containing prompt, input, and button */
 .inputWrapper {
-  width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border: var(--border-width-strong) solid var(--text-primary);
   background: var(--bg-primary);
+  /* Dynamic sizing: min-width for empty state, max-width before wrapping */
+  min-width: 300px;
+  max-width: min(800px, 90vw);
   /* Smooth shadow transition for focus state */
   transition: box-shadow var(--transition-fast);
 }
@@ -54,19 +54,33 @@
   user-select: none; /* Prevent accidental selection */
 }
 
-/* Text input - grows to fill available space */
+/* Text input/textarea - grows to fill available space */
 .input {
   flex: 1;
+  min-width: 150px;
   font-family: var(--font-mono);
   font-size: var(--text-lg);
+  line-height: 1.5;
   color: var(--text-primary);
   background: transparent;
   caret-color: var(--text-primary);
+  resize: none; /* Disable manual resize, we auto-resize */
+  overflow: hidden; /* Hide scrollbar during auto-resize */
+  /* Reset textarea defaults */
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* Placeholder styling */
 .input::placeholder {
   color: var(--text-tertiary);
+}
+
+/* Ensure textarea doesn't show resize handle */
+.input::-webkit-resizer {
+  display: none;
 }
 
 /* Submit button - arrow icon */
@@ -114,4 +128,15 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
+}
+
+/* Hidden sizer element - used to measure text width */
+.sizer {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  pointer-events: none;
 }

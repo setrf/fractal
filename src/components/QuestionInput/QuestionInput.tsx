@@ -13,8 +13,13 @@
  * - Hint text showing keyboard shortcut
  */
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import styles from './QuestionInput.module.css'
+
+// Constants for dynamic sizing
+const MIN_WIDTH = 300
+const MAX_WIDTH = 800
+const PADDING_HORIZONTAL = 80 // Approximate padding + prompt + button width
 
 /**
  * Props for the QuestionInput component.
@@ -37,6 +42,7 @@ interface QuestionInputProps {
  * - Submit button for mouse users
  * - Auto-focus on mount (configurable)
  * - Disabled submit when empty
+ * - Dynamic sizing: expands width first, then height
  * 
  * @example
  * ```tsx
@@ -54,15 +60,49 @@ export function QuestionInput({
   // Local state for the input value
   const [value, setValue] = useState('')
   
-  // Ref for programmatic focus
-  const inputRef = useRef<HTMLInputElement>(null)
+  // Refs for programmatic focus and auto-resize
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const sizerRef = useRef<HTMLSpanElement>(null)
 
   // Auto-focus on mount if enabled
   useEffect(() => {
-    if (autoFocus && inputRef.current) {
-      inputRef.current.focus()
+    if (autoFocus && textareaRef.current) {
+      textareaRef.current.focus()
     }
   }, [autoFocus])
+
+  /**
+   * Auto-resize the input based on content.
+   * First expands width up to max-width, then expands height.
+   */
+  const autoResize = useCallback(() => {
+    const textarea = textareaRef.current
+    const wrapper = wrapperRef.current
+    const sizer = sizerRef.current
+    if (!textarea || !wrapper || !sizer) return
+
+    // Measure text width using the hidden sizer element
+    const textToMeasure = value || placeholder
+    sizer.textContent = textToMeasure
+    const textWidth = sizer.offsetWidth
+
+    // Calculate desired wrapper width (text + padding for prompt, button, gaps)
+    const desiredWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, textWidth + PADDING_HORIZONTAL))
+    
+    // Apply width to wrapper
+    wrapper.style.width = `${desiredWidth}px`
+
+    // Now handle height - reset and measure
+    textarea.style.height = 'auto'
+    const newHeight = Math.max(textarea.scrollHeight, 27) // Min height ~1 line
+    textarea.style.height = `${newHeight}px`
+  }, [value, placeholder])
+
+  // Auto-resize when value changes
+  useEffect(() => {
+    autoResize()
+  }, [value, autoResize])
 
   /**
    * Handles form submission.
@@ -78,9 +118,9 @@ export function QuestionInput({
 
   /**
    * Handles keyboard events.
-   * Enter key triggers submission (without Shift for potential future multi-line).
+   * Enter key triggers submission (without Shift for multi-line input).
    */
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -89,21 +129,24 @@ export function QuestionInput({
 
   return (
     <div className={styles.container}>
+      {/* Hidden sizer element to measure text width */}
+      <span ref={sizerRef} className={styles.sizer} aria-hidden="true" />
+      
       {/* Input wrapper provides the bordered container with focus shadow */}
-      <div className={styles.inputWrapper}>
+      <div ref={wrapperRef} className={styles.inputWrapper}>
         {/* Static question mark prompt */}
         <span className={styles.prompt}>?</span>
         
-        {/* Main text input */}
-        <input
-          ref={inputRef}
-          type="text"
+        {/* Main text input - textarea for multi-line support */}
+        <textarea
+          ref={textareaRef}
           className={styles.input}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label="Enter your question"
+          rows={1}
         />
         
         {/* Submit button */}

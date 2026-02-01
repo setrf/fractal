@@ -33,8 +33,8 @@
   border: var(--border-width-strong) solid var(--text-primary);
   background: var(--bg-primary);
   /* Dynamic sizing: min-width for empty state, max-width before wrapping */
-  min-width: 300px;
-  max-width: min(800px, 90vw);
+  min-width: 500px;
+  max-width: min(900px, 90vw);
   /* Smooth shadow transition for focus state */
   transition: box-shadow var(--transition-fast);
 }

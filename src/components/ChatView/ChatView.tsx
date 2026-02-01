@@ -59,6 +59,12 @@ interface ChatViewProps {
   // Message concept highlighting props
   /** Function to extract concepts from text */
   extractConcepts?: (text: string) => Promise<ExtractedConcept[]>
+  
+  // Popup control triggers
+  /** Trigger to minimize all popups (incremented each time minimize all is clicked) */
+  minimizeAllTrigger?: number
+  /** Trigger to close all popups (incremented each time close all is clicked) */
+  closeAllTrigger?: number
 }
 
 /**
@@ -96,6 +102,9 @@ export function ChatView({
   onConceptLeave,
   onConceptClick,
   extractConcepts,
+  // Popup control triggers
+  minimizeAllTrigger = 0,
+  closeAllTrigger = 0,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -157,6 +166,20 @@ export function ChatView({
   
   // State for concept popups (supports multiple open popups)
   const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
+
+  // Respond to minimize all trigger from parent
+  useEffect(() => {
+    if (minimizeAllTrigger > 0) {
+      setOpenPopups(prev => prev.map(p => ({ ...p, isMinimized: true })))
+    }
+  }, [minimizeAllTrigger])
+
+  // Respond to close all trigger from parent
+  useEffect(() => {
+    if (closeAllTrigger > 0) {
+      setOpenPopups([])
+    }
+  }, [closeAllTrigger])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

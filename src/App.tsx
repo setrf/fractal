@@ -130,6 +130,10 @@ function AppContent() {
   // Track which notes are minimized for stacking
   const minimizedNoteIds = canvasNotes.filter(n => n.isMinimized).map(n => n.id)
   const minimizedExplanationIds = reopenedExplanations.filter(e => e.isMinimized).map(e => e.id)
+  
+  // Trigger counters for minimize all / close all (propagated to child components)
+  const [minimizeAllTrigger, setMinimizeAllTrigger] = useState(0)
+  const [closeAllTrigger, setCloseAllTrigger] = useState(0)
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatState ? 'chat' : 'tree'
@@ -415,6 +419,30 @@ function AppContent() {
     }
   }, [])
 
+  /**
+   * Minimizes all open popups (canvas notes, explanations, and child component popups).
+   */
+  const handleMinimizeAll = useCallback(() => {
+    // Minimize all canvas notes
+    setCanvasNotes(prev => prev.map(note => ({ ...note, isMinimized: true })))
+    // Minimize all reopened explanations
+    setReopenedExplanations(prev => prev.map(exp => ({ ...exp, isMinimized: true })))
+    // Trigger child components to minimize their popups
+    setMinimizeAllTrigger(prev => prev + 1)
+  }, [])
+
+  /**
+   * Closes all open popups (canvas notes, explanations, and child component popups).
+   */
+  const handleCloseAll = useCallback(() => {
+    // Close all canvas notes
+    setCanvasNotes([])
+    // Close all reopened explanations
+    setReopenedExplanations([])
+    // Trigger child components to close their popups
+    setCloseAllTrigger(prev => prev + 1)
+  }, [])
+
   return (
     <div className={`app-layout ${stashOpen ? 'stash-open' : 'stash-collapsed'}`}>
       {/* Stash sidebar - always available */}
@@ -425,36 +453,94 @@ function AppContent() {
         {/* Theme toggle - always visible in all views */}
         <ThemeToggle />
         
-        {/* New Note button - fixed in upper left after stash (visible in all views) */}
-        <button
-          onClick={handleCreateNote}
+        {/* Action buttons - fixed in upper left after stash (visible in all views) */}
+        <div
           style={{
             position: 'fixed',
             top: 'var(--space-3)',
             left: stashOpen ? 'calc(320px + var(--space-3))' : 'calc(48px + var(--space-3))',
-            padding: 'var(--space-2) var(--space-3)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-sm)',
-            background: 'var(--bg-primary)',
-            border: 'var(--border-width) solid var(--border-primary)',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
+            display: 'flex',
+            gap: 'var(--space-2)',
             zIndex: 99,
-            transition: 'left var(--transition-normal), border-color 0.2s, color 0.2s',
+            transition: 'left var(--transition-normal)',
           }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.borderColor = 'var(--text-primary)'
-            e.currentTarget.style.color = 'var(--text-primary)'
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-primary)'
-            e.currentTarget.style.color = 'var(--text-secondary)'
-          }}
-          title="Create a new note"
-          aria-label="Create new note"
         >
-          + Note
-        </button>
+          <button
+            onClick={handleCreateNote}
+            style={{
+              padding: 'var(--space-2) var(--space-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              background: 'var(--bg-primary)',
+              border: 'var(--border-width) solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+            title="Create a new note"
+            aria-label="Create new note"
+          >
+            + Note
+          </button>
+          <button
+            onClick={handleMinimizeAll}
+            style={{
+              padding: 'var(--space-2) var(--space-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              background: 'var(--bg-primary)',
+              border: 'var(--border-width) solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+            title="Minimize all popups"
+            aria-label="Minimize all popups"
+          >
+            ⌄ Min All
+          </button>
+          <button
+            onClick={handleCloseAll}
+            style={{
+              padding: 'var(--space-2) var(--space-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              background: 'var(--bg-primary)',
+              border: 'var(--border-width) solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+            title="Close all popups"
+            aria-label="Close all popups"
+          >
+            × Close All
+          </button>
+        </div>
         
         {/* ============================================
          * CHAT VIEW
@@ -474,6 +560,8 @@ function AppContent() {
             onConceptHover={handleConceptHover}
             onConceptClick={handleConceptClick}
             extractConcepts={extractConcepts}
+            minimizeAllTrigger={minimizeAllTrigger}
+            closeAllTrigger={closeAllTrigger}
           />
         )}
 
@@ -601,6 +689,8 @@ function AppContent() {
                   onConceptClick={handleConceptClick}
                   onAddUserConcept={handleAddUserConcept}
                   onRemoveConcept={handleRemoveConcept}
+                  minimizeAllTrigger={minimizeAllTrigger}
+                  closeAllTrigger={closeAllTrigger}
                 />
 
                 {/* AI loading indicator */}

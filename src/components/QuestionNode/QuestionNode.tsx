@@ -15,7 +15,7 @@
  * - Gwern-style concept popups for highlighted terms
  */
 
-import { useState, useCallback, useRef, type KeyboardEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
@@ -81,6 +81,12 @@ interface QuestionNodeProps {
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */
   onRemoveConcept?: (nodeId: string, conceptId: string) => void
+  
+  // Popup control triggers
+  /** Trigger to minimize all popups */
+  minimizeAllTrigger?: number
+  /** Trigger to close all popups */
+  closeAllTrigger?: number
 }
 
 /**
@@ -127,6 +133,9 @@ export function QuestionNode({
   onConceptClick,
   onAddUserConcept,
   onRemoveConcept,
+  // Popup control triggers
+  minimizeAllTrigger = 0,
+  closeAllTrigger = 0,
 }: QuestionNodeProps) {
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
@@ -134,6 +143,20 @@ export function QuestionNode({
   
   // State for concept popups (supports multiple open popups)
   const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
+
+  // Respond to minimize all trigger from parent
+  useEffect(() => {
+    if (minimizeAllTrigger > 0) {
+      setOpenPopups(prev => prev.map(p => ({ ...p, isMinimized: true })))
+    }
+  }, [minimizeAllTrigger])
+
+  // Respond to close all trigger from parent
+  useEffect(() => {
+    if (closeAllTrigger > 0) {
+      setOpenPopups([])
+    }
+  }, [closeAllTrigger])
   
   // Ref for content area (used for text selection detection)
   const contentRef = useRef<HTMLDivElement>(null)

@@ -64,6 +64,12 @@ interface QuestionTreeProps {
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */
   onRemoveConcept?: (nodeId: string, conceptId: string) => void
+  
+  // Popup control triggers
+  /** Trigger to minimize all popups */
+  minimizeAllTrigger?: number
+  /** Trigger to close all popups */
+  closeAllTrigger?: number
 }
 
 /**
@@ -114,6 +120,12 @@ interface TreeBranchProps {
   onAddUserConcept?: (nodeId: string, concept: ExtractedConcept) => void
   /** Callback when user removes a highlight */
   onRemoveConcept?: (nodeId: string, conceptId: string) => void
+  
+  // Popup control triggers
+  /** Trigger to minimize all popups */
+  minimizeAllTrigger?: number
+  /** Trigger to close all popups */
+  closeAllTrigger?: number
 }
 
 /**
@@ -150,6 +162,8 @@ function TreeBranch({
   onConceptClick,
   onAddUserConcept,
   onRemoveConcept,
+  minimizeAllTrigger,
+  closeAllTrigger,
 }: TreeBranchProps) {
   const childrenRef = useRef<HTMLDivElement>(null)
   const connectorRef = useRef<HTMLDivElement>(null)
@@ -230,6 +244,8 @@ function TreeBranch({
         onConceptClick={onConceptClick}
         onAddUserConcept={onAddUserConcept}
         onRemoveConcept={onRemoveConcept}
+        minimizeAllTrigger={minimizeAllTrigger}
+        closeAllTrigger={closeAllTrigger}
       />
 
       {/* Render children if any and expanded */}
@@ -263,6 +279,8 @@ function TreeBranch({
               onConceptClick={onConceptClick}
               onAddUserConcept={onAddUserConcept}
               onRemoveConcept={onRemoveConcept}
+              minimizeAllTrigger={minimizeAllTrigger}
+              closeAllTrigger={closeAllTrigger}
             />
           ))}
         </div>
@@ -306,6 +324,8 @@ export function QuestionTree({
   onConceptClick,
   onAddUserConcept,
   onRemoveConcept,
+  minimizeAllTrigger,
+  closeAllTrigger,
 }: QuestionTreeProps) {
   // Get the root node
   const rootNode = tree.rootId ? tree.nodes[tree.rootId] : null
@@ -340,6 +360,8 @@ export function QuestionTree({
         onConceptClick={onConceptClick}
         onAddUserConcept={onAddUserConcept}
         onRemoveConcept={onRemoveConcept}
+        minimizeAllTrigger={minimizeAllTrigger}
+        closeAllTrigger={closeAllTrigger}
       />
     </div>
   )

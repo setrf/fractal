@@ -27,6 +27,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
+import { extractConcepts } from '../../api'
+import { ConceptHighlighter } from '../ConceptHighlighter'
 import styles from './ConceptPopup.module.css'
 
 /**
@@ -266,6 +268,17 @@ export function ConceptPopup({
   const [isResizing, setIsResizing] = useState(false)
   const [resizeEdge, setResizeEdge] = useState<string | null>(null)
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 })
+  
+  // Popup content highlighting state
+  const [popupConcepts, setPopupConcepts] = useState<ExtractedConcept[]>([])
+  const [userHighlights, setUserHighlights] = useState<ExtractedConcept[]>([])
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [extractionError, setExtractionError] = useState<string | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  
+  // Combined text from explanation (used for concept extraction and highlighting)
+  const combinedText = explanation ? `${explanation.summary}\n\n${explanation.context}` : ''
+  const summaryLength = explanation?.summary.length || 0
 
   // Initial position adjustment to stay within viewport
   useEffect(() => {
@@ -464,6 +477,114 @@ export function ConceptPopup({
     }
   }, [isMinimized, minimizedStackIndex, getMinimizedPosition])
 
+  /**
+   * Extracts concepts from the popup content (summary + context).
+   * Called when user clicks the "✦" button.
+   */
+  const handleExtractConcepts = useCallback(async () => {
+    if (!explanation || isExtracting) return
+    
+    setIsExtracting(true)
+    setExtractionError(null)
+    
+    try {
+      // Extract from combined text
+      const extracted = await extractConcepts(combinedText)
+      
+      // Adjust indices: concepts in context section need offset by summary length + 2 (for \n\n)
+      const adjustedConcepts = extracted.map(c => {
+        // Check if concept is in the context section (after summary)
+        if (c.startIndex > summaryLength) {
+          return {
+            ...c,
+            // Mark as being in context section for rendering
+            id: `popup_${c.id}`,
+          }
+        }
+        return {
+          ...c,
+          id: `popup_${c.id}`,
+        }
+      })
+      
+      setPopupConcepts(adjustedConcepts)
+    } catch (err) {
+      setExtractionError(err instanceof Error ? err.message : 'Failed to extract concepts')
+    } finally {
+      setIsExtracting(false)
+    }
+  }, [explanation, isExtracting, combinedText, summaryLength])
+
+  /**
+   * Handles clicking on a concept within the popup content.
+   * Opens a new popup for that concept.
+   */
+  const handlePopupConceptClick = useCallback((clickedConcept: ExtractedConcept, _event: React.MouseEvent) => {
+    // Use the related concept click handler to open a new popup
+    if (onRelatedConceptClick) {
+      onRelatedConceptClick(clickedConcept.normalizedName)
+    }
+  }, [onRelatedConceptClick])
+
+  /**
+   * Handles text selection within the popup content for manual highlights.
+   */
+  const handleContentMouseUp = useCallback(() => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !contentRef.current) {
+      return
+    }
+
+    const selectedText = selection.toString().trim()
+    if (!selectedText || selectedText.length < 2) {
+      return
+    }
+
+    // Check if selection is within our content area
+    const range = selection.getRangeAt(0)
+    if (!contentRef.current.contains(range.commonAncestorContainer)) {
+      return
+    }
+
+    // Find the position in the combined text
+    const startIndex = combinedText.indexOf(selectedText)
+    if (startIndex === -1) {
+      return
+    }
+
+    const endIndex = startIndex + selectedText.length
+    
+    // Check for overlap with existing concepts
+    const allConcepts = [...popupConcepts, ...userHighlights]
+    const overlapsExisting = allConcepts.some(
+      c => (startIndex < c.endIndex && endIndex > c.startIndex)
+    )
+    if (overlapsExisting) {
+      return
+    }
+
+    // Create new user highlight
+    const newHighlight: ExtractedConcept = {
+      id: `user_popup_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      text: selectedText,
+      normalizedName: selectedText.toLowerCase(),
+      category: 'abstract' as ConceptCategory,
+      startIndex,
+      endIndex,
+    }
+    
+    setUserHighlights(prev => [...prev, newHighlight])
+    window.getSelection()?.removeAllRanges()
+  }, [combinedText, popupConcepts, userHighlights])
+
+  /**
+   * Removes a user-created highlight from the popup.
+   */
+  const handleRemoveHighlight = useCallback((conceptId: string) => {
+    setUserHighlights(prev => prev.filter(h => h.id !== conceptId))
+    setPopupConcepts(prev => prev.filter(c => c.id !== conceptId))
+  }, [])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -510,6 +631,17 @@ export function ConceptPopup({
           </span>
         </div>
         <div className={styles.actions}>
+          {!isMinimized && explanation && (
+            <button
+              className={`${styles.extractButton} ${isExtracting ? styles.extracting : ''} ${popupConcepts.length > 0 ? styles.extracted : ''}`}
+              onClick={handleExtractConcepts}
+              aria-label="Extract concepts from content"
+              title={popupConcepts.length > 0 ? "Concepts extracted" : "Extract concepts"}
+              disabled={isExtracting}
+            >
+              ✦
+            </button>
+          )}
           <button
             className={styles.minimizeButton}
             onClick={handleMinimizeToggle}
@@ -530,7 +662,11 @@ export function ConceptPopup({
 
       {/* Content - hidden when minimized */}
       {!isMinimized && (
-      <div className={styles.content}>
+      <div 
+        ref={contentRef}
+        className={styles.content}
+        onMouseUp={handleContentMouseUp}
+      >
         {isLoading && (
           <div className={styles.loading}>
             <span className={styles.loadingDot}>◌</span>
@@ -544,18 +680,72 @@ export function ConceptPopup({
             <span>{error}</span>
           </div>
         )}
+        
+        {extractionError && (
+          <div className={styles.error}>
+            <span className={styles.errorIcon}>!</span>
+            <span>{extractionError}</span>
+          </div>
+        )}
 
         {explanation && !isLoading && !error && (
           <>
             {/* Summary */}
             <div className={styles.section}>
-              <p className={styles.summary}>{explanation.summary}</p>
+              {(() => {
+                // Get concepts that apply to the summary section
+                const allHighlights = [...popupConcepts, ...userHighlights]
+                const summaryConcepts = allHighlights.filter(
+                  c => c.startIndex >= 0 && c.endIndex <= summaryLength
+                )
+                
+                if (summaryConcepts.length > 0) {
+                  return (
+                    <div className={styles.summary}>
+                      <ConceptHighlighter
+                        text={explanation.summary}
+                        concepts={summaryConcepts}
+                        onConceptClick={handlePopupConceptClick}
+                        onConceptRemove={handleRemoveHighlight}
+                      />
+                    </div>
+                  )
+                }
+                return <p className={styles.summary}>{explanation.summary}</p>
+              })()}
             </div>
 
             {/* Context */}
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>In Context</h4>
-              <p className={styles.context}>{explanation.context}</p>
+              {(() => {
+                // Get concepts that apply to the context section
+                // Context starts after summary + "\n\n" (2 chars)
+                const contextOffset = summaryLength + 2
+                const allHighlights = [...popupConcepts, ...userHighlights]
+                const contextConcepts = allHighlights
+                  .filter(c => c.startIndex >= contextOffset)
+                  .map(c => ({
+                    ...c,
+                    // Adjust indices to be relative to context text
+                    startIndex: c.startIndex - contextOffset,
+                    endIndex: c.endIndex - contextOffset,
+                  }))
+                
+                if (contextConcepts.length > 0) {
+                  return (
+                    <div className={styles.context}>
+                      <ConceptHighlighter
+                        text={explanation.context}
+                        concepts={contextConcepts}
+                        onConceptClick={handlePopupConceptClick}
+                        onConceptRemove={handleRemoveHighlight}
+                      />
+                    </div>
+                  )
+                }
+                return <p className={styles.context}>{explanation.context}</p>
+              })()}
             </div>
 
             {/* Related Concepts */}

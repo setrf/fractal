@@ -252,6 +252,47 @@
   font-weight: 600;
 }
 
+/* Extract concepts button */
+.extractButton {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  background: none;
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.extractButton:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.extractButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.extractButton.extracting {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.extractButton.extracted {
+  color: var(--concept-science);
+  border-color: var(--concept-science);
+}
+
+.extractButton.extracted:hover {
+  background-color: var(--concept-science);
+  color: var(--bg-primary);
+}
+
 /* Content section */
 .content {
   padding: var(--space-3);

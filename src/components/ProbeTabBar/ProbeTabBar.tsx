@@ -95,9 +95,7 @@ export function ProbeTabBar() {
 
   // Handle delete
   const handleDelete = useCallback((probeId: string) => {
-    if (window.confirm('Delete this probe? This cannot be undone.')) {
-      deleteProbe(probeId)
-    }
+    deleteProbe(probeId)
     setContextMenuId(null)
   }, [deleteProbe])
 

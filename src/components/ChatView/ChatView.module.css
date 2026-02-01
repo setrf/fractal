@@ -11,6 +11,7 @@
   height: 100vh;
   max-width: 800px;
   margin: 0 auto;
+  padding-top: var(--space-24);
   background: var(--bg-primary);
 }
 

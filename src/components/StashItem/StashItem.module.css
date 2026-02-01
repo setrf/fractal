@@ -108,6 +108,9 @@
 }
 
 .deleteButton {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   width: 18px;
   height: 18px;
   display: flex;
@@ -120,6 +123,7 @@
   cursor: pointer;
   opacity: 0.5;
   transition: all var(--transition-fast);
+  z-index: 1;
 }
 
 .item:hover .deleteButton {

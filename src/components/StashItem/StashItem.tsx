@@ -182,6 +182,16 @@ export function StashItem({
         }
       }}
     >
+      {/* Delete button - upper right corner */}
+      <button
+        className={styles.deleteButton}
+        onClick={handleDelete}
+        aria-label="Remove from stash"
+        title="Remove"
+      >
+        ×
+      </button>
+
       {/* Type indicator */}
       <div className={styles.typeIndicator}>
         <span className={styles.typeIcon} aria-hidden="true">
@@ -215,20 +225,11 @@ export function StashItem({
         )}
       </div>
 
-      {/* Footer with timestamp and actions */}
+      {/* Footer with timestamp */}
       <div className={styles.footer}>
         <span className={styles.timestamp}>
           {formatDate(item.createdAt)}
         </span>
-
-        <button
-          className={styles.deleteButton}
-          onClick={handleDelete}
-          aria-label="Remove from stash"
-          title="Remove"
-        >
-          ×
-        </button>
       </div>
 
       {/* Drag handle (if draggable) */}

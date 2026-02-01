@@ -18,6 +18,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-02-01
+
+### Added
+
+#### Popup Content Highlighting
+- **"✦" Extract Button** in popup header
+  - Triggers AI concept extraction for popup content (summary + context)
+  - Shows loading animation during extraction
+  - Changes to "extracted" state after successful extraction
+- **Highlighted concepts in popup text**
+  - Both summary and context sections support highlighting
+  - Clicking highlighted concept opens new popup
+  - Uses same ConceptHighlighter component for consistency
+- **Manual text selection in popups**
+  - Select text in popup content to create instant highlights
+  - No intermediate confirmation step
+  - Works the same as in question nodes
+
+#### Smart Popup Positioning
+- **Non-overlapping popup placement**
+  - New popups automatically position to avoid existing ones
+  - Tries multiple strategies: right, below, left, cascade
+  - Minimized popups excluded from overlap detection
+- **Minimized popup stacking**
+  - Minimized popups stack in lower-left corner
+  - Proper spacing to prevent occlusion
+  - Smooth animation transitions
+
+#### UX Improvements
+- **Auto-highlight on text selection** - Manual highlights created instantly
+- **Duplicate popup prevention** - Won't open same concept twice
+- **Related concept click** - Clicking RELATED items opens new popup
+- **Improved resize handles** - Larger hit areas, extend beyond popup edges
+
+---
+
 ## [0.3.0] - 2026-01-31
 
 ### Added

@@ -25,6 +25,7 @@ import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
 import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
+import type { StashItem as StashItemData } from './types/stash'
 
 /**
  * View type for the application.
@@ -291,10 +292,85 @@ function AppContent() {
     ))
   }, [])
 
+  /**
+   * Handles clicking a stash item to reopen it as a popup.
+   */
+  const handleStashItemClick = useCallback((item: StashItemData) => {
+    // Calculate a centered position for the new popup
+    const x = Math.max(100, (window.innerWidth - 300) / 2)
+    const y = Math.max(100, (window.innerHeight - 300) / 3)
+    
+    if (item.type === 'note') {
+      // Reopen as NotePopup
+      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      const newNote: CanvasNote = {
+        id,
+        x,
+        y,
+        title: item.metadata.title || '',
+        content: item.content,
+        isMinimized: false,
+      }
+      setCanvasNotes(prev => [...prev, newNote])
+    } else if (item.type === 'explanation') {
+      // Reopen as NotePopup with explanation content (read-only style)
+      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      const summary = item.metadata.summary || ''
+      const context = item.metadata.context || ''
+      const content = summary + (context ? `\n\n---\n\n${context}` : '')
+      const newNote: CanvasNote = {
+        id,
+        x,
+        y,
+        title: item.content, // The concept name
+        content,
+        isMinimized: false,
+      }
+      setCanvasNotes(prev => [...prev, newNote])
+    } else if (item.type === 'question') {
+      // Reopen as NotePopup with the question
+      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      const newNote: CanvasNote = {
+        id,
+        x,
+        y,
+        title: 'Question',
+        content: item.content,
+        isMinimized: false,
+      }
+      setCanvasNotes(prev => [...prev, newNote])
+    } else if (item.type === 'highlight') {
+      // Reopen as NotePopup with the highlight
+      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      const newNote: CanvasNote = {
+        id,
+        x,
+        y,
+        title: item.metadata.normalizedName || 'Highlight',
+        content: item.content,
+        isMinimized: false,
+      }
+      setCanvasNotes(prev => [...prev, newNote])
+    } else if (item.type === 'chat-message') {
+      // Reopen as NotePopup with the chat message
+      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      const role = item.metadata.role === 'assistant' ? 'AI' : 'You'
+      const newNote: CanvasNote = {
+        id,
+        x,
+        y,
+        title: `${role} said:`,
+        content: item.content,
+        isMinimized: false,
+      }
+      setCanvasNotes(prev => [...prev, newNote])
+    }
+  }, [])
+
   return (
     <div className={`app-layout ${stashOpen ? 'stash-open' : 'stash-collapsed'}`}>
       {/* Stash sidebar - always available */}
-      <StashSidebar />
+      <StashSidebar onItemClick={handleStashItemClick} />
       
       {/* Main content area */}
       <div className="main-content">

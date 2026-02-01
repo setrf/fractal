@@ -14,8 +14,16 @@ import { useState, useCallback, useRef, useEffect, type DragEvent } from 'react'
 import styles from './StashSidebar.module.css'
 import { StashItem } from '../StashItem'
 import { useStashContext } from '../../context/StashContext'
-import type { StashItemType, StashItemInput } from '../../types/stash'
+import type { StashItemType, StashItemInput, StashItem as StashItemData } from '../../types/stash'
 import { stashTypeLabels, stashTypeIcons } from '../../types/stash'
+
+/**
+ * Props for StashSidebar component.
+ */
+export interface StashSidebarProps {
+  /** Called when a stash item is clicked (to reopen as popup) */
+  onItemClick?: (item: StashItemData) => void
+}
 
 /**
  * Filter options for the stash.
@@ -47,7 +55,7 @@ const FILTER_OPTIONS: (StashItemType | null)[] = [
  * </StashProvider>
  * ```
  */
-export function StashSidebar() {
+export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   const {
     items,
     removeItem,
@@ -404,6 +412,7 @@ export function StashSidebar() {
                   <StashItem
                     item={item}
                     onDelete={removeItem}
+                    onClick={onItemClick}
                     draggable={false}
                   />
                 </div>

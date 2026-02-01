@@ -422,41 +422,39 @@ function AppContent() {
       
       {/* Main content area */}
       <div className="main-content">
-        {/* Theme toggle - always visible (except in chat view which has its own layout) */}
-        {currentView !== 'chat' && <ThemeToggle />}
+        {/* Theme toggle - always visible in all views */}
+        <ThemeToggle />
         
-        {/* New Note button - fixed in upper left after stash */}
-        {currentView !== 'chat' && (
-          <button
-            onClick={handleCreateNote}
-            style={{
-              position: 'fixed',
-              top: 'var(--space-3)',
-              left: stashOpen ? 'calc(320px + var(--space-3))' : 'calc(48px + var(--space-3))',
-              padding: 'var(--space-2) var(--space-3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              background: 'var(--bg-primary)',
-              border: 'var(--border-width) solid var(--border-primary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              zIndex: 99,
-              transition: 'left var(--transition-normal), border-color 0.2s, color 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'var(--text-primary)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            title="Create a new note"
-            aria-label="Create new note"
-          >
-            + Note
-          </button>
-        )}
+        {/* New Note button - fixed in upper left after stash (visible in all views) */}
+        <button
+          onClick={handleCreateNote}
+          style={{
+            position: 'fixed',
+            top: 'var(--space-3)',
+            left: stashOpen ? 'calc(320px + var(--space-3))' : 'calc(48px + var(--space-3))',
+            padding: 'var(--space-2) var(--space-3)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-sm)',
+            background: 'var(--bg-primary)',
+            border: 'var(--border-width) solid var(--border-primary)',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            zIndex: 99,
+            transition: 'left var(--transition-normal), border-color 0.2s, color 0.2s',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = 'var(--text-primary)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-primary)'
+            e.currentTarget.style.color = 'var(--text-secondary)'
+          }}
+          title="Create a new note"
+          aria-label="Create new note"
+        >
+          + Note
+        </button>
         
         {/* ============================================
          * CHAT VIEW

@@ -15,6 +15,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import ReactMarkdown from 'react-markdown'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
@@ -207,11 +208,45 @@ export function ChatView({
   }, [initialQuerySent, onSendMessage])
 
   /**
+   * Validates and fixes concept indices against the actual text.
+   * This handles cases where the LLM returns misaligned indices.
+   */
+  const validateAndFixConcepts = useCallback((text: string, concepts: ExtractedConcept[]): ExtractedConcept[] => {
+    return concepts.map(concept => {
+      // Check if indices are valid
+      const extractedText = text.slice(concept.startIndex, concept.endIndex)
+      if (extractedText.toLowerCase() === concept.text.toLowerCase()) {
+        return concept // Indices are correct
+      }
+      
+      // Try to find the correct position
+      const searchText = concept.text.toLowerCase()
+      const lowerText = text.toLowerCase()
+      const newStartIndex = lowerText.indexOf(searchText)
+      
+      if (newStartIndex === -1) {
+        // Can't find the text, skip this concept
+        return null
+      }
+      
+      return {
+        ...concept,
+        startIndex: newStartIndex,
+        endIndex: newStartIndex + concept.text.length,
+      }
+    }).filter((c): c is ExtractedConcept => c !== null)
+  }, [])
+
+  /**
    * Auto-extract concepts for new messages (assistant messages only).
    * User messages are typically short and less interesting to highlight.
+   * Uses a small delay to ensure message content is stable.
    */
   useEffect(() => {
     if (!extractConcepts) return
+    
+    // Use a timeout to debounce extraction and wait for message to stabilize
+    const timeouts: NodeJS.Timeout[] = []
     
     messages.forEach((msg, index) => {
       // Only auto-extract for assistant messages
@@ -219,26 +254,37 @@ export function ChatView({
       // Skip if already extracted or currently extracting
       if (messageConcepts[index] !== undefined || extractingMessages.has(index)) return
       
-      setExtractingMessages(prev => new Set(prev).add(index))
+      // Add a small delay (500ms) to ensure message is complete
+      const timeout = setTimeout(() => {
+        setExtractingMessages(prev => new Set(prev).add(index))
+        
+        extractConcepts(msg.content).then(extracted => {
+          // Validate and fix indices
+          const fixedConcepts = validateAndFixConcepts(msg.content, extracted)
+          setMessageConcepts(prev => ({ ...prev, [index]: fixedConcepts }))
+          setExtractingMessages(prev => {
+            const next = new Set(prev)
+            next.delete(index)
+            return next
+          })
+        }).catch(() => {
+          // On error, set empty array to prevent retry
+          setMessageConcepts(prev => ({ ...prev, [index]: [] }))
+          setExtractingMessages(prev => {
+            const next = new Set(prev)
+            next.delete(index)
+            return next
+          })
+        })
+      }, 500)
       
-      extractConcepts(msg.content).then(extracted => {
-        setMessageConcepts(prev => ({ ...prev, [index]: extracted }))
-        setExtractingMessages(prev => {
-          const next = new Set(prev)
-          next.delete(index)
-          return next
-        })
-      }).catch(() => {
-        // On error, set empty array to prevent retry
-        setMessageConcepts(prev => ({ ...prev, [index]: [] }))
-        setExtractingMessages(prev => {
-          const next = new Set(prev)
-          next.delete(index)
-          return next
-        })
-      })
+      timeouts.push(timeout)
     })
-  }, [messages, extractConcepts, messageConcepts, extractingMessages])
+    
+    return () => {
+      timeouts.forEach(t => clearTimeout(t))
+    }
+  }, [messages, extractConcepts, messageConcepts, extractingMessages, validateAndFixConcepts])
 
   /**
    * Handles generating AI highlights for a specific message.
@@ -253,7 +299,9 @@ export function ChatView({
     
     try {
       const extracted = await extractConcepts(msg.content)
-      setMessageConcepts(prev => ({ ...prev, [messageIndex]: extracted }))
+      // Validate and fix indices
+      const fixedConcepts = validateAndFixConcepts(msg.content, extracted)
+      setMessageConcepts(prev => ({ ...prev, [messageIndex]: fixedConcepts }))
     } finally {
       setExtractingMessages(prev => {
         const next = new Set(prev)
@@ -261,7 +309,7 @@ export function ChatView({
         return next
       })
     }
-  }, [extractConcepts, messages, extractingMessages])
+  }, [extractConcepts, messages, extractingMessages, validateAndFixConcepts])
 
   /**
    * Handles adding a user-created concept highlight via text selection.
@@ -671,7 +719,9 @@ export function ChatView({
                       onConceptRemove={(conceptId) => handleRemoveConcept(index, conceptId)}
                     />
                   ) : (
-                    msg.content
+                    <ReactMarkdown className={styles.markdown}>
+                      {msg.content}
+                    </ReactMarkdown>
                   )}
                 </div>
               </div>

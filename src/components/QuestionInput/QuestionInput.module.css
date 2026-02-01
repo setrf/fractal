@@ -27,7 +27,7 @@
 /* Input wrapper - the bordered box containing prompt, input, and button */
 .inputWrapper {
   display: flex;
-  align-items: flex-start;
+  align-items: center; /* Vertically center all items */
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border: var(--border-width-strong) solid var(--text-primary);

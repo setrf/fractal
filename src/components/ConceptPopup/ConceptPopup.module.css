@@ -166,6 +166,33 @@
   cursor: grabbing;
 }
 
+/* Drag handle for stashing - visible grip that can be dragged to stash */
+.stashDragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  margin-right: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  cursor: grab;
+  user-select: none;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  border-radius: 2px;
+}
+
+.stashDragHandle:hover {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.stashDragHandle:active {
+  cursor: grabbing;
+  color: var(--text-primary);
+}
+
 .titleRow {
   display: flex;
   flex-direction: column;

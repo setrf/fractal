@@ -617,6 +617,39 @@ export function ConceptPopup({
   // Check if explanation is already stashed
   const isStashed = concept ? hasItem(concept.normalizedName, 'explanation') : false
 
+  /**
+   * Handles drag start for dragging popup to stash via the drag handle.
+   */
+  const handleStashDragStart = useCallback((e: React.DragEvent) => {
+    if (!concept || !explanation) {
+      e.preventDefault()
+      return
+    }
+    
+    const itemData = {
+      type: 'explanation',
+      content: concept.normalizedName,
+      metadata: {
+        summary: explanation.summary,
+        context: explanation.context,
+        relatedConcepts: explanation.relatedConcepts,
+        conceptCategory: concept.category,
+        normalizedName: concept.normalizedName,
+      },
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
+    e.dataTransfer.effectAllowed = 'copy'
+  }, [concept, explanation])
+
+  /**
+   * Handles drag end - closes popup if dropped successfully into stash.
+   */
+  const handleStashDragEnd = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.dropEffect !== 'none') {
+      onClose()
+    }
+  }, [onClose])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -656,6 +689,19 @@ export function ConceptPopup({
         className={`${styles.header} ${styles.draggableHeader}`}
         onMouseDown={handleDragStart}
       >
+        {/* Drag handle for stashing - only visible when explanation is loaded */}
+        {explanation && !isMinimized && (
+          <div
+            className={styles.stashDragHandle}
+            draggable
+            onDragStart={handleStashDragStart}
+            onDragEnd={handleStashDragEnd}
+            title="Drag to stash"
+            aria-label="Drag to stash"
+          >
+            ⋮⋮
+          </div>
+        )}
         <div className={styles.titleRow}>
           <span className={styles.conceptName}>{concept.normalizedName}</span>
           <span className={`${styles.category} ${styles[`category${concept.category.charAt(0).toUpperCase() + concept.category.slice(1)}`]}`}>

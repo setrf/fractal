@@ -239,76 +239,135 @@ export function ChatView({
   /**
    * Validates and fixes concept indices against the actual text.
    * This handles cases where the LLM returns misaligned indices.
+   * 
+   * Strategy:
+   * 1. Check if the text at given indices matches the concept text
+   * 2. If not, find ALL occurrences of the concept text and pick the closest to the LLM's index
+   * 3. If still not found, try case-insensitive search
+   * 4. If we can't find a proper match, drop the concept (don't show wrong highlights)
    */
   const validateAndFixConcepts = useCallback((text: string, concepts: ExtractedConcept[]): ExtractedConcept[] => {
+    /**
+     * Find all occurrences of a substring in a string.
+     * Returns array of start indices.
+     */
+    const findAllOccurrences = (haystack: string, needle: string): number[] => {
+      const indices: number[] = []
+      let pos = 0
+      while ((pos = haystack.indexOf(needle, pos)) !== -1) {
+        indices.push(pos)
+        pos += 1 // Move forward to find overlapping matches too
+      }
+      return indices
+    }
+    
+    /**
+     * Find the occurrence closest to the target index.
+     */
+    const findClosestOccurrence = (indices: number[], targetIndex: number): number | null => {
+      if (indices.length === 0) return null
+      if (indices.length === 1) return indices[0]
+      
+      return indices.reduce((closest, current) => {
+        const currentDist = Math.abs(current - targetIndex)
+        const closestDist = Math.abs(closest - targetIndex)
+        return currentDist < closestDist ? current : closest
+      })
+    }
+    
     return concepts.map(concept => {
-      // First, check if the indices are within bounds
-      if (concept.startIndex < 0 || concept.endIndex > text.length || concept.startIndex >= concept.endIndex) {
-        // Invalid indices, try to find the text
-        const searchText = concept.text.toLowerCase()
-        const lowerText = text.toLowerCase()
-        const newStartIndex = lowerText.indexOf(searchText)
+      const conceptTextLower = concept.text.toLowerCase()
+      const textLower = text.toLowerCase()
+      
+      // First, check if the indices are valid and match exactly
+      if (concept.startIndex >= 0 && concept.endIndex <= text.length && concept.startIndex < concept.endIndex) {
+        const extractedText = text.slice(concept.startIndex, concept.endIndex)
+        if (extractedText.toLowerCase() === conceptTextLower) {
+          return concept // Indices are correct
+        }
+      }
+      
+      // Find ALL occurrences of the concept text (case-insensitive)
+      const allOccurrences = findAllOccurrences(textLower, conceptTextLower)
+      
+      if (allOccurrences.length > 0) {
+        // Pick the occurrence closest to where the LLM thought it was
+        const bestIndex = findClosestOccurrence(allOccurrences, concept.startIndex)
         
-        if (newStartIndex === -1) {
-          // Try a more flexible match - look for partial matches
-          const words = concept.text.split(/\s+/)
-          if (words.length > 0) {
-            const firstWord = words[0].toLowerCase()
-            const partialIndex = lowerText.indexOf(firstWord)
-            if (partialIndex !== -1) {
-              // Found partial match, use original text length from that position
-              return {
-                ...concept,
-                startIndex: partialIndex,
-                endIndex: Math.min(partialIndex + concept.text.length, text.length),
+        if (bestIndex !== null) {
+          // Use the actual text from the source (preserving case)
+          const actualText = text.slice(bestIndex, bestIndex + concept.text.length)
+          return {
+            ...concept,
+            text: actualText,
+            startIndex: bestIndex,
+            endIndex: bestIndex + concept.text.length,
+          }
+        }
+      }
+      
+      // Try finding by normalized name (handles "evolutionary" -> "evolution" mapping)
+      const normalizedLower = concept.normalizedName.toLowerCase()
+      if (normalizedLower !== conceptTextLower) {
+        const normalizedOccurrences = findAllOccurrences(textLower, normalizedLower)
+        if (normalizedOccurrences.length > 0) {
+          const bestIndex = findClosestOccurrence(normalizedOccurrences, concept.startIndex)
+          if (bestIndex !== null) {
+            const actualText = text.slice(bestIndex, bestIndex + concept.normalizedName.length)
+            return {
+              ...concept,
+              text: actualText,
+              startIndex: bestIndex,
+              endIndex: bestIndex + concept.normalizedName.length,
+            }
+          }
+        }
+      }
+      
+      // Last resort: try partial match on the first word of multi-word concepts
+      const words = concept.text.split(/\s+/)
+      if (words.length > 1) {
+        const firstWord = words[0].toLowerCase()
+        if (firstWord.length >= 3) {
+          const partialOccurrences = findAllOccurrences(textLower, firstWord)
+          if (partialOccurrences.length > 0) {
+            const bestIndex = findClosestOccurrence(partialOccurrences, concept.startIndex)
+            if (bestIndex !== null) {
+              // Extend to include the full phrase if possible
+              const potentialEnd = Math.min(bestIndex + concept.text.length, text.length)
+              const potentialText = text.slice(bestIndex, potentialEnd)
+              
+              // Only use if it looks like a reasonable match (at least 50% of words match)
+              const potentialWords = potentialText.toLowerCase().split(/\s+/)
+              const matchCount = words.filter(w => potentialWords.some(pw => pw.includes(w.toLowerCase()))).length
+              if (matchCount >= Math.ceil(words.length / 2)) {
+                return {
+                  ...concept,
+                  text: potentialText,
+                  startIndex: bestIndex,
+                  endIndex: potentialEnd,
+                }
               }
             }
           }
-          return null
-        }
-        
-        return {
-          ...concept,
-          startIndex: newStartIndex,
-          endIndex: newStartIndex + concept.text.length,
         }
       }
       
-      // Check if indices match the concept text
-      const extractedText = text.slice(concept.startIndex, concept.endIndex)
-      if (extractedText.toLowerCase() === concept.text.toLowerCase()) {
-        return concept // Indices are correct
-      }
-      
-      // Indices are within bounds but don't match - find correct position
-      const searchText = concept.text.toLowerCase()
-      const lowerText = text.toLowerCase()
-      const newStartIndex = lowerText.indexOf(searchText)
-      
-      if (newStartIndex === -1) {
-        // The exact text wasn't found - try finding text at the given indices
-        // and use that as the concept text instead
-        if (extractedText.length > 2) {
-          return {
-            ...concept,
-            text: extractedText,
-          }
-        }
-        return null
-      }
-      
-      return {
-        ...concept,
-        startIndex: newStartIndex,
-        endIndex: newStartIndex + concept.text.length,
-      }
+      // Couldn't find a valid position for this concept - drop it
+      // This is better than showing incorrect highlights
+      console.warn(`[validateAndFixConcepts] Could not find concept "${concept.text}" in text, dropping it`)
+      return null
     }).filter((c): c is ExtractedConcept => c !== null)
   }, [])
 
   /**
    * Auto-extract concepts for new messages (assistant messages only).
    * User messages are typically short and less interesting to highlight.
-   * Uses a small delay to ensure message content is stable.
+   * Uses a delay to ensure message content is stable before extraction.
+   * 
+   * Note: The first message (index 1, which is the first AI response) uses a longer
+   * delay because it comes from the initial automatic query and might have
+   * timing issues with state updates.
    */
   useEffect(() => {
     if (!extractConcepts) return
@@ -322,13 +381,26 @@ export function ChatView({
       // Skip if already extracted or currently extracting
       if (messageConcepts[index] !== undefined || extractingMessages.has(index)) return
       
-      // Add a small delay (500ms) to ensure message is complete
+      // Capture the content at this moment to ensure we extract from the final content
+      const contentToExtract = msg.content
+      
+      // Use a longer delay for the first AI response (index 1) to ensure it's fully settled
+      // Subsequent messages use a shorter delay
+      const delay = index === 1 ? 1000 : 500
+      
       const timeout = setTimeout(() => {
+        // Double-check the message content hasn't changed
+        const currentMsg = messages[index]
+        if (!currentMsg || currentMsg.content !== contentToExtract) {
+          // Content changed, skip this extraction (will be retried)
+          return
+        }
+        
         setExtractingMessages(prev => new Set(prev).add(index))
         
-        extractConcepts(msg.content).then(extracted => {
-          // Validate and fix indices
-          const fixedConcepts = validateAndFixConcepts(msg.content, extracted)
+        extractConcepts(contentToExtract).then(extracted => {
+          // Validate and fix indices against the EXACT content that was extracted
+          const fixedConcepts = validateAndFixConcepts(contentToExtract, extracted)
           setMessageConcepts(prev => ({ ...prev, [index]: fixedConcepts }))
           setExtractingMessages(prev => {
             const next = new Set(prev)
@@ -344,7 +416,7 @@ export function ChatView({
             return next
           })
         })
-      }, 500)
+      }, delay)
       
       timeouts.push(timeout)
     })

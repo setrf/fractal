@@ -356,49 +356,77 @@ export const extractConcepts = weave.op(
     }
 
     // Validate and add IDs to concepts
-    // IMPORTANT: We compute actual positions using indexOf() instead of trusting LLM indices
+    // IMPORTANT: We compute actual positions by finding the occurrence CLOSEST to
+    // where the LLM thought the concept was. This handles cases where a word appears
+    // multiple times in the text.
     const validCategories = ['science', 'philosophy', 'psychology', 'technology', 'abstract']
-    const usedRanges: Array<{ start: number; end: number }> = []
+    
+    /**
+     * Find all occurrences of a substring (case-insensitive).
+     */
+    const findAllOccurrences = (haystack: string, needle: string): number[] => {
+      const indices: number[] = []
+      const haystackLower = haystack.toLowerCase()
+      const needleLower = needle.toLowerCase()
+      let pos = 0
+      while ((pos = haystackLower.indexOf(needleLower, pos)) !== -1) {
+        indices.push(pos)
+        pos += 1
+      }
+      return indices
+    }
+    
+    /**
+     * Find the occurrence closest to the target index.
+     */
+    const findClosestOccurrence = (indices: number[], targetIndex: number): number | null => {
+      if (indices.length === 0) return null
+      if (indices.length === 1) return indices[0]
+      
+      return indices.reduce((closest, current) => {
+        const currentDist = Math.abs(current - targetIndex)
+        const closestDist = Math.abs(closest - targetIndex)
+        return currentDist < closestDist ? current : closest
+      })
+    }
     
     const concepts: ExtractedConcept[] = rawConcepts
       .filter((c) => {
-        // Validate required fields (but NOT indices - we'll compute those)
+        // Validate required fields
         if (!c.text || typeof c.text !== 'string') return false
         if (!c.normalizedName || typeof c.normalizedName !== 'string') return false
         if (!validCategories.includes(c.category)) return false
         return true
       })
       .map((c) => {
-        // Find the actual position of the text in the source
-        // Try case-sensitive first, then case-insensitive
-        let startIndex = questionText.indexOf(c.text)
+        // Find ALL occurrences of the concept text in the source
+        const allOccurrences = findAllOccurrences(questionText, c.text)
         
-        if (startIndex === -1) {
-          // Try case-insensitive search
-          const lowerText = questionText.toLowerCase()
-          const lowerConcept = c.text.toLowerCase()
-          startIndex = lowerText.indexOf(lowerConcept)
-          
-          // If found, use the actual text from the source
-          if (startIndex !== -1) {
-            c.text = questionText.slice(startIndex, startIndex + c.text.length)
-          }
-        }
-        
-        if (startIndex === -1) {
+        if (allOccurrences.length === 0) {
           // Concept text not found in source - skip it
+          console.warn(`[Concepts] Text "${c.text}" not found in source, skipping`)
           return null
         }
         
-        const endIndex = startIndex + c.text.length
+        // Pick the occurrence closest to where the LLM thought it was
+        // This handles cases where a word appears multiple times
+        const llmSuggestedIndex = typeof c.startIndex === 'number' ? c.startIndex : 0
+        const bestIndex = findClosestOccurrence(allOccurrences, llmSuggestedIndex)
+        
+        if (bestIndex === null) {
+          return null
+        }
+        
+        // Use the actual text from the source (preserving original case)
+        const actualText = questionText.slice(bestIndex, bestIndex + c.text.length)
         
         return {
           id: generateConceptId(),
-          text: c.text,
+          text: actualText,
           normalizedName: c.normalizedName,
           category: c.category,
-          startIndex,
-          endIndex,
+          startIndex: bestIndex,
+          endIndex: bestIndex + c.text.length,
         }
       })
       .filter((c): c is ExtractedConcept => c !== null)

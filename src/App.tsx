@@ -123,14 +123,6 @@ function AppContent() {
   }, [tree.nodes, nodeConcepts, extractConcepts, setActiveNode])
 
   /**
-   * Handles submission of the initial question.
-   * Creates the root node and transitions to tree view.
-   */
-  const handleQuestionSubmit = (question: string) => {
-    addRootQuestion(question)
-  }
-
-  /**
    * Generates AI suggestions for a node and adds them as children.
    * Uses W&B Inference via the backend server.
    */
@@ -146,6 +138,16 @@ function AppContent() {
       setGeneratingNodeId(null)
     }
   }, [generate, addChildQuestion])
+
+  /**
+   * Handles submission of the initial question.
+   * Creates the root node and immediately triggers Deep dive.
+   */
+  const handleQuestionSubmit = useCallback((question: string) => {
+    const nodeId = addRootQuestion(question)
+    // Immediately trigger Deep dive to generate sub-questions
+    handleGenerateAI(nodeId, question)
+  }, [addRootQuestion, handleGenerateAI])
 
   /**
    * Handles "lock in" on a question to open the chat view.

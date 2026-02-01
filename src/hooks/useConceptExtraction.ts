@@ -26,6 +26,12 @@ import { extractConcepts as extractConceptsApi, type ExtractedConcept } from '..
  */
 const conceptCache = new Map<string, ExtractedConcept[]>()
 
+function getCacheKey(text: string, model?: string): string {
+  const normalizedText = text.trim()
+  const modelKey = model?.trim() || 'default'
+  return `${modelKey}::${normalizedText}`
+}
+
 /**
  * State returned by the useConceptExtraction hook.
  */
@@ -45,7 +51,7 @@ export interface UseConceptExtractionState {
  */
 export interface UseConceptExtractionActions {
   /** Extract concepts from the given text */
-  extract: (text: string) => Promise<ExtractedConcept[]>
+  extract: (text: string, model?: string) => Promise<ExtractedConcept[]>
   /** Clear the current concepts and error */
   reset: () => void
   /** Clear the entire concept cache */
@@ -79,9 +85,10 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
    * Extract concepts from the given text.
    * Returns cached results if available.
    */
-  const extract = useCallback(async (text: string): Promise<ExtractedConcept[]> => {
+  const extract = useCallback(async (text: string, model?: string): Promise<ExtractedConcept[]> => {
     // Normalize text for caching
     const normalizedText = text.trim()
+    const cacheKey = getCacheKey(normalizedText, model)
     
     if (!normalizedText) {
       setConcepts([])
@@ -91,7 +98,7 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
     }
 
     // Check cache first
-    const cached = conceptCache.get(normalizedText)
+    const cached = conceptCache.get(cacheKey)
     if (cached) {
       setConcepts(cached)
       setSourceText(normalizedText)
@@ -100,7 +107,7 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
     }
 
     // Prevent duplicate requests
-    if (pendingRequest.current === normalizedText) {
+    if (pendingRequest.current === cacheKey) {
       // Request already in progress for this text
       return []
     }
@@ -108,12 +115,12 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
     try {
       setIsLoading(true)
       setError(null)
-      pendingRequest.current = normalizedText
+      pendingRequest.current = cacheKey
 
-      const result = await extractConceptsApi(normalizedText)
+      const result = await extractConceptsApi(normalizedText, model)
       
       // Cache the result
-      conceptCache.set(normalizedText, result)
+      conceptCache.set(cacheKey, result)
       
       setConcepts(result)
       setSourceText(normalizedText)
@@ -163,13 +170,13 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
  * Get cached concepts for a text without triggering an API call.
  * Returns undefined if not cached.
  */
-export function getCachedConcepts(text: string): ExtractedConcept[] | undefined {
-  return conceptCache.get(text.trim())
+export function getCachedConcepts(text: string, model?: string): ExtractedConcept[] | undefined {
+  return conceptCache.get(getCacheKey(text, model))
 }
 
 /**
  * Check if concepts are cached for the given text.
  */
-export function hasCachedConcepts(text: string): boolean {
-  return conceptCache.has(text.trim())
+export function hasCachedConcepts(text: string, model?: string): boolean {
+  return conceptCache.has(getCacheKey(text, model))
 }

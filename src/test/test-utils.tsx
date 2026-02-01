@@ -16,12 +16,15 @@ import userEvent from '@testing-library/user-event'
 import { StashProvider } from '../context/StashContext'
 import { ProbeProvider } from '../context/ProbeContext'
 import { ViewModeProvider } from '../context/ViewModeContext'
+import { ModelProvider } from '../context/ModelContext'
 
 function Providers({ children }: { children: ReactNode }) {
   return (
     <ViewModeProvider>
       <StashProvider>
-        <ProbeProvider>{children}</ProbeProvider>
+        <ProbeProvider>
+          <ModelProvider>{children}</ModelProvider>
+        </ProbeProvider>
       </StashProvider>
     </ViewModeProvider>
   )

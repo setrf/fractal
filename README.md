@@ -62,6 +62,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - Filter nodes by type
 - **Add Related Questions** — Click any node to add child questions
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
+- **Model Selection** — Choose from available W&B models for generation, chat, and evaluation
 - **Weave Eval Loop** — Each generation is scored (0–10) and logged in Weave; prompt variants auto-improve over time
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions

@@ -126,8 +126,22 @@ describe('useAIQuestions Hook', () => {
         await result.current.generate('What is consciousness?')
       })
       
-      expect(api.generateQuestions).toHaveBeenCalledWith('What is consciousness?')
+      expect(api.generateQuestions).toHaveBeenCalledWith('What is consciousness?', undefined)
       console.log('[TEST] API called with correct question')
+    })
+
+    it('should pass model parameter when provided', async () => {
+      console.log('[TEST] Testing model parameter forwarding')
+
+      vi.mocked(api.generateQuestions).mockResolvedValue({ questions: [], meta: null })
+
+      const { result } = renderHook(() => useAIQuestions())
+
+      await act(async () => {
+        await result.current.generate('Test model?', 'custom-model')
+      })
+
+      expect(api.generateQuestions).toHaveBeenCalledWith('Test model?', 'custom-model')
     })
 
     it('should set error on failure', async () => {

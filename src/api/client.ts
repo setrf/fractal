@@ -50,6 +50,16 @@ export interface HealthResponse {
 }
 
 /**
+ * Response from the models endpoint.
+ */
+export interface ModelsResponse {
+  success: boolean
+  data: {
+    models: string[]
+  }
+}
+
+/**
  * Generate related questions for a given input question.
  * 
  * @param question - The input question to generate related questions for
@@ -109,6 +119,21 @@ export async function isApiAvailable(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/**
+ * Fetch available models from the backend.
+ */
+export async function listModels(): Promise<string[]> {
+  const response = await fetch(`${API_BASE_URL}/api/models`)
+
+  if (!response.ok) {
+    const error: ApiError = await response.json()
+    throw new Error(error.message || 'Failed to fetch models')
+  }
+
+  const data: ModelsResponse = await response.json()
+  return data.data.models
 }
 
 // ============================================

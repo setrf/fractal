@@ -16,6 +16,7 @@ import ReactMarkdown from 'react-markdown'
 import styles from './ProbeChat.module.css'
 import { useProbeContext } from '../../context/ProbeContext'
 import { useStashContext } from '../../context/StashContext'
+import { useModelContext } from '../../context/ModelContext'
 import { sendProbeChatMessage } from '../../api/client'
 import type { Probe } from '../../types/probe'
 import type { StashItem } from '../../types/stash'
@@ -41,6 +42,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   } = useProbeContext()
 
   const { items: stashItems } = useStashContext()
+  const { selectedModel } = useModelContext()
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -90,7 +92,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
       ]
 
       // Send to API
-      const response = await sendProbeChatMessage(messagesForApi, selectedItems)
+      const response = await sendProbeChatMessage(messagesForApi, selectedItems, selectedModel || undefined)
 
       // Add assistant message
       addMessage(probe.id, {
@@ -106,7 +108,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
     } finally {
       setSending(false)
     }
-  }, [input, sending, probe, addMessage, selectedItems])
+  }, [input, sending, probe, addMessage, selectedItems, selectedModel])
 
   // Handle key press (Enter to send, Shift+Enter for new line)
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {

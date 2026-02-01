@@ -7,6 +7,7 @@ import {
   generateQuestions,
   checkHealth,
   isApiAvailable,
+  listModels,
 } from './client'
 
 // Mock fetch globally
@@ -124,6 +125,27 @@ describe('API Client', () => {
 
       await expect(checkHealth()).rejects.toThrow('Health check failed')
       console.log('[TEST] Error thrown as expected')
+    })
+  })
+
+  describe('listModels()', () => {
+    it('should fetch available models', async () => {
+      console.log('[TEST] Testing listModels')
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { models: ['model-a', 'model-b'] },
+        }),
+      })
+
+      const models = await listModels()
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/models')
+      )
+      expect(models).toEqual(['model-a', 'model-b'])
     })
   })
 

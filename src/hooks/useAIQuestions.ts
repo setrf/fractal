@@ -14,7 +14,7 @@ import { generateQuestions, isApiAvailable, type GenerateQuestionsResponse } fro
 
 interface UseAIQuestionsResult {
   /** Generate related questions for a given question */
-  generate: (question: string) => Promise<{
+  generate: (question: string, model?: string) => Promise<{
     questions: string[]
     meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
   }>
@@ -63,7 +63,7 @@ export function useAIQuestions(): UseAIQuestionsResult {
     return available
   }, [])
 
-  const generate = useCallback(async (question: string): Promise<{
+  const generate = useCallback(async (question: string, model?: string): Promise<{
     questions: string[]
     meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
   }> => {
@@ -72,7 +72,7 @@ export function useAIQuestions(): UseAIQuestionsResult {
 
     try {
       console.log(`[AI] Generating questions for: "${question}"`)
-      const { questions, meta } = await generateQuestions(question)
+      const { questions, meta } = await generateQuestions(question, model)
       setLastMeta(meta)
       console.log(`[AI] Generated ${questions.length} questions`)
       return { questions, meta }

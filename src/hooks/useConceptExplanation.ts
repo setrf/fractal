@@ -52,14 +52,17 @@ function hashString(value: string): string {
   return hash.toString(36)
 }
 
-function getCacheKey(conceptName: string, questionContext: string): string {
+function getCacheKey(conceptName: string, questionContext: string, model?: string): string {
   const normalizedContext = questionContext.trim().toLowerCase()
   const contextHash = hashString(normalizedContext)
   const conceptKey = conceptName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return `${CACHE_KEY_PREFIX}${conceptKey}_${contextHash}`
+  const modelKey = (model || 'default')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+  return `${CACHE_KEY_PREFIX}${conceptKey}_${contextHash}_${modelKey}`
 }
 
 /**
@@ -68,10 +71,11 @@ function getCacheKey(conceptName: string, questionContext: string): string {
  */
 function getCachedExplanation(
   conceptName: string,
-  questionContext: string
+  questionContext: string,
+  model?: string
 ): ConceptExplanation | null {
   try {
-    const key = getCacheKey(conceptName, questionContext)
+    const key = getCacheKey(conceptName, questionContext, model)
     const cached = localStorage.getItem(key)
     
     if (!cached) return null
@@ -96,10 +100,11 @@ function getCachedExplanation(
 function setCachedExplanation(
   conceptName: string,
   questionContext: string,
-  explanation: ConceptExplanation
+  explanation: ConceptExplanation,
+  model?: string
 ): void {
   try {
-    const key = getCacheKey(conceptName, questionContext)
+    const key = getCacheKey(conceptName, questionContext, model)
     const cached: CachedExplanation = {
       explanation,
       timestamp: Date.now(),
@@ -145,7 +150,8 @@ export interface UseConceptExplanationActions {
   fetchExplanation: (
     conceptId: string,
     conceptName: string,
-    questionContext: string
+    questionContext: string,
+    model?: string
   ) => Promise<ConceptExplanation | null>
   /** Get explanation for a specific concept ID */
   getExplanation: (conceptId: string) => ConceptExplanation | null
@@ -208,7 +214,8 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
   const fetchExplanation = useCallback(async (
     conceptId: string,
     conceptName: string,
-    questionContext: string
+    questionContext: string,
+    model?: string
   ): Promise<ConceptExplanation | null> => {
     // Check if we already have this explanation
     const existing = explanations[conceptId]
@@ -221,7 +228,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     }
 
     // Check cache
-    const cached = getCachedExplanation(conceptName, questionContext)
+    const cached = getCachedExplanation(conceptName, questionContext, model)
     if (cached) {
       // Update the conceptId in case it changed
       const updatedCached = { ...cached, conceptId }
@@ -234,7 +241,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     }
 
     // Prevent duplicate requests
-    const requestKey = `${conceptId}_${conceptName}`
+    const requestKey = `${conceptId}_${conceptName}_${model || 'default'}`
     if (pendingRequests.current.has(requestKey)) {
       return null
     }
@@ -251,10 +258,10 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       setCurrentConceptId(conceptId)
       pendingRequests.current.add(requestKey)
 
-      const result = await explainConceptApi(conceptId, conceptName, questionContext)
+      const result = await explainConceptApi(conceptId, conceptName, questionContext, model)
       
       // Cache the result
-      setCachedExplanation(conceptName, questionContext, result)
+      setCachedExplanation(conceptName, questionContext, result, model)
       
       // Update explanations map
       setExplanations(prev => ({ ...prev, [conceptId]: result }))
@@ -337,7 +344,8 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
  */
 export function hasExplanationCached(
   conceptName: string,
-  questionContext: string
+  questionContext: string,
+  model?: string
 ): boolean {
-  return getCachedExplanation(conceptName, questionContext) !== null
+  return getCachedExplanation(conceptName, questionContext, model) !== null
 }

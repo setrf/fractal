@@ -68,6 +68,80 @@ vi.mock('three', () => {
   }
 })
 
+const fetchMock = vi.fn((input: RequestInfo | URL) => {
+  const url = typeof input === 'string' ? input : input.toString()
+  if (url.includes('/api/models')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ success: true, data: { models: [] } }),
+    })
+  }
+  if (url.includes('/api/generate')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          questions: [],
+          model: 'test-model',
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        },
+      }),
+    })
+  }
+  if (url.includes('/api/chat') || url.includes('/api/probe/chat')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          message: 'Test response',
+          model: 'test-model',
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        },
+      }),
+    })
+  }
+  if (url.includes('/api/concepts/extract')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { concepts: [], sourceText: '' },
+      }),
+    })
+  }
+  if (url.includes('/api/concepts/explain')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          conceptId: 'test',
+          normalizedName: 'test',
+          summary: '',
+          context: '',
+          relatedConcepts: [],
+        },
+      }),
+    })
+  }
+  if (url.includes('/health')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        services: { inference: 'up' },
+      }),
+    })
+  }
+  return Promise.resolve({
+    ok: true,
+    json: async () => ({ success: true, data: {} }),
+  })
+})
+
 // Cleanup after each test to prevent state leakage
 afterEach(() => {
   cleanup()
@@ -107,6 +181,11 @@ beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
     value: matchMediaMock,
   })
+  const currentFetch = globalThis.fetch
+  const isMock = typeof currentFetch === 'function' && 'mock' in currentFetch
+  if (!isMock) {
+    globalThis.fetch = fetchMock
+  }
 })
 
 // Reset mocks between tests

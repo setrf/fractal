@@ -1,0 +1,65 @@
+/**
+ * @fileoverview Tests for the useModelSelection hook.
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { renderHook, waitFor, act } from '@testing-library/react'
+import { useModelSelection } from './useModelSelection'
+import * as api from '../api'
+
+vi.mock('../api', () => ({
+  listModels: vi.fn(),
+}))
+
+describe('useModelSelection Hook', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should load models and keep stored selection when available', async () => {
+    localStorage.setItem('fractal_selected_model', 'model-a')
+    vi.mocked(api.listModels).mockResolvedValue(['model-a', 'model-b'])
+
+    const { result } = renderHook(() => useModelSelection())
+
+    await waitFor(() => {
+      expect(result.current.models).toEqual(['model-a', 'model-b'])
+    })
+
+    expect(result.current.selectedModel).toBe('model-a')
+  })
+
+  it('should reset selection if stored model is unavailable', async () => {
+    localStorage.setItem('fractal_selected_model', 'missing-model')
+    vi.mocked(api.listModels).mockResolvedValue(['model-a'])
+
+    const { result } = renderHook(() => useModelSelection())
+
+    await waitFor(() => {
+      expect(result.current.models).toEqual(['model-a'])
+    })
+
+    expect(result.current.selectedModel).toBeNull()
+  })
+
+  it('should persist model selection changes', async () => {
+    vi.mocked(api.listModels).mockResolvedValue(['model-a'])
+
+    const { result } = renderHook(() => useModelSelection())
+
+    await waitFor(() => {
+      expect(result.current.models).toEqual(['model-a'])
+    })
+
+    act(() => {
+      result.current.setSelectedModel('model-a')
+    })
+
+    expect(localStorage.getItem('fractal_selected_model')).toBe('model-a')
+  })
+})

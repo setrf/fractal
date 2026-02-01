@@ -1,0 +1,46 @@
+/**
+ * ModelSelector Component Styles
+ * ==============================
+ *
+ * Fixed-position selector for choosing the active model.
+ */
+
+.wrapper {
+  position: fixed;
+  top: calc(var(--space-4) + 48px);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--border-primary);
+  background: var(--bg-secondary);
+  font-family: var(--font-mono);
+  z-index: 100;
+}
+
+.label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.select {
+  min-width: 240px;
+  max-width: 320px;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.error {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}

@@ -15,6 +15,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ViewModeToggle } from './components/ViewModeToggle'
+import { ModelSelector } from './components/ModelSelector'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
@@ -31,6 +32,7 @@ import { StashProvider, useStashContext } from './context/StashContext'
 import { ProbeProvider, useProbeContext } from './context/ProbeContext'
 import { GraphProvider } from './context/GraphContext'
 import { ViewModeProvider, useViewModeContext } from './context/ViewModeContext'
+import { ModelProvider, useModelContext } from './context/ModelContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
@@ -136,6 +138,8 @@ function AppContent() {
     reset,
   } = useQuestionTree()
 
+  const { selectedModel } = useModelContext()
+
   // AI question generation
   const { generate, isLoading: aiLoading, error: aiError, lastMeta } = useAIQuestions()
   
@@ -153,6 +157,17 @@ function AppContent() {
     getLoadingState,
     reset: resetExplanation,
   } = useConceptExplanation()
+
+  const activeModel = selectedModel || undefined
+  const extractConceptsWithModel = useCallback(
+    (text: string) => extractConcepts(text, activeModel),
+    [extractConcepts, activeModel]
+  )
+  const fetchExplanationWithModel = useCallback(
+    (conceptId: string, conceptName: string, questionContext: string) =>
+      fetchExplanation(conceptId, conceptName, questionContext, activeModel),
+    [fetchExplanation, activeModel]
+  )
   
   // Track which node is currently generating
   const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null)
@@ -217,13 +232,13 @@ function AppContent() {
     // Auto-extract concepts for the selected node if not already done
     const node = tree.nodes[nodeId]
     if (node && !nodeConcepts[nodeId]) {
-      extractConcepts(node.text).then((extracted) => {
+      extractConceptsWithModel(node.text).then((extracted) => {
         if (extracted.length > 0) {
           setNodeConcepts(prev => ({ ...prev, [nodeId]: extracted }))
         }
       })
     }
-  }, [tree.nodes, nodeConcepts, extractConcepts, setActiveNode])
+  }, [tree.nodes, nodeConcepts, extractConceptsWithModel, setActiveNode])
 
   /**
    * Generates AI suggestions for a node and adds them as children.
@@ -232,7 +247,7 @@ function AppContent() {
   const handleGenerateAI = useCallback(async (parentId: string, question: string) => {
     setGeneratingNodeId(parentId)
     try {
-      const { questions: suggestions, meta } = await generate(question)
+      const { questions: suggestions, meta } = await generate(question, activeModel)
       const parent = tree.nodes[parentId]
       const normalizedParentScore = normalizeWeaveScore(parent?.meta.qualityScore)
       const parentScore = normalizedParentScore ?? 0
@@ -248,7 +263,7 @@ function AppContent() {
     } finally {
       setGeneratingNodeId(null)
     }
-  }, [generate, addChildQuestion, tree.nodes, updateNodeMeta])
+  }, [generate, addChildQuestion, tree.nodes, updateNodeMeta, activeModel])
 
   /**
    * Handles submission of the initial question.
@@ -284,8 +299,8 @@ function AppContent() {
    */
   const handleSendChatMessage = useCallback(async (messages: ChatMessage[]): Promise<string> => {
     if (!chatState) throw new Error('No chat state')
-    return sendChatMessage(chatState.question, messages)
-  }, [chatState])
+    return sendChatMessage(chatState.question, messages, activeModel)
+  }, [chatState, activeModel])
 
   /**
    * Handles concept hover - fetches explanation.
@@ -293,9 +308,9 @@ function AppContent() {
   const handleConceptHover = useCallback((concept: ExtractedConcept, questionContext?: string) => {
     const context = questionContext || chatState?.question || rootNode?.text || ''
     if (context) {
-      fetchExplanation(concept.id, concept.normalizedName, context)
+      fetchExplanationWithModel(concept.id, concept.normalizedName, context)
     }
-  }, [chatState, rootNode, fetchExplanation])
+  }, [chatState, rootNode, fetchExplanationWithModel])
 
   /**
    * Handles concept click - same as hover for now, but could trigger sticky.
@@ -303,9 +318,9 @@ function AppContent() {
   const handleConceptClick = useCallback((concept: ExtractedConcept, questionContext?: string) => {
     const context = questionContext || chatState?.question || rootNode?.text || ''
     if (context) {
-      fetchExplanation(concept.id, concept.normalizedName, context)
+      fetchExplanationWithModel(concept.id, concept.normalizedName, context)
     }
-  }, [chatState, rootNode, fetchExplanation])
+  }, [chatState, rootNode, fetchExplanationWithModel])
 
   /**
    * Handles user-created concept highlights.
@@ -436,9 +451,9 @@ function AppContent() {
     // Trigger explanation fetch
     const questionContext = chatState?.question || rootNode?.text || ''
     if (questionContext) {
-      fetchExplanation(syntheticConcept.id, syntheticConcept.normalizedName, questionContext)
+      fetchExplanationWithModel(syntheticConcept.id, syntheticConcept.normalizedName, questionContext)
     }
-  }, [globalPopups, chatVisible, chatState, rootNode, fetchExplanation])
+  }, [globalPopups, chatVisible, chatState, rootNode, fetchExplanationWithModel])
 
   /**
    * Creates a new note popup in a centered position.
@@ -666,6 +681,9 @@ function AppContent() {
         
         {/* View mode toggle - always visible in all views, shifts with probe sidebar */}
         <ViewModeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
+
+        {/* Model selector - always visible in all views, shifts with probe sidebar */}
+        <ModelSelector rightOffset={probeOpen ? probeSidebarWidth : 48} />
         
         {/* Action buttons - fixed in upper left after stash (visible in all views) */}
         <div
@@ -808,7 +826,7 @@ function AppContent() {
               conceptError={explanationError}
               onConceptHover={handleConceptHover}
               onConceptClick={handleConceptClick}
-              extractConcepts={extractConcepts}
+              extractConcepts={extractConceptsWithModel}
               minimizeAllTrigger={minimizeAllTrigger}
               closeAllTrigger={closeAllTrigger}
               onOpenPopup={handleOpenPopup}
@@ -1068,7 +1086,9 @@ function App() {
     <ViewModeProvider>
       <StashProvider>
         <ProbeProvider>
-          <AppContent />
+          <ModelProvider>
+            <AppContent />
+          </ModelProvider>
         </ProbeProvider>
       </StashProvider>
     </ViewModeProvider>

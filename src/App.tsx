@@ -19,6 +19,8 @@ import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
 import { StashSidebar } from './components/StashSidebar'
 import { NotePopup } from './components/NotePopup'
+import { ConceptPopup } from './components/ConceptPopup'
+import type { ConceptExplanation } from './types/concept'
 import { StashProvider, useStashContext } from './context/StashContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
@@ -52,6 +54,18 @@ interface CanvasNote {
   isMinimized: boolean
   /** Original stash item type (if reopened from stash) */
   sourceType?: 'note' | 'explanation' | 'question' | 'highlight' | 'chat-message'
+}
+
+/**
+ * State for a reopened explanation popup from stash.
+ */
+interface ReopenedExplanation {
+  id: string
+  x: number
+  y: number
+  concept: ExtractedConcept
+  explanation: ConceptExplanation
+  isMinimized: boolean
 }
 
 /**
@@ -110,8 +124,12 @@ function AppContent() {
   const [canvasNotes, setCanvasNotes] = useState<CanvasNote[]>([])
   const noteIdCounter = useRef(0)
   
+  // Reopened explanation popups from stash
+  const [reopenedExplanations, setReopenedExplanations] = useState<ReopenedExplanation[]>([])
+  
   // Track which notes are minimized for stacking
   const minimizedNoteIds = canvasNotes.filter(n => n.isMinimized).map(n => n.id)
+  const minimizedExplanationIds = reopenedExplanations.filter(e => e.isMinimized).map(e => e.id)
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatState ? 'chat' : 'tree'
@@ -247,6 +265,7 @@ function AppContent() {
     setChatState(null)
     resetExplanation()
     setCanvasNotes([])
+    setReopenedExplanations([])
   }, [reset, resetExplanation])
 
   /**
@@ -295,6 +314,23 @@ function AppContent() {
   }, [])
 
   /**
+   * Closes a reopened explanation popup.
+   */
+  const handleReopenedExplanationClose = useCallback((id: string) => {
+    setReopenedExplanations(prev => prev.filter(e => e.id !== id))
+  }, [])
+
+  /**
+   * Handles minimize state change for a reopened explanation.
+   */
+  const handleReopenedExplanationMinimizeChange = useCallback((conceptId: string, isMinimized: boolean) => {
+    // Find by concept id (which we set to the popup id)
+    setReopenedExplanations(prev => prev.map(e =>
+      e.concept.id === conceptId ? { ...e, isMinimized } : e
+    ))
+  }, [])
+
+  /**
    * Handles clicking a stash item to reopen it as a popup.
    */
   const handleStashItemClick = useCallback((item: StashItemData) => {
@@ -316,20 +352,29 @@ function AppContent() {
       }
       setCanvasNotes(prev => [...prev, newNote])
     } else if (item.type === 'explanation') {
-      // Reopen as read-only viewer
-      const summary = item.metadata.summary || ''
-      const context = item.metadata.context || ''
-      const content = summary + (context ? `\n\n---\n\n${context}` : '')
-      const newNote: CanvasNote = {
+      // Reopen as full ConceptPopup with all features
+      const concept: ExtractedConcept = {
+        id: `reopened-${id}`,
+        text: item.content,
+        normalizedName: item.metadata.normalizedName || item.content,
+        category: item.metadata.conceptCategory || 'abstract',
+        startIndex: 0,
+        endIndex: item.content.length,
+      }
+      const explanation: ConceptExplanation = {
+        summary: item.metadata.summary || '',
+        context: item.metadata.context || '',
+        relatedConcepts: item.metadata.relatedConcepts || [],
+      }
+      const reopened: ReopenedExplanation = {
         id,
         x,
         y,
-        title: item.content, // The concept name
-        content,
+        concept,
+        explanation,
         isMinimized: false,
-        sourceType: 'explanation',
       }
-      setCanvasNotes(prev => [...prev, newNote])
+      setReopenedExplanations(prev => [...prev, reopened])
     } else if (item.type === 'question') {
       // Reopen as read-only viewer
       const newNote: CanvasNote = {
@@ -616,6 +661,21 @@ function AppContent() {
             minimizedStackIndex={minimizedNoteIds.indexOf(note.id)}
             readOnly={note.sourceType !== undefined && note.sourceType !== 'note'}
             sourceType={note.sourceType}
+          />
+        ))}
+
+        {/* Reopened explanation popups from stash */}
+        {reopenedExplanations.map(item => (
+          <ConceptPopup
+            key={item.id}
+            concept={item.concept}
+            explanation={item.explanation}
+            isLoading={false}
+            error={null}
+            position={{ x: item.x, y: item.y }}
+            onClose={() => handleReopenedExplanationClose(item.id)}
+            onMinimizeChange={handleReopenedExplanationMinimizeChange}
+            minimizedStackIndex={minimizedExplanationIds.indexOf(item.id)}
           />
         ))}
       </div>

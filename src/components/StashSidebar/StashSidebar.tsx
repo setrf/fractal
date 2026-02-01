@@ -187,17 +187,28 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     }
   }, [clearAll])
 
-  // Drag and drop handlers
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setIsDragOver(true)
+  // Check if this is an external drop (from popup) by checking data types
+  const isExternalDrag = useCallback((e: React.DragEvent): boolean => {
+    return e.dataTransfer.types.includes('application/json')
   }, [])
 
+  // Drag and drop handlers for EXTERNAL drops (from popups)
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
+    // Only show drop zone for external drags (from popups)
+    if (isExternalDrag(e)) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+    }
+  }, [isExternalDrag])
+
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }, [])
+    // Only handle for external drags
+    if (isExternalDrag(e)) {
+      e.preventDefault()
+      setIsDragOver(false)
+    }
+  }, [isExternalDrag])
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLElement>) => {
@@ -207,10 +218,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
       try {
         const data = e.dataTransfer.getData('application/json')
-        console.log('[StashSidebar] Drop received, data:', data)
         if (data) {
           const item = JSON.parse(data) as StashItemInput
-          console.log('[StashSidebar] Parsed item:', item)
           addItem(item)
         }
       } catch (error) {
@@ -220,19 +229,26 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     [addItem]
   )
 
-  // Item reorder handlers
-  const handleItemDragStart = useCallback((index: number) => {
+  // Item reorder handlers for INTERNAL reordering
+  const handleItemDragStart = useCallback((e: React.DragEvent, index: number) => {
+    // Set a custom type to identify internal reorder drags
+    e.dataTransfer.setData('text/x-stash-reorder', String(index))
+    e.dataTransfer.effectAllowed = 'move'
     setDraggedIndex(index)
   }, [])
 
   const handleItemDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    // Only handle reordering if we're dragging an internal item
-    if (draggedIndex !== null && draggedIndex !== index) {
+    // Check if this is an internal reorder drag
+    const isInternalDrag = e.dataTransfer.types.includes('text/x-stash-reorder')
+    
+    if (isInternalDrag) {
+      e.preventDefault()
       e.stopPropagation()
-      setDropTargetIndex(index)
+      if (draggedIndex !== null && draggedIndex !== index) {
+        setDropTargetIndex(index)
+      }
     }
-    // Otherwise let it bubble up to sidebar for external drops
+    // For external drags, let it bubble up to sidebar handlers
   }, [draggedIndex])
 
   const handleItemDragLeave = useCallback(() => {
@@ -240,16 +256,17 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   }, [])
 
   const handleItemDrop = useCallback((e: React.DragEvent, toIndex: number) => {
-    e.preventDefault()
+    // Check if this is an internal reorder drag
+    const isInternalDrag = e.dataTransfer.types.includes('text/x-stash-reorder')
     
-    // Only handle reordering if we're dragging an internal item
-    if (draggedIndex !== null && draggedIndex !== toIndex) {
+    if (isInternalDrag && draggedIndex !== null && draggedIndex !== toIndex) {
+      e.preventDefault()
       e.stopPropagation()
       reorderItem(draggedIndex, toIndex)
       setDraggedIndex(null)
       setDropTargetIndex(null)
     }
-    // Otherwise let it bubble up to sidebar for external drops
+    // For external drags, let it bubble up to sidebar handlers
   }, [draggedIndex, reorderItem])
 
   const handleItemDragEnd = useCallback(() => {
@@ -406,7 +423,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
                     draggedIndex === index ? styles.dragging : ''
                   } ${dropTargetIndex === index ? styles.dropTarget : ''}`}
                   draggable
-                  onDragStart={() => handleItemDragStart(index)}
+                  onDragStart={(e) => handleItemDragStart(e, index)}
                   onDragOver={(e) => handleItemDragOver(e, index)}
                   onDragLeave={handleItemDragLeave}
                   onDrop={(e) => handleItemDrop(e, index)}

@@ -29,6 +29,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { extractConcepts } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
+import { StashButton } from '../StashButton'
+import { useStashContext } from '../../context/StashContext'
 import styles from './ConceptPopup.module.css'
 
 /**
@@ -249,6 +251,9 @@ export function ConceptPopup({
 }: ConceptPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
+  
+  // Stash context for adding explanations to stash
+  const { addItem, hasItem } = useStashContext()
   
   // Position and size state
   const [popupPosition, setPopupPosition] = useState(position)
@@ -585,6 +590,50 @@ export function ConceptPopup({
     setPopupConcepts(prev => prev.filter(c => c.id !== conceptId))
   }, [])
 
+  /**
+   * Stashes the current explanation to the Stash.
+   */
+  const handleStashExplanation = useCallback(() => {
+    if (!concept || !explanation) return
+    
+    addItem({
+      type: 'explanation',
+      content: concept.normalizedName,
+      metadata: {
+        summary: explanation.summary,
+        context: explanation.context,
+        relatedConcepts: explanation.relatedConcepts,
+        conceptCategory: concept.category,
+        normalizedName: concept.normalizedName,
+      },
+    })
+  }, [concept, explanation, addItem])
+
+  // Check if explanation is already stashed
+  const isStashed = concept ? hasItem(concept.normalizedName, 'explanation') : false
+
+  /**
+   * Handles drag start for dragging popup to stash.
+   * Only works if we have an explanation loaded.
+   */
+  const handlePopupDragStart = useCallback((e: React.DragEvent) => {
+    if (!concept || !explanation) return
+    
+    const itemData = {
+      type: 'explanation',
+      content: concept.normalizedName,
+      metadata: {
+        summary: explanation.summary,
+        context: explanation.context,
+        relatedConcepts: explanation.relatedConcepts,
+        conceptCategory: concept.category,
+        normalizedName: concept.normalizedName,
+      },
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
+    e.dataTransfer.effectAllowed = 'copy'
+  }, [concept, explanation])
+
   // Don't render if no concept
   if (!concept) return null
 
@@ -632,15 +681,23 @@ export function ConceptPopup({
         </div>
         <div className={styles.actions}>
           {!isMinimized && explanation && (
-            <button
-              className={`${styles.extractButton} ${isExtracting ? styles.extracting : ''} ${popupConcepts.length > 0 ? styles.extracted : ''}`}
-              onClick={handleExtractConcepts}
-              aria-label="Extract concepts from content"
-              title={popupConcepts.length > 0 ? "Concepts extracted" : "Extract concepts"}
-              disabled={isExtracting}
-            >
-              ✦
-            </button>
+            <>
+              <StashButton
+                onClick={handleStashExplanation}
+                isStashed={isStashed}
+                size="small"
+                className={styles.stashButton}
+              />
+              <button
+                className={`${styles.extractButton} ${isExtracting ? styles.extracting : ''} ${popupConcepts.length > 0 ? styles.extracted : ''}`}
+                onClick={handleExtractConcepts}
+                aria-label="Extract concepts from content"
+                title={popupConcepts.length > 0 ? "Concepts extracted" : "Extract concepts"}
+                disabled={isExtracting}
+              >
+                ✦
+              </button>
+            </>
           )}
           <button
             className={styles.minimizeButton}
@@ -666,6 +723,8 @@ export function ConceptPopup({
         ref={contentRef}
         className={styles.content}
         onMouseUp={handleContentMouseUp}
+        draggable={!!explanation}
+        onDragStart={handlePopupDragStart}
       >
         {isLoading && (
           <div className={styles.loading}>

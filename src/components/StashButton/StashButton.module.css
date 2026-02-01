@@ -1,0 +1,90 @@
+/**
+ * Styles for the StashButton component.
+ * Provides visual feedback for stash action with neobrutalist aesthetic.
+ */
+
+/* Base button styles */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Size variants */
+.small {
+  width: 20px;
+  height: 20px;
+  font-size: var(--text-xs);
+}
+
+.medium {
+  width: 28px;
+  height: 28px;
+  font-size: var(--text-sm);
+}
+
+.large {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-base);
+}
+
+/* Icon styling */
+.icon {
+  line-height: 1;
+}
+
+/* Stashed state - already in stash */
+.stashed {
+  color: var(--concept-science-text);
+  border-color: var(--concept-science);
+  background-color: var(--concept-science);
+}
+
+.stashed:hover:not(:disabled) {
+  background-color: var(--concept-science);
+  border-color: var(--concept-science);
+  color: var(--concept-science-text);
+}
+
+/* Animation on add */
+.animating {
+  animation: stashPulse 0.3s ease-out;
+}
+
+@keyframes stashPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+    background-color: var(--concept-science);
+    color: var(--bg-primary);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

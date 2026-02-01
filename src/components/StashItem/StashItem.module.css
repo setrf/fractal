@@ -1,0 +1,204 @@
+/**
+ * Styles for the StashItem component.
+ * Each item type has a subtle color accent while maintaining
+ * the monochromatic neobrutalist aesthetic.
+ */
+
+/* Base item container */
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.item:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-secondary);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Expanded state */
+.item.expanded {
+  background: var(--bg-secondary);
+}
+
+/* Type indicator row */
+.typeIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.typeIcon {
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.typeLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+}
+
+/* Content area */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mainText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  margin: 0;
+  word-break: break-word;
+}
+
+.secondaryText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0;
+  font-style: italic;
+}
+
+/* Tags */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+
+/* Footer with timestamp and delete */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+}
+
+.timestamp {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.deleteButton {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all var(--transition-fast);
+}
+
+.item:hover .deleteButton {
+  opacity: 1;
+}
+
+.deleteButton:hover {
+  color: var(--accent-error);
+  border-color: var(--accent-error);
+}
+
+/* Drag handle */
+.dragHandle {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.item:hover .dragHandle {
+  opacity: 0.5;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+/* ============================================
+ * Type-specific color accents
+ * Uses the stash color tokens
+ * ============================================ */
+
+/* Highlight items */
+.highlight {
+  border-left: 3px solid var(--concept-science);
+}
+
+.highlight .typeIcon {
+  color: var(--concept-science-text);
+}
+
+/* Explanation items */
+.explanation {
+  border-left: 3px solid var(--concept-philosophy);
+}
+
+.explanation .typeIcon {
+  color: var(--concept-philosophy-text);
+}
+
+/* Question items */
+.question {
+  border-left: 3px solid var(--concept-technology);
+}
+
+.question .typeIcon {
+  color: var(--concept-technology-text);
+}
+
+/* Chat message items */
+.chat {
+  border-left: 3px solid var(--concept-psychology);
+}
+
+.chat .typeIcon {
+  color: var(--concept-psychology-text);
+}
+
+/* Note items */
+.note {
+  border-left: 3px solid var(--concept-abstract);
+}
+
+.note .typeIcon {
+  color: var(--concept-abstract-text);
+}

@@ -15,11 +15,13 @@
  * - Gwern-style concept popups for highlighted terms
  */
 
-import { useState, useCallback, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useCallback, useRef, type KeyboardEvent } from 'react'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
+import { StashButton } from '../StashButton'
+import { useStashContext } from '../../context/StashContext'
 import styles from './QuestionNode.module.css'
 
 /**
@@ -120,7 +122,8 @@ export function QuestionNode({
   isConceptLoading = false,
   conceptError,
   onConceptHover,
-  onConceptLeave,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onConceptLeave: _onConceptLeave, // Intentionally unused - popup stays open until user closes
   onConceptClick,
   onAddUserConcept,
   onRemoveConcept,
@@ -134,6 +137,40 @@ export function QuestionNode({
   
   // Ref for content area (used for text selection detection)
   const contentRef = useRef<HTMLDivElement>(null)
+  
+  // Stash context for adding questions to stash
+  const { addItem, hasItem } = useStashContext()
+  
+  // Check if question is already stashed
+  const isQuestionStashed = hasItem(node.text, 'question')
+  
+  /**
+   * Stashes the current question to the Stash.
+   */
+  const handleStashQuestion = useCallback(() => {
+    addItem({
+      type: 'question',
+      content: node.text,
+      metadata: {
+        questionId: node.id,
+      },
+    })
+  }, [addItem, node.text, node.id])
+  
+  /**
+   * Handles drag start for dragging question to stash.
+   */
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    const itemData = {
+      type: 'question',
+      content: node.text,
+      metadata: {
+        questionId: node.id,
+      },
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
+    e.dataTransfer.effectAllowed = 'copy'
+  }, [node.text, node.id])
 
   /**
    * Handles click on the node body to select it.
@@ -416,6 +453,8 @@ export function QuestionNode({
         role="button"
         aria-label={`Question: ${node.text}`}
         aria-expanded={hasChildren ? node.meta.isExpanded : undefined}
+        draggable
+        onDragStart={handleDragStart}
       >
         {/* Question content with prefix */}
         <div 
@@ -441,6 +480,14 @@ export function QuestionNode({
 
         {/* Action buttons - horizontal row at bottom right */}
         <div className={styles.actions}>
+          {/* Stash button - add question to stash */}
+          <StashButton
+            onClick={handleStashQuestion}
+            isStashed={isQuestionStashed}
+            size="small"
+            className={styles.stashBtn}
+          />
+          
           {/* Expand/collapse button - only shown if node has children */}
           {hasChildren && (
             <button

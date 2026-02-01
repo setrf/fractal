@@ -253,6 +253,13 @@
 }
 
 /* Extract concepts button */
+/* Stash button in header */
+.stashButton {
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-xs);
+}
+
 .extractButton {
   width: 24px;
   height: 24px;

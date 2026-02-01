@@ -34,11 +34,30 @@
   text-underline-offset: 2px;
 }
 
+/* Concept action buttons container */
+.conceptActions {
+  display: inline;
+  margin-left: 2px;
+  vertical-align: super;
+}
+
+/* Stash button in concept highlight */
+.stashBtn {
+  display: inline;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0 1px;
+  font-size: 10px;
+  vertical-align: middle;
+  border: none;
+}
+
 /* Superscript remove button */
 .removeBtn {
   position: relative;
   display: inline;
-  margin-left: 2px;
+  margin-left: 1px;
   padding: 0;
   width: auto;
   height: auto;
@@ -49,7 +68,7 @@
   font-size: 0.9em;
   font-weight: 600;
   line-height: 1;
-  vertical-align: super;
+  vertical-align: middle;
   cursor: pointer;
   transition: color var(--transition-fast);
 }

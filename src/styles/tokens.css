@@ -137,6 +137,22 @@
   --transition-fast: 100ms ease-out;
   --transition-normal: 200ms ease-out;
   --transition-slow: 300ms ease-out;
+  
+  /* ============================================
+   * STASH FEATURE TOKENS
+   * Sidebar dimensions and type-specific colors
+   * ============================================ */
+  --stash-width-expanded: 320px;
+  --stash-width-collapsed: 48px;
+  --stash-bg: var(--bg-secondary);
+  --stash-border: var(--border-primary);
+  
+  /* Stash item type indicators - map to concept colors */
+  --stash-highlight: var(--concept-science);
+  --stash-explanation: var(--concept-philosophy);
+  --stash-question: var(--concept-technology);
+  --stash-chat: var(--concept-psychology);
+  --stash-note: var(--concept-abstract);
 }
 
 /* ============================================

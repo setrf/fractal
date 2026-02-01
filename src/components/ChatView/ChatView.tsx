@@ -17,6 +17,8 @@ import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT } from '../ConceptPopup'
+import { StashButton } from '../StashButton'
+import { useStashContext } from '../../context/StashContext'
 import styles from './ChatView.module.css'
 
 /**
@@ -94,6 +96,41 @@ export function ChatView({
   const [initialQuerySent, setInitialQuerySent] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Stash context for adding messages to stash
+  const { addItem, hasItem } = useStashContext()
+  
+  /**
+   * Stashes a chat message to the Stash.
+   */
+  const handleStashMessage = useCallback((message: ChatMessage, index: number) => {
+    addItem({
+      type: 'chat-message',
+      content: message.content,
+      metadata: {
+        role: message.role,
+        questionContext: question,
+        messageIndex: index,
+      },
+    })
+  }, [addItem, question])
+
+  /**
+   * Handles drag start for dragging message to stash.
+   */
+  const handleMessageDragStart = useCallback((e: React.DragEvent, message: ChatMessage, index: number) => {
+    const itemData = {
+      type: 'chat-message',
+      content: message.content,
+      metadata: {
+        role: message.role,
+        questionContext: question,
+        messageIndex: index,
+      },
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify(itemData))
+    e.dataTransfer.effectAllowed = 'copy'
+  }, [question])
   
   /**
    * State for an open popup.
@@ -436,9 +473,19 @@ export function ChatView({
             <div
               key={index}
               className={`${styles.message} ${styles[msg.role]}`}
+              draggable
+              onDragStart={(e) => handleMessageDragStart(e, msg, index)}
             >
-              <div className={styles.messageRole}>
-                {msg.role === 'user' ? 'You' : 'AI'}
+              <div className={styles.messageHeader}>
+                <div className={styles.messageRole}>
+                  {msg.role === 'user' ? 'You' : 'AI'}
+                </div>
+                <StashButton
+                  onClick={() => handleStashMessage(msg, index)}
+                  isStashed={hasItem(msg.content, 'chat-message')}
+                  size="small"
+                  className={styles.messageStashBtn}
+                />
               </div>
               <div className={styles.messageContent}>
                 {msg.content}

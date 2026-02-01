@@ -35,7 +35,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.3.0)
+### Current (v0.5.0)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
@@ -44,6 +44,12 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
+- **The Stash** — Collapsible sidebar for collecting and organizing excerpts, highlights, and concepts
+  - Stash highlights, explanations, questions, chat messages, and custom notes
+  - Filter by type, search across all content
+  - Export as JSON, clear all
+  - Drag-and-drop support
+  - Browser localStorage persistence
 - **Expand/Collapse Branches** — Manage complexity by collapsing explored branches
 - **Light/Dark Mode** — Automatic system detection with manual toggle
 - **Keyboard Support** — Enter to submit, Escape to cancel
@@ -52,7 +58,6 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 ### Planned
 
 - Concept sub-trees — Expand concepts into their own exploration branches
-- Export/save question trees
 - Collaborative question exploration
 - Search within your question history
 
@@ -112,15 +117,21 @@ The color system uses **zero chromatic colors** in the core UI:
 ### Frontend Component Hierarchy
 
 ```
-App
+App (StashProvider)
+├── StashSidebar             # Collapsible left sidebar for stashed items
+│   └── StashItem            # Individual stashed item
 ├── ThemeToggle              # Light/dark mode switch
 ├── QuestionInput            # Initial question entry (shown when no root)
 ├── QuestionTree             # Branching visualization (shown when root exists)
 │   └── TreeBranch           # Recursive branch renderer
 │       └── QuestionNode     # Individual question with actions + AI generate
+│           ├── StashButton         # Add question to stash
 │           ├── ConceptHighlighter  # Highlights concepts in question text
+│           │   └── StashButton     # Add highlight to stash
 │           └── ConceptPopup        # Gwern-style explanation popup
+│               └── StashButton     # Add explanation to stash
 └── ChatView                 # Deep conversational exploration of a question
+    ├── StashButton          # Add message to stash (on each message)
     ├── ConceptHighlighter   # Highlights concepts in question header
     └── ConceptPopup         # Gwern-style explanation popup
 ```
@@ -273,15 +284,30 @@ fractal/
 │   │   │   ├── QuestionTree.tsx
 │   │   │   ├── QuestionTree.module.css
 │   │   │   └── index.ts
+│   │   ├── StashButton/      # Reusable add-to-stash button
+│   │   │   ├── StashButton.tsx
+│   │   │   ├── StashButton.module.css
+│   │   │   └── index.ts
+│   │   ├── StashItem/        # Individual stashed item display
+│   │   │   ├── StashItem.tsx
+│   │   │   ├── StashItem.module.css
+│   │   │   └── index.ts
+│   │   ├── StashSidebar/     # Collapsible stash sidebar
+│   │   │   ├── StashSidebar.tsx
+│   │   │   ├── StashSidebar.module.css
+│   │   │   └── index.ts
 │   │   └── ThemeToggle/      # Light/dark mode toggle
 │   │       ├── ThemeToggle.tsx
 │   │       ├── ThemeToggle.module.css
 │   │       └── index.ts
+│   ├── context/
+│   │   └── StashContext.tsx  # Global stash state provider
 │   ├── hooks/
 │   │   ├── useAIQuestions.ts        # AI question generation hook
 │   │   ├── useConceptExtraction.ts  # Concept extraction with caching
 │   │   ├── useConceptExplanation.ts # Concept explanation with localStorage cache
 │   │   ├── useQuestionTree.ts       # Question tree state management
+│   │   ├── useStash.ts              # Stash state management with localStorage
 │   │   └── useTheme.ts              # Theme state and persistence
 │   ├── styles/
 │   │   ├── tokens.css        # OKLCH design tokens
@@ -289,7 +315,8 @@ fractal/
 │   │   └── global.css        # Global styles and utilities
 │   ├── types/
 │   │   ├── concept.ts        # Concept types (ExtractedConcept, ConceptExplanation)
-│   │   └── question.ts       # Question tree types and utilities
+│   │   ├── question.ts       # Question tree types and utilities
+│   │   └── stash.ts          # Stash types (StashItem, StashItemType, utilities)
 │   ├── App.tsx               # Root application component
 │   └── main.tsx              # Application entry point
 ├── server/                   # Backend API server
@@ -442,25 +469,21 @@ npm run test:verbose
 
 ## Roadmap
 
-### v0.3.0 — Intelligent Concepts (Current)
-- [x] Concept extraction from question text
-- [x] Color-coded concept highlighting by category
-- [x] Gwern-style popup explanations
-- [x] Chat view for deep exploration
-- [x] localStorage caching for explanations
+### v0.5.0 — The Stash (Current)
+- [x] Collapsible sidebar for collecting content
+- [x] Stash highlights, explanations, questions, chat messages
+- [x] Custom note creation
+- [x] Filter, search, and export
+- [x] Drag-and-drop support
+- [x] Browser localStorage persistence
 
-### v0.4.0 — Persistence
-- [ ] Save question trees to localStorage
-- [ ] Export as JSON/Markdown
-- [ ] Load previous sessions
-- [ ] Concept sub-trees (expand concepts into exploration branches)
-
-### v0.5.0 — Enhanced AI
+### v0.6.0 — Enhanced AI
 - [ ] Suggest tangents based on context
 - [ ] Model selection UI
 - [ ] Streaming responses
+- [ ] Concept sub-trees (expand concepts into exploration branches)
 
-### v0.6.0 — Enhanced Visualization
+### v0.7.0 — Enhanced Visualization
 - [ ] Zoom and pan navigation
 - [ ] Mini-map for large trees
 - [ ] Keyboard shortcuts for tree navigation

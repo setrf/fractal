@@ -103,6 +103,13 @@
   flex-shrink: 0;
 }
 
+/* Stash button styling */
+.stashBtn {
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-xs);
+}
+
 /* Shared styles for action buttons */
 .expandBtn,
 .addBtn {

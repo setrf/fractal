@@ -143,6 +143,14 @@
   align-self: flex-start;
 }
 
+/* Message header with role and actions */
+.messageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .messageRole {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -154,6 +162,20 @@
 
 .message.user .messageRole {
   text-align: right;
+}
+
+.message.user .messageHeader {
+  flex-direction: row-reverse;
+}
+
+/* Stash button on messages - visible on hover */
+.messageStashBtn {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.message:hover .messageStashBtn {
+  opacity: 1;
 }
 
 .messageContent {

@@ -10,11 +10,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Persistence layer (localStorage)
-- Export/import functionality
 - Keyboard navigation enhancements
 - Model selection UI
 - Concept sub-trees (expand concepts into exploration branches)
+
+---
+
+## [0.5.0] - 2026-02-01
+
+### Added
+
+#### The Stash - Intellectual Collection Feature
+A dedicated sidebar for collecting and organizing excerpts, highlights, and concepts encountered during exploration.
+
+- **StashSidebar Component** (`src/components/StashSidebar/`)
+  - Collapsible left panel (320px expanded, 48px collapsed)
+  - Smooth slide animation for open/close
+  - Fixed position, always accessible
+  - Item count badge when collapsed
+  - Drag-and-drop zone for adding items
+
+- **StashItem Component** (`src/components/StashItem/`)
+  - Renders individual stashed content
+  - Type indicator with icon and color accent
+  - Truncated preview with expand on click
+  - Timestamp display
+  - Delete button
+
+- **StashButton Component** (`src/components/StashButton/`)
+  - Reusable add-to-stash button
+  - Star icon (☆/★) with visual feedback
+  - Size variants (small, medium, large)
+  - "Already stashed" state
+
+#### Stash Content Types
+- **Highlights** - Extracted or user-created concept highlights
+- **Explanations** - Concept explanations from popups
+- **Questions** - Questions from the exploration tree
+- **Chat Messages** - Messages from chat conversations
+- **Notes** - User-written custom notes
+
+#### Stash Features
+- **Browser localStorage persistence** - Data persists across sessions
+- **Filtering by type** - Quick filter tabs for each content type
+- **Search functionality** - Search across all stashed content
+- **JSON export** - Download stash as JSON file
+- **Clear all** - Remove all items with confirmation
+- **Note creation** - Add custom notes with optional titles
+- **Duplicate prevention** - Won't stash the same item twice
+
+#### Integration Points
+- **ConceptPopup** - Stash button in popup header to save explanations
+- **QuestionNode** - Stash button in action buttons to save questions
+- **ConceptHighlighter** - Stash button next to remove button on highlights
+- **ChatView** - Stash button on messages (hover reveal)
+
+#### Drag-and-Drop Support
+- Drag questions, messages, or popup content to the stash
+- Visual feedback during drag-over state
+- JSON data transfer format
+
+#### State Management
+- **useStash Hook** (`src/hooks/useStash.ts`)
+  - CRUD operations (add, remove, update, clear)
+  - localStorage persistence with debouncing
+  - Filtering and search
+  - JSON export/import
+  - Duplicate detection
+  
+- **StashContext** (`src/context/StashContext.tsx`)
+  - Global stash access via React Context
+  - StashProvider wrapper component
+
+#### Design System Updates
+- **Stash tokens** added to `tokens.css`
+  - Width variables for expanded/collapsed states
+  - Type-specific accent colors
+- **App layout** updated in `global.css`
+  - New `.app-layout` flexbox container
+  - Margin adjustment when sidebar is open/collapsed
+
+#### Tests
+- `useStash.test.tsx` - Comprehensive hook tests (CRUD, filtering, search, persistence)
+- `StashButton.test.tsx` - Component rendering and interaction tests
+- `stash.test.ts` - Type utility function tests
 
 ---
 

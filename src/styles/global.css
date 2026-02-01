@@ -30,6 +30,33 @@
 }
 
 /* ============================================
+ * APP LAYOUT WITH STASH SIDEBAR
+ * Main layout structure for the application
+ * ============================================ */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-layout .main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left var(--transition-normal);
+}
+
+/* When stash sidebar is open, offset main content */
+.app-layout.stash-open .main-content {
+  margin-left: var(--stash-width-expanded);
+}
+
+/* When stash sidebar is collapsed */
+.app-layout.stash-collapsed .main-content {
+  margin-left: var(--stash-width-collapsed);
+}
+
+/* ============================================
  * TYPOGRAPHY UTILITIES
  * Quick access to typography tokens
  * ============================================ */

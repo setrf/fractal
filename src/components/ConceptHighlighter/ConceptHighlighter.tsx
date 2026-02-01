@@ -20,6 +20,8 @@
 
 import { useCallback, useMemo } from 'react'
 import type { ExtractedConcept, ConceptCategory } from '../../api'
+import { StashButton } from '../StashButton'
+import { useStashContext } from '../../context/StashContext'
 import styles from './ConceptHighlighter.module.css'
 
 /**
@@ -144,6 +146,9 @@ export function ConceptHighlighter({
   className = '',
   interactive = true,
 }: ConceptHighlighterProps) {
+  // Stash context for adding highlights to stash
+  const { addItem, hasItem } = useStashContext()
+  
   // Memoize text segmentation
   const segments = useMemo(
     () => segmentText(text, concepts),
@@ -201,6 +206,26 @@ export function ConceptHighlighter({
     [onConceptRemove]
   )
 
+  /**
+   * Stashes a concept/highlight to the Stash.
+   */
+  const handleStashConcept = useCallback(
+    (concept: ExtractedConcept, event: React.MouseEvent) => {
+      event.stopPropagation()
+      event.preventDefault()
+      addItem({
+        type: 'highlight',
+        content: concept.text,
+        metadata: {
+          conceptCategory: concept.category,
+          normalizedName: concept.normalizedName,
+          sourceQuestion: text,
+        },
+      })
+    },
+    [addItem, text]
+  )
+
   return (
     <span className={`${styles.container} ${className}`.trim()}>
       {segments.map((segment, index) => {
@@ -231,16 +256,24 @@ export function ConceptHighlighter({
             onKeyDown={(e) => handleKeyDown(concept, e)}
           >
             {segment.content}
-            {onConceptRemove && (
-              <button
-                className={styles.removeBtn}
-                onClick={(e) => handleRemove(concept.id, e)}
-                aria-label={`Remove highlight: ${concept.normalizedName}`}
-                title="Remove"
-              >
-                ×
-              </button>
-            )}
+            <span className={styles.conceptActions}>
+              <StashButton
+                onClick={(e) => handleStashConcept(concept, e)}
+                isStashed={hasItem(concept.text, 'highlight')}
+                size="small"
+                className={styles.stashBtn}
+              />
+              {onConceptRemove && (
+                <button
+                  className={styles.removeBtn}
+                  onClick={(e) => handleRemove(concept.id, e)}
+                  aria-label={`Remove highlight: ${concept.normalizedName}`}
+                  title="Remove"
+                >
+                  ×
+                </button>
+              )}
+            </span>
           </span>
         )
       })}

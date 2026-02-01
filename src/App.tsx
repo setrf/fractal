@@ -17,6 +17,8 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { QuestionInput } from './components/QuestionInput'
 import { QuestionTree } from './components/QuestionTree'
 import { ChatView } from './components/ChatView'
+import { StashSidebar } from './components/StashSidebar'
+import { StashProvider, useStashContext } from './context/StashContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
@@ -37,7 +39,7 @@ interface ChatState {
 }
 
 /**
- * Root application component.
+ * Inner application content component.
  * 
  * Renders either:
  * 1. Welcome view with centered input (no root question)
@@ -45,8 +47,11 @@ interface ChatState {
  * 3. Chat view for deep exploration of a specific question
  * 
  * The ThemeToggle is always visible in the top-right corner.
+ * The StashSidebar is available in all views.
  */
-function App() {
+function AppContent() {
+  // Get stash state for sidebar layout
+  const { isOpen: stashOpen } = useStashContext()
   // Initialize the question tree state and operations
   const {
     tree,
@@ -219,199 +224,217 @@ function App() {
   }, [reset, resetExplanation])
 
   return (
-    <>
-      {/* Theme toggle - always visible (except in chat view which has its own layout) */}
-      {currentView !== 'chat' && <ThemeToggle />}
+    <div className={`app-layout ${stashOpen ? 'stash-open' : 'stash-collapsed'}`}>
+      {/* Stash sidebar - always available */}
+      <StashSidebar />
       
-      {/* ============================================
-       * CHAT VIEW
-       * Shown when a question is "locked in" for deep exploration.
-       * ============================================ */}
-      {currentView === 'chat' && chatState && (
-        <ChatView
-          question={chatState.question}
-          onBack={handleBackToTree}
-          onSendMessage={handleSendChatMessage}
-          concepts={nodeConcepts[chatState.nodeId] || []}
-          conceptExplanations={allExplanations}
-          conceptLoadingStates={explanationLoadingStates}
-          conceptExplanation={conceptExplanation}
-          isConceptLoading={explanationLoading}
-          conceptError={explanationError}
-          onConceptHover={handleConceptHover}
-          onConceptClick={handleConceptClick}
-        />
-      )}
+      {/* Main content area */}
+      <div className="main-content">
+        {/* Theme toggle - always visible (except in chat view which has its own layout) */}
+        {currentView !== 'chat' && <ThemeToggle />}
+        
+        {/* ============================================
+         * CHAT VIEW
+         * Shown when a question is "locked in" for deep exploration.
+         * ============================================ */}
+        {currentView === 'chat' && chatState && (
+          <ChatView
+            question={chatState.question}
+            onBack={handleBackToTree}
+            onSendMessage={handleSendChatMessage}
+            concepts={nodeConcepts[chatState.nodeId] || []}
+            conceptExplanations={allExplanations}
+            conceptLoadingStates={explanationLoadingStates}
+            conceptExplanation={conceptExplanation}
+            isConceptLoading={explanationLoading}
+            conceptError={explanationError}
+            onConceptHover={handleConceptHover}
+            onConceptClick={handleConceptClick}
+          />
+        )}
 
-      {/* Main content area for welcome and tree views */}
-      {currentView !== 'chat' && (
-        <main
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            minHeight: '100vh',
-            padding: 'var(--space-4)',
-          }}
-        >
-          {currentView === 'welcome' ? (
-            /* ============================================
-             * WELCOME VIEW
-             * Shown when no question has been entered yet.
-             * Centered layout with branding and input.
-             * ============================================ */
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 'var(--space-8)',
-                width: '100%',
-                flex: 1,
-              }}
-            >
-              {/* Branding header */}
-              <header style={{ textAlign: 'center' }}>
-                <h1
-                  style={{
-                    fontSize: 'var(--text-4xl)',
-                    fontWeight: 700,
-                    letterSpacing: 'var(--tracking-tight)',
-                    marginBottom: 'var(--space-2)',
-                  }}
-                >
-                  Fractal
-                </h1>
-                <p
-                  style={{
-                    fontSize: 'var(--text-base)',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  A place for questions, not answers.
-                </p>
-              </header>
-              
-              {/* Central question input */}
-              <QuestionInput onSubmit={handleQuestionSubmit} />
-            </div>
-          ) : (
-            /* ============================================
-             * TREE VIEW
-             * Shown after a root question is entered.
-             * Displays the branching question tree.
-             * ============================================ */
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                width: '100%',
-                paddingTop: 'var(--space-8)',
-              }}
-            >
-              {/* Minimal header in tree view */}
-              <header
+        {/* Main content area for welcome and tree views */}
+        {currentView !== 'chat' && (
+          <main
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minHeight: '100vh',
+              padding: 'var(--space-4)',
+            }}
+          >
+            {currentView === 'welcome' ? (
+              /* ============================================
+               * WELCOME VIEW
+               * Shown when no question has been entered yet.
+               * Centered layout with branding and input.
+               * ============================================ */
+              <div
                 style={{
-                  textAlign: 'center',
-                  marginBottom: 'var(--space-8)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 'var(--space-8)',
+                  width: '100%',
+                  flex: 1,
                 }}
               >
-                <h1
+                {/* Branding header */}
+                <header style={{ textAlign: 'center' }}>
+                  <h1
+                    style={{
+                      fontSize: 'var(--text-4xl)',
+                      fontWeight: 700,
+                      letterSpacing: 'var(--tracking-tight)',
+                      marginBottom: 'var(--space-2)',
+                    }}
+                  >
+                    Fractal
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: 'var(--text-base)',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    A place for questions, not answers.
+                  </p>
+                </header>
+                
+                {/* Central question input */}
+                <QuestionInput onSubmit={handleQuestionSubmit} />
+              </div>
+            ) : (
+              /* ============================================
+               * TREE VIEW
+               * Shown after a root question is entered.
+               * Displays the branching question tree.
+               * ============================================ */
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  width: '100%',
+                  paddingTop: 'var(--space-8)',
+                }}
+              >
+                {/* Minimal header in tree view */}
+                <header
                   style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'var(--text-lg)',
-                    fontWeight: 600,
-                    letterSpacing: 'var(--tracking-tight)',
-                    color: 'var(--text-secondary)',
+                    textAlign: 'center',
+                    marginBottom: 'var(--space-8)',
                   }}
                 >
-                  Fractal
-                </h1>
-              </header>
+                  <h1
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-lg)',
+                      fontWeight: 600,
+                      letterSpacing: 'var(--tracking-tight)',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    Fractal
+                  </h1>
+                </header>
 
-              {/* AI error message */}
-              {aiError && (
-                <div
+                {/* AI error message */}
+                {aiError && (
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--accent-error)',
+                      marginBottom: 'var(--space-4)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      border: 'var(--border-width) solid var(--accent-error)',
+                      background: 'transparent',
+                    }}
+                  >
+                    AI Error: {aiError}
+                  </div>
+                )}
+
+                {/* Question tree visualization */}
+                <QuestionTree
+                  tree={tree}
+                  onSelectNode={handleSelectNode}
+                  onAddChild={addChildQuestion}
+                  onToggleExpand={toggleNodeExpansion}
+                  onGenerateAI={handleGenerateAI}
+                  generatingNodeId={generatingNodeId}
+                  onLockIn={handleLockIn}
+                  nodeConcepts={nodeConcepts}
+                  conceptExplanations={allExplanations}
+                  conceptLoadingStates={explanationLoadingStates}
+                  conceptExplanation={conceptExplanation}
+                  isConceptLoading={explanationLoading}
+                  conceptError={explanationError}
+                  onConceptHover={handleConceptHover}
+                  onConceptClick={handleConceptClick}
+                  onAddUserConcept={handleAddUserConcept}
+                  onRemoveConcept={handleRemoveConcept}
+                />
+
+                {/* AI loading indicator */}
+                {aiLoading && (
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--text-secondary)',
+                      marginTop: 'var(--space-4)',
+                    }}
+                  >
+                    ◌ Generating questions...
+                  </div>
+                )}
+
+                {/* Reset button to start over */}
+                <button
+                  onClick={handleReset}
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 'var(--text-sm)',
-                    color: 'var(--accent-error)',
-                    marginBottom: 'var(--space-4)',
+                    color: 'var(--text-tertiary)',
+                    marginTop: 'var(--space-12)',
                     padding: 'var(--space-2) var(--space-4)',
-                    border: 'var(--border-width) solid var(--accent-error)',
+                    border: 'var(--border-width) solid var(--border-primary)',
                     background: 'transparent',
+                    transition: 'border-color 0.2s, color 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--text-secondary)'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-primary)'
+                    e.currentTarget.style.color = 'var(--text-tertiary)'
                   }}
                 >
-                  AI Error: {aiError}
-                </div>
-              )}
+                  ← Start over
+                </button>
+              </div>
+            )}
+          </main>
+        )}
+      </div>
+    </div>
+  )
+}
 
-              {/* Question tree visualization */}
-              <QuestionTree
-                tree={tree}
-                onSelectNode={handleSelectNode}
-                onAddChild={addChildQuestion}
-                onToggleExpand={toggleNodeExpansion}
-                onGenerateAI={handleGenerateAI}
-                generatingNodeId={generatingNodeId}
-                onLockIn={handleLockIn}
-                nodeConcepts={nodeConcepts}
-                conceptExplanations={allExplanations}
-                conceptLoadingStates={explanationLoadingStates}
-                conceptExplanation={conceptExplanation}
-                isConceptLoading={explanationLoading}
-                conceptError={explanationError}
-                onConceptHover={handleConceptHover}
-                onConceptClick={handleConceptClick}
-                onAddUserConcept={handleAddUserConcept}
-                onRemoveConcept={handleRemoveConcept}
-              />
-
-              {/* AI loading indicator */}
-              {aiLoading && (
-                <div
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--text-secondary)',
-                    marginTop: 'var(--space-4)',
-                  }}
-                >
-                  ◌ Generating questions...
-                </div>
-              )}
-
-              {/* Reset button to start over */}
-              <button
-                onClick={handleReset}
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--text-tertiary)',
-                  marginTop: 'var(--space-12)',
-                  padding: 'var(--space-2) var(--space-4)',
-                  border: 'var(--border-width) solid var(--border-primary)',
-                  background: 'transparent',
-                  transition: 'border-color 0.2s, color 0.2s',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--text-secondary)'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-primary)'
-                  e.currentTarget.style.color = 'var(--text-tertiary)'
-                }}
-              >
-                ← Start over
-              </button>
-            </div>
-          )}
-        </main>
-      )}
-    </>
+/**
+ * Root application component.
+ * Wraps AppContent with the StashProvider for global stash access.
+ */
+function App() {
+  return (
+    <StashProvider>
+      <AppContent />
+    </StashProvider>
   )
 }
 

@@ -23,16 +23,6 @@ import { ConceptPopup, type PopupPosition, findNonOverlappingPosition, DEFAULT_P
 import styles from './QuestionNode.module.css'
 
 /**
- * Selection state for user-created highlights.
- */
-interface TextSelection {
-  text: string
-  startIndex: number
-  endIndex: number
-  position: { x: number; y: number }
-}
-
-/**
  * State for an open popup.
  */
 interface OpenPopup {
@@ -142,8 +132,7 @@ export function QuestionNode({
   // State for concept popups (supports multiple open popups)
   const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
   
-  // State for user text selection (to create custom highlights)
-  const [textSelection, setTextSelection] = useState<TextSelection | null>(null)
+  // Ref for content area (used for text selection detection)
   const contentRef = useRef<HTMLDivElement>(null)
 
   /**
@@ -291,31 +280,28 @@ export function QuestionNode({
 
   /**
    * Handles text selection for user-created highlights.
+   * Automatically creates a highlight when valid text is selected.
    */
   const handleTextSelect = useCallback(() => {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || !contentRef.current) {
-      setTextSelection(null)
       return
     }
 
     const selectedText = selection.toString().trim()
     if (!selectedText || selectedText.length < 2) {
-      setTextSelection(null)
       return
     }
 
     // Check if selection is within our content area
     const range = selection.getRangeAt(0)
     if (!contentRef.current.contains(range.commonAncestorContainer)) {
-      setTextSelection(null)
       return
     }
 
     // Find the position of the selected text in the source
     const startIndex = node.text.indexOf(selectedText)
     if (startIndex === -1) {
-      setTextSelection(null)
       return
     }
 
@@ -325,59 +311,25 @@ export function QuestionNode({
       c => (startIndex < c.endIndex && endIndex > c.startIndex)
     )
     if (overlapsExisting) {
-      setTextSelection(null)
       return
     }
 
-    // Get position for the highlight button
-    const rect = range.getBoundingClientRect()
-    setTextSelection({
-      text: selectedText,
-      startIndex,
-      endIndex,
-      position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
-    })
-  }, [node.text, concepts])
-
-  /**
-   * Creates a user highlight from the current selection.
-   */
-  const handleCreateHighlight = useCallback((category: ConceptCategory = 'abstract') => {
-    if (!textSelection || !onAddUserConcept) return
-
-    const newConcept: ExtractedConcept = {
-      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      text: textSelection.text,
-      normalizedName: textSelection.text.toLowerCase(),
-      category,
-      startIndex: textSelection.startIndex,
-      endIndex: textSelection.endIndex,
-    }
-
-    onAddUserConcept(node.id, newConcept)
-    setTextSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [textSelection, onAddUserConcept, node.id])
-
-  /**
-   * Dismiss the highlight tooltip.
-   */
-  const handleDismissHighlight = useCallback(() => {
-    setTextSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [])
-
-  // Listen for clicks outside to dismiss the highlight tooltip
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (textSelection && !(e.target as HTMLElement).closest(`.${styles.highlightTooltip}`)) {
-        // Small delay to allow button clicks to register
-        setTimeout(() => setTextSelection(null), 100)
+    // Automatically create the highlight (no intermediate step)
+    if (onAddUserConcept) {
+      const newConcept: ExtractedConcept = {
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        text: selectedText,
+        normalizedName: selectedText.toLowerCase(),
+        category: 'abstract' as ConceptCategory,
+        startIndex,
+        endIndex,
       }
+      onAddUserConcept(node.id, newConcept)
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [textSelection])
+
+    // Clear the selection
+    window.getSelection()?.removeAllRanges()
+  }, [node.text, concepts, onAddUserConcept, node.id])
 
   /**
    * Submits the new child question.
@@ -437,34 +389,6 @@ export function QuestionNode({
             <span className={styles.text}>{node.text}</span>
           )}
         </div>
-
-        {/* Highlight tooltip - shown when user selects text */}
-        {textSelection && onAddUserConcept && (
-          <div 
-            className={styles.highlightTooltip}
-            style={{
-              position: 'fixed',
-              left: textSelection.position.x,
-              top: textSelection.position.y,
-              transform: 'translate(-50%, -100%)',
-            }}
-          >
-            <button
-              className={styles.highlightBtn}
-              onClick={() => handleCreateHighlight('abstract')}
-              title="Create highlight"
-            >
-              ✦ Highlight
-            </button>
-            <button
-              className={styles.highlightDismiss}
-              onClick={handleDismissHighlight}
-              title="Cancel"
-            >
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Action buttons */}
         <div className={styles.actions}>

@@ -64,6 +64,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
 - **Model Selection** — Choose from available W&B models for generation, chat, and evaluation
 - **Weave Eval Loop** — Each generation is scored (0–10) and logged in Weave; prompt variants auto-improve over time
+- **Guided Onboarding Tour** — First-run walkthrough with restart button for demos
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations

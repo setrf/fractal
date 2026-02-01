@@ -34,7 +34,7 @@ describe('App Integration Tests', () => {
     it('should display the app title', () => {
       render(<App />)
       
-      const title = screen.getByRole('heading', { name: /fractal/i })
+      const title = screen.getByRole('heading', { name: /fractal/i, level: 1 })
       
       console.log(`[TEST] Title found: ${!!title}`)
       console.log(`[TEST] Title text: ${title.textContent}`)
@@ -134,7 +134,7 @@ describe('App Integration Tests', () => {
       await user.keyboard('{Enter}')
       
       await waitFor(() => {
-        const header = screen.getByRole('heading', { name: /fractal/i })
+        const header = screen.getByRole('heading', { name: /fractal/i, level: 1 })
         console.log(`[TEST] Header in tree view: ${header.textContent}`)
         expect(header).toBeInTheDocument()
       })

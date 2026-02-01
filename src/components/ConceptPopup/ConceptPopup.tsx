@@ -593,7 +593,7 @@ export function ConceptPopup({
   }, [])
 
   /**
-   * Stashes the current explanation to the Stash.
+   * Stashes the current explanation to the Stash and closes the popup.
    */
   const handleStashExplanation = useCallback(() => {
     if (!concept || !explanation) return
@@ -609,7 +609,10 @@ export function ConceptPopup({
         normalizedName: concept.normalizedName,
       },
     })
-  }, [concept, explanation, addItem])
+    
+    // Close the popup after stashing
+    onClose()
+  }, [concept, explanation, addItem, onClose])
 
   // Check if explanation is already stashed
   const isStashed = concept ? hasItem(concept.normalizedName, 'explanation') : false

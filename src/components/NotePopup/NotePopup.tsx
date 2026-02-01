@@ -173,7 +173,7 @@ export function NotePopup({
     }
   }, [isMinimized, minimizedStackIndex, getMinimizedPosition])
   
-  // Handle stash
+  // Handle stash - adds note to stash and closes the popup
   const handleStash = useCallback(() => {
     if (!content.trim()) return
     
@@ -184,7 +184,10 @@ export function NotePopup({
         title: title.trim() || undefined,
       },
     })
-  }, [addItem, title, content])
+    
+    // Close the popup after stashing
+    onClose()
+  }, [addItem, title, content, onClose])
   
   // Check if already stashed
   const isStashed = hasItem(content.trim(), 'note')

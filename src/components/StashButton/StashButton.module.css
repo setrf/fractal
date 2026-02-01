@@ -35,21 +35,21 @@
 
 /* Size variants */
 .small {
-  width: 24px;
-  height: 24px;
-  font-size: var(--text-sm);
-}
-
-.medium {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   font-size: var(--text-base);
 }
 
-.large {
-  width: 40px;
-  height: 40px;
+.medium {
+  width: 36px;
+  height: 36px;
   font-size: var(--text-lg);
+}
+
+.large {
+  width: 44px;
+  height: 44px;
+  font-size: var(--text-xl);
 }
 
 /* Icon styling */

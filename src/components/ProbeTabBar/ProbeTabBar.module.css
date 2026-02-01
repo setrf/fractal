@@ -80,9 +80,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  font-size: var(--text-sm);
+  width: 22px;
+  height: 22px;
+  font-size: var(--text-base);
   margin-left: var(--space-1);
   background: transparent;
   border: none;

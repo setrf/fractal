@@ -332,6 +332,36 @@
   background: var(--bg-tertiary);
 }
 
+/* Item wrapper for drag-and-drop reordering */
+.itemWrapper {
+  cursor: grab;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.itemWrapper:active {
+  cursor: grabbing;
+}
+
+.itemWrapper.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.itemWrapper.dropTarget {
+  position: relative;
+}
+
+.itemWrapper.dropTarget::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-focus);
+  border-radius: 1px;
+}
+
 /* Empty state */
 .emptyState {
   display: flex;

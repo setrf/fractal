@@ -61,12 +61,17 @@ export function StashSidebar() {
     setSearchQuery,
     count,
     addItem,
+    reorderItem,
   } = useStashContext()
 
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAddingNote, setIsAddingNote] = useState(false)
   const [noteTitle, setNoteTitle] = useState('')
   const [noteContent, setNoteContent] = useState('')
+  
+  // Drag-to-reorder state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   
   // Resize state
   const [sidebarWidth, setSidebarWidth] = useState(320)
@@ -206,6 +211,40 @@ export function StashSidebar() {
     },
     [addItem]
   )
+
+  // Item reorder handlers
+  const handleItemDragStart = useCallback((index: number) => {
+    setDraggedIndex(index)
+  }, [])
+
+  const handleItemDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDropTargetIndex(index)
+    }
+  }, [draggedIndex])
+
+  const handleItemDragLeave = useCallback(() => {
+    setDropTargetIndex(null)
+  }, [])
+
+  const handleItemDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      reorderItem(draggedIndex, toIndex)
+    }
+    
+    setDraggedIndex(null)
+    setDropTargetIndex(null)
+  }, [draggedIndex, reorderItem])
+
+  const handleItemDragEnd = useCallback(() => {
+    setDraggedIndex(null)
+    setDropTargetIndex(null)
+  }, [])
 
   // Get filter label
   const getFilterLabel = (type: StashItemType | null): string => {
@@ -349,13 +388,25 @@ export function StashSidebar() {
                 </p>
               </div>
             ) : (
-              items.map((item) => (
-                <StashItem
+              items.map((item, index) => (
+                <div
                   key={item.id}
-                  item={item}
-                  onDelete={removeItem}
-                  draggable={false}
-                />
+                  className={`${styles.itemWrapper} ${
+                    draggedIndex === index ? styles.dragging : ''
+                  } ${dropTargetIndex === index ? styles.dropTarget : ''}`}
+                  draggable
+                  onDragStart={() => handleItemDragStart(index)}
+                  onDragOver={(e) => handleItemDragOver(e, index)}
+                  onDragLeave={handleItemDragLeave}
+                  onDrop={(e) => handleItemDrop(e, index)}
+                  onDragEnd={handleItemDragEnd}
+                >
+                  <StashItem
+                    item={item}
+                    onDelete={removeItem}
+                    draggable={false}
+                  />
+                </div>
               ))
             )}
           </div>

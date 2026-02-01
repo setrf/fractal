@@ -101,6 +101,9 @@ export interface UseStashReturn {
 
   /** Whether an item with the given content already exists */
   hasItem: (content: string, type: StashItemType) => boolean
+
+  /** Reorder an item from one index to another */
+  reorderItem: (fromIndex: number, toIndex: number) => void
 }
 
 /**
@@ -330,6 +333,26 @@ export function useStash(): UseStashReturn {
     [items]
   )
 
+  /**
+   * Reorder an item from one index to another.
+   * Used for drag-and-drop reordering within the stash.
+   */
+  const reorderItem = useCallback((fromIndex: number, toIndex: number): void => {
+    if (fromIndex === toIndex) return
+    
+    setItems(prev => {
+      if (fromIndex < 0 || fromIndex >= prev.length) return prev
+      if (toIndex < 0 || toIndex >= prev.length) return prev
+      
+      const updated = [...prev]
+      const [removed] = updated.splice(fromIndex, 1)
+      updated.splice(toIndex, 0, removed)
+      
+      console.log(`[useStash] Reordered item from index ${fromIndex} to ${toIndex}`)
+      return updated
+    })
+  }, [])
+
   // Compute filtered/searched items
   const displayedItems = (() => {
     let result = items
@@ -364,5 +387,6 @@ export function useStash(): UseStashReturn {
     setSearchQuery,
     count: items.length, // Total count, not filtered
     hasItem,
+    reorderItem,
   }
 }

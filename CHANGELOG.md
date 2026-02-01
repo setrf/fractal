@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1] - 2026-02-01
+
+### Added
+
+#### 3D View Polish
+- **Advanced Post-processing**: Enabled `UnrealBloomPass` for visual depth and "wow" factor.
+- **Node Labels**: Implemented `SpriteText` labels for all nodes, showing truncated content/title.
+- **Enhanced Geometries**: Unique 3D shapes for each entity type:
+  - Questions: High-detail Spheres
+  - Concepts: Icosahedrons
+  - Stash Items: Boxes
+  - Probes: Tori
+- **Improved Materials**: Switched to `MeshPhongMaterial` with shininess for better light interaction.
+
+---
+
 ## [0.7.0] - 2026-01-31
 
 ### Added

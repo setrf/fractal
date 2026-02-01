@@ -22,6 +22,42 @@ const client = new OpenAI({
 })
 
 /**
+ * Robustly extract and parse JSON from a string that may contain markdown or conversational filler.
+ */
+function parseRobustJson<T>(content: string, fallback: T): T {
+  let cleaned = content.trim()
+
+  // Remove <think> blocks if present
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+
+  // Try to find JSON in markdown code blocks
+  const jsonBlockMatch = cleaned.match(/```json\s*([\s\S]*?)\s*```/)
+  if (jsonBlockMatch) {
+    cleaned = jsonBlockMatch[1].trim()
+  } else {
+    // Try to find any block starting with [ or { and ending with ] or }
+    const firstBracket = cleaned.indexOf('[')
+    const firstBrace = cleaned.indexOf('{')
+    const lastBracket = cleaned.lastIndexOf(']')
+    const lastBrace = cleaned.lastIndexOf('}')
+
+    const start = (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) ? firstBracket : firstBrace
+    const end = (lastBracket !== -1 && (lastBrace === -1 || lastBracket > lastBrace)) ? lastBracket : lastBrace
+
+    if (start !== -1 && end !== -1 && end > start) {
+      cleaned = cleaned.slice(start, end + 1)
+    }
+  }
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch (error) {
+    console.warn('[Inference] JSON parse failed, returning fallback. Content snippet:', content.substring(0, 100))
+    return fallback
+  }
+}
+
+/**
  * Prompt variants for generating related questions.
  * We use a lightweight self-improving loop to pick the best variant over time.
  */
@@ -148,20 +184,12 @@ export const scoreQuestionSet = weave.op(
     })
 
     const content = response.choices[0]?.message?.content || '{}'
-    try {
-      const parsed = JSON.parse(content)
-      const score = typeof parsed.score === 'number' ? parsed.score : Math.min(10, 2 + questions.length)
-      return {
-        score,
-        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-        weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-      }
-    } catch {
-      return {
-        score: Math.min(10, 2 + questions.length),
-        strengths: [],
-        weaknesses: ['Scoring parse fallback'],
-      }
+    const parsed = parseRobustJson<Partial<QuestionSetScore>>(content, {})
+    const score = typeof parsed.score === 'number' ? parsed.score : Math.min(10, 2 + questions.length)
+    return {
+      score,
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
     }
   }
 )
@@ -213,23 +241,18 @@ export const generateRelatedQuestions = weave.op(
     const content = response.choices[0]?.message?.content || '[]'
     
     // Parse the JSON response
-    let questions: string[]
-    try {
-      questions = JSON.parse(content)
-      if (!Array.isArray(questions)) {
-        questions = [content]
-      }
-    } catch {
-      // If parsing fails, split by newlines and clean up
-      questions = content
-        .split('\n')
-        .map((q) => q.trim())
-        .filter((q) => q.length > 0 && q.startsWith('"') === false)
-      
-      // Try to extract from partial JSON
-      const matches = content.match(/"([^"]+\?)"/g)
-      if (matches) {
-        questions = matches.map((m) => m.replace(/"/g, ''))
+    let questions = parseRobustJson<string[]>(content, [])
+    
+    if (!Array.isArray(questions)) {
+      // Fallback for cases where it might return a single string or object
+      if (typeof questions === 'string') {
+        questions = [questions]
+      } else {
+        // Splitting by newlines as a last resort
+        questions = content
+          .split('\n')
+          .map((q) => q.trim())
+          .filter((q) => q.length > 0 && !q.startsWith('[') && !q.startsWith(']') && !q.startsWith('{'))
       }
     }
 
@@ -648,24 +671,13 @@ export const extractConcepts = weave.op(
     const content = response.choices[0]?.message?.content || '[]'
     
     // Parse the JSON response
-    let rawConcepts: Array<{
+    const rawConcepts = parseRobustJson<Array<{
       text: string
       normalizedName: string
       category: ConceptCategory
       startIndex: number
       endIndex: number
-    }> = []
-
-    try {
-      const parsed = JSON.parse(content)
-      if (Array.isArray(parsed)) {
-        rawConcepts = parsed
-      }
-    } catch (error) {
-      console.error('[Concepts] Failed to parse JSON response:', error)
-      console.error('[Concepts] Raw content:', content)
-      // Return empty on parse failure
-    }
+    }>>(content, [])
 
     // Validate and add IDs to concepts
     // IMPORTANT: We compute actual positions by finding the occurrence CLOSEST to
@@ -850,24 +862,15 @@ Question context: "${questionContext}"`
     const content = response.choices[0]?.message?.content || '{}'
     
     // Parse the JSON response
-    let parsed: {
+    const parsed = parseRobustJson<{
       summary?: string
       context?: string
       relatedConcepts?: string[]
-    } = {}
-
-    try {
-      parsed = JSON.parse(content)
-    } catch (error) {
-      console.error('[Concepts] Failed to parse explanation JSON:', error)
-      console.error('[Concepts] Raw content:', content)
-      // Provide fallback
-      parsed = {
-        summary: `${conceptName} is a concept related to the question being explored.`,
-        context: 'This concept is relevant to understanding the question at hand.',
-        relatedConcepts: [],
-      }
-    }
+    }>(content, {
+      summary: `${conceptName} is a concept related to the question being explored.`,
+      context: 'This concept is relevant to understanding the question at hand.',
+      relatedConcepts: [],
+    })
 
     const explanation: ConceptExplanation = {
       conceptId,

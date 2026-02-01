@@ -11,11 +11,16 @@
  * - Interactive node clicking for popups
  * - Zoom/pan/rotate navigation
  * - Clustering based on relationships
+ * - Bloom effect for "wow" factor
+ * - Particle flows on edges
  */
 
 import { useRef, useCallback, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from 'react'
 import ForceGraph3D, { type ForceGraph3DInstance } from 'react-force-graph-3d'
 import * as THREE from 'three'
+// @ts-expect-error - No types for three/examples currently configured
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
+import SpriteText from 'three-spritetext'
 import { useGraphContext } from '../../context/GraphContext'
 import type { GraphNode, GraphEdge, GraphNodeType } from '../../types/graph'
 import { EDGE_WIDTHS } from '../../types/graph'
@@ -149,69 +154,55 @@ function resolveNodeColor(node: GraphNode): string {
 function createNodeObject(node: GraphNode): THREE.Object3D {
   const baseSize = 5 * node.size
   let geometry: THREE.BufferGeometry
-  let material: THREE.Material
 
-  const resolvedColor = resolveNodeColor(node)
-
+  // Different shapes for different node types
   switch (node.type) {
     case 'question':
-      // Sphere with slight glow
-      geometry = new THREE.SphereGeometry(baseSize, 16, 16)
-      material = new THREE.MeshPhongMaterial({
-        color: resolvedColor,
-        emissive: resolvedColor,
-        emissiveIntensity: 0.2,
-        shininess: 30,
-      })
+      geometry = new THREE.SphereGeometry(baseSize, 32, 32)
       break
-
     case 'concept':
-      // Icosahedron for concepts
-      geometry = new THREE.IcosahedronGeometry(baseSize * 0.8, 0)
-      material = new THREE.MeshPhongMaterial({
-        color: resolvedColor,
-        emissive: resolvedColor,
-        emissiveIntensity: 0.15,
-        shininess: 50,
-        flatShading: true,
-      })
+      geometry = new THREE.IcosahedronGeometry(baseSize, 0)
       break
-
     case 'stash':
-      // Cube for stash items
-      geometry = new THREE.BoxGeometry(baseSize * 1.2, baseSize * 1.2, baseSize * 1.2)
-      material = new THREE.MeshPhongMaterial({
-        color: resolvedColor,
-        emissive: resolvedColor,
-        emissiveIntensity: 0.1,
-        shininess: 20,
-      })
+      geometry = new THREE.BoxGeometry(baseSize * 1.5, baseSize * 1.5, baseSize * 1.5)
       break
-
     case 'probe':
-      // Torus for probes
       geometry = new THREE.TorusGeometry(baseSize, baseSize * 0.4, 8, 16)
-      material = new THREE.MeshPhongMaterial({
-        color: resolvedColor,
-        emissive: resolvedColor,
-        emissiveIntensity: 0.25,
-        shininess: 60,
-      })
       break
-
     default:
-      geometry = new THREE.SphereGeometry(baseSize, 12, 12)
-      material = new THREE.MeshBasicMaterial({ color: '#888888' })
+      geometry = new THREE.SphereGeometry(baseSize, 16, 16)
   }
 
+  const material = new THREE.MeshPhongMaterial({
+    color: resolveNodeColor(node),
+    shininess: 100,
+    transparent: true,
+    opacity: 0.9,
+  })
+
+  const group = new THREE.Group()
   const mesh = new THREE.Mesh(geometry, material)
+  group.add(mesh)
 
-  // Add slight rotation animation for probes
-  if (node.type === 'probe') {
-    mesh.rotation.x = Math.PI / 2
-  }
+  // Add label as sprite text
+  const sprite = new SpriteText(truncateLabel(node.label, 30))
+  sprite.color = '#ffffff'
+  sprite.textHeight = 3
+  sprite.position.set(0, baseSize + 6, 0)
+  sprite.backgroundColor = 'rgba(0,0,0,0.5)'
+  sprite.padding = 2
+  sprite.borderRadius = 2
+  group.add(sprite)
 
-  return mesh
+  return group
+}
+
+/**
+ * Helper to truncate labels for 3D sprite.
+ */
+function truncateLabel(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text
+  return text.slice(0, maxLength - 3) + '...'
 }
 
 /**
@@ -282,6 +273,26 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
   }, [width, height])
+
+  // Configure bloom effect
+  useEffect(() => {
+    if (!graphRef.current) return
+    
+    // Safety check for post-processing support
+    const composer = graphRef.current.postProcessingComposer()
+    if (!composer) return
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.8,  // strength
+      0.3,  // radius
+      0.2   // threshold
+    )
+    composer.addPass(bloomPass)
+    
+    // Cleanup not easily possible with current ref API, but effects are additive
+    // Ideally we'd remove pass on unmount
+  }, [])
 
   // Configure forces for clustering
   useEffect(() => {
@@ -387,9 +398,9 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
           graphData={transformedData}
           width={dimensions.width}
           height={dimensions.height}
-          backgroundColor="rgba(0, 0, 0, 0)"
+          backgroundColor="rgba(0, 0, 0, 0)" // Keep transparent for app background
           // Node configuration
-          nodeLabel={(node: GraphNode) => node.label}
+          nodeLabel={(node: GraphNode) => ''} // Disable default tooltip in favor of sprite
           nodeColor={(node: GraphNode) => resolveNodeColor(node)}
           nodeThreeObject={createNodeObject}
           nodeThreeObjectExtend={false}
@@ -397,8 +408,12 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
           // Link configuration
           linkColor={getLinkColor}
           linkWidth={getLinkWidth}
-          linkOpacity={0.6}
-          linkDirectionalParticles={0}
+          linkOpacity={0.4}
+          // Particle effects on links
+          linkDirectionalParticles={2}
+          linkDirectionalParticleWidth={2}
+          linkDirectionalParticleSpeed={0.005}
+          linkDirectionalParticleColor={() => '#ffffff'}
           // Physics configuration
           d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}

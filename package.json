@@ -24,7 +24,8 @@
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
-    "three": "^0.182.0"
+    "three": "^0.182.0",
+    "three-spritetext": "^1.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

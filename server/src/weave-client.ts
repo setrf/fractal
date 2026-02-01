@@ -32,8 +32,8 @@ export async function initializeWeave(): Promise<void> {
     weaveInitialized = true
     console.log('[Weave] Successfully initialized')
   } catch (error) {
-    console.error('[Weave] Failed to initialize:', error)
-    throw error
+    console.warn('[Weave] Failed to initialize (running without tracing):', error)
+    // throw error
   }
 }
 

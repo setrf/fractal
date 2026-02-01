@@ -626,10 +626,12 @@ export function ChatView({
               <div
                 key={index}
                 className={`${styles.message} ${styles[msg.role]}`}
-                draggable
-                onDragStart={(e) => handleMessageDragStart(e, msg, index)}
               >
-                <div className={styles.messageHeader}>
+                <div 
+                  className={styles.messageHeader}
+                  draggable
+                  onDragStart={(e) => handleMessageDragStart(e, msg, index)}
+                >
                   <div className={styles.messageRole}>
                     {msg.role === 'user' ? 'You' : 'AI'}
                   </div>

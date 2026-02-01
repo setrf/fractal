@@ -279,6 +279,55 @@ export function QuestionNode({
   }, [])
 
   /**
+   * Handles clicking a related concept in a popup.
+   * Creates a new popup for the related concept.
+   */
+  const handleRelatedConceptClick = useCallback((conceptName: string) => {
+    // Check if this concept already has an open popup
+    const existingPopup = openPopups.find(p => 
+      p.concept.normalizedName === conceptName.toLowerCase()
+    )
+    if (existingPopup) return
+    
+    // Create a synthetic concept for the related item
+    const syntheticConcept: ExtractedConcept = {
+      id: `related_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      text: conceptName,
+      normalizedName: conceptName.toLowerCase(),
+      category: 'abstract',  // Default category for related concepts
+      startIndex: -1,  // Not in the original text
+      endIndex: -1,
+    }
+    
+    // Find non-overlapping position
+    const existingPositions = openPopups.map(p => ({
+      x: p.position.x,
+      y: p.position.y,
+      width: DEFAULT_POPUP_WIDTH,
+      height: DEFAULT_POPUP_HEIGHT,
+      isMinimized: p.isMinimized,
+    }))
+    
+    // Position near center of viewport for related concepts
+    const position = findNonOverlappingPosition(
+      window.innerWidth / 2 - DEFAULT_POPUP_WIDTH / 2,
+      window.innerHeight / 3,
+      existingPositions
+    )
+    
+    // Add new popup
+    const newPopup: OpenPopup = {
+      concept: syntheticConcept,
+      position,
+      isMinimized: false,
+    }
+    setOpenPopups(prev => [...prev, newPopup])
+    
+    // Trigger explanation fetch if callback exists
+    onConceptClick?.(syntheticConcept)
+  }, [openPopups, onConceptClick])
+
+  /**
    * Handles text selection for user-created highlights.
    * Automatically creates a highlight when valid text is selected.
    */
@@ -505,6 +554,7 @@ export function QuestionNode({
             error={error}
             position={popup.position}
             onClose={() => handlePopupClose(popup.concept.id)}
+            onRelatedConceptClick={handleRelatedConceptClick}
             onMinimizeChange={handlePopupMinimizeChange}
             minimizedStackIndex={minimizedStackIndex}
           />

@@ -164,6 +164,31 @@
   color: var(--text-tertiary);
 }
 
+/* Read-only styles for non-note stash items */
+.readOnlyTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: var(--space-2);
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-primary);
+}
+
+.readOnlyContent {
+  flex: 1;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Resize handles */
 .resizeHandle {
   position: absolute;

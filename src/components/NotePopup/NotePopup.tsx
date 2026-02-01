@@ -40,6 +40,11 @@ export interface NoteData {
 }
 
 /**
+ * Source type for reopened stash items.
+ */
+export type PopupSourceType = 'note' | 'explanation' | 'question' | 'highlight' | 'chat-message'
+
+/**
  * Props for NotePopup component.
  */
 export interface NotePopupProps {
@@ -66,6 +71,12 @@ export interface NotePopupProps {
   
   /** Initial content */
   initialContent?: string
+  
+  /** Whether content is read-only (for reopened non-note stash items) */
+  readOnly?: boolean
+  
+  /** Source type if reopened from stash */
+  sourceType?: PopupSourceType
 }
 
 // Default dimensions
@@ -84,6 +95,24 @@ const STACK_MARGIN = 8
 /**
  * NotePopup - A draggable, resizable popup for user notes.
  */
+/** Labels for source types */
+const sourceTypeLabels: Record<PopupSourceType, string> = {
+  note: 'Note',
+  explanation: 'Explanation',
+  question: 'Question',
+  highlight: 'Highlight',
+  'chat-message': 'Chat',
+}
+
+/** Icons for source types */
+const sourceTypeIcons: Record<PopupSourceType, string> = {
+  note: '📝',
+  explanation: '💡',
+  question: '?',
+  highlight: '✦',
+  'chat-message': '💬',
+}
+
 export function NotePopup({
   id,
   position,
@@ -93,6 +122,8 @@ export function NotePopup({
   minimizedStackIndex = 0,
   initialTitle = '',
   initialContent = '',
+  readOnly = false,
+  sourceType = 'note',
 }: NotePopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -328,20 +359,22 @@ export function NotePopup({
         className={styles.header}
         onMouseDown={handleDragStart}
       >
-        <span className={styles.noteIcon}>📝</span>
-        <span className={styles.headerLabel}>Note</span>
+        <span className={styles.noteIcon}>{sourceTypeIcons[sourceType]}</span>
+        <span className={styles.headerLabel}>{sourceTypeLabels[sourceType]}</span>
         
         <div className={styles.headerActions}>
-          {/* Stash button */}
-          <button
-            className={styles.actionButton}
-            onClick={handleStash}
-            disabled={!content.trim() || isStashed}
-            title={isStashed ? 'Already in Stash' : 'Add to Stash'}
-            aria-label={isStashed ? 'Already in Stash' : 'Add to Stash'}
-          >
-            {isStashed ? '✓' : '☆'}
-          </button>
+          {/* Stash button - only for notes (non-note items are already stashed) */}
+          {sourceType === 'note' && (
+            <button
+              className={styles.actionButton}
+              onClick={handleStash}
+              disabled={!content.trim() || isStashed}
+              title={isStashed ? 'Already in Stash' : 'Add to Stash'}
+              aria-label={isStashed ? 'Already in Stash' : 'Add to Stash'}
+            >
+              {isStashed ? '✓' : '☆'}
+            </button>
+          )}
           
           {/* Minimize button */}
           <button
@@ -368,20 +401,31 @@ export function NotePopup({
       {/* Content - hidden when minimized */}
       {!isMinimized && (
         <div className={styles.content}>
-          <input
-            ref={titleInputRef}
-            type="text"
-            className={styles.titleInput}
-            placeholder="Note title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            className={styles.contentInput}
-            placeholder="Write your note here..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+          {readOnly ? (
+            /* Read-only view for non-note stash items */
+            <>
+              <div className={styles.readOnlyTitle}>{title}</div>
+              <div className={styles.readOnlyContent}>{content}</div>
+            </>
+          ) : (
+            /* Editable view for notes */
+            <>
+              <input
+                ref={titleInputRef}
+                type="text"
+                className={styles.titleInput}
+                placeholder="Note title..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <textarea
+                className={styles.contentInput}
+                placeholder="Write your note here..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+            </>
+          )}
         </div>
       )}
       

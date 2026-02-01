@@ -50,6 +50,8 @@ interface CanvasNote {
   title: string
   content: string
   isMinimized: boolean
+  /** Original stash item type (if reopened from stash) */
+  sourceType?: 'note' | 'explanation' | 'question' | 'highlight' | 'chat-message'
 }
 
 /**
@@ -299,10 +301,10 @@ function AppContent() {
     // Calculate a centered position for the new popup
     const x = Math.max(100, (window.innerWidth - 300) / 2)
     const y = Math.max(100, (window.innerHeight - 300) / 3)
+    const id = `popup-${Date.now()}-${noteIdCounter.current++}`
     
     if (item.type === 'note') {
-      // Reopen as NotePopup
-      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      // Reopen as editable NotePopup
       const newNote: CanvasNote = {
         id,
         x,
@@ -310,11 +312,11 @@ function AppContent() {
         title: item.metadata.title || '',
         content: item.content,
         isMinimized: false,
+        sourceType: 'note',
       }
       setCanvasNotes(prev => [...prev, newNote])
     } else if (item.type === 'explanation') {
-      // Reopen as NotePopup with explanation content (read-only style)
-      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      // Reopen as read-only viewer
       const summary = item.metadata.summary || ''
       const context = item.metadata.context || ''
       const content = summary + (context ? `\n\n---\n\n${context}` : '')
@@ -325,11 +327,11 @@ function AppContent() {
         title: item.content, // The concept name
         content,
         isMinimized: false,
+        sourceType: 'explanation',
       }
       setCanvasNotes(prev => [...prev, newNote])
     } else if (item.type === 'question') {
-      // Reopen as NotePopup with the question
-      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      // Reopen as read-only viewer
       const newNote: CanvasNote = {
         id,
         x,
@@ -337,11 +339,11 @@ function AppContent() {
         title: 'Question',
         content: item.content,
         isMinimized: false,
+        sourceType: 'question',
       }
       setCanvasNotes(prev => [...prev, newNote])
     } else if (item.type === 'highlight') {
-      // Reopen as NotePopup with the highlight
-      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      // Reopen as read-only viewer
       const newNote: CanvasNote = {
         id,
         x,
@@ -349,11 +351,11 @@ function AppContent() {
         title: item.metadata.normalizedName || 'Highlight',
         content: item.content,
         isMinimized: false,
+        sourceType: 'highlight',
       }
       setCanvasNotes(prev => [...prev, newNote])
     } else if (item.type === 'chat-message') {
-      // Reopen as NotePopup with the chat message
-      const id = `note-${Date.now()}-${noteIdCounter.current++}`
+      // Reopen as read-only viewer
       const role = item.metadata.role === 'assistant' ? 'AI' : 'You'
       const newNote: CanvasNote = {
         id,
@@ -362,6 +364,7 @@ function AppContent() {
         title: `${role} said:`,
         content: item.content,
         isMinimized: false,
+        sourceType: 'chat-message',
       }
       setCanvasNotes(prev => [...prev, newNote])
     }
@@ -580,6 +583,8 @@ function AppContent() {
             onUpdate={handleNoteUpdate}
             onMinimizeChange={handleNoteMinimizeChange}
             minimizedStackIndex={minimizedNoteIds.indexOf(note.id)}
+            readOnly={note.sourceType !== undefined && note.sourceType !== 'note'}
+            sourceType={note.sourceType}
           />
         ))}
       </div>

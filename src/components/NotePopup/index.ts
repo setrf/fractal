@@ -1,2 +1,2 @@
 export { NotePopup } from './NotePopup'
-export type { NotePopupProps, NoteData } from './NotePopup'
+export type { NotePopupProps, NoteData, PopupSourceType } from './NotePopup'

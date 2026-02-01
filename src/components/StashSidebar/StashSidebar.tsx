@@ -10,7 +10,7 @@
  * - Drag-and-drop zone for adding items
  */
 
-import { useState, useCallback, type DragEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type DragEvent } from 'react'
 import styles from './StashSidebar.module.css'
 import { StashItem } from '../StashItem'
 import { useStashContext } from '../../context/StashContext'
@@ -67,6 +67,48 @@ export function StashSidebar() {
   const [isAddingNote, setIsAddingNote] = useState(false)
   const [noteTitle, setNoteTitle] = useState('')
   const [noteContent, setNoteContent] = useState('')
+  
+  // Resize state
+  const [sidebarWidth, setSidebarWidth] = useState(320)
+  const [isResizing, setIsResizing] = useState(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const resizeStartX = useRef(0)
+  const resizeStartWidth = useRef(0)
+
+  // Min and max width constraints
+  const MIN_WIDTH = 200
+  const MAX_WIDTH = 600
+
+  // Handle resize start
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    resizeStartX.current = e.clientX
+    resizeStartWidth.current = sidebarWidth
+  }, [sidebarWidth])
+
+  // Handle resize move and end via useEffect
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizeStartX.current
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, resizeStartWidth.current + delta))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   // Handle creating a new note
   const handleCreateNote = useCallback(() => {
@@ -179,7 +221,9 @@ export function StashSidebar() {
 
   return (
     <aside
-      className={`${styles.sidebar} ${isOpen ? styles.open : styles.collapsed}`}
+      ref={sidebarRef}
+      className={`${styles.sidebar} ${isOpen ? styles.open : styles.collapsed} ${isResizing ? styles.resizing : ''}`}
+      style={isOpen ? { width: sidebarWidth } : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -343,6 +387,17 @@ export function StashSidebar() {
         <div className={styles.dragOverlay}>
           <span className={styles.dragText}>Drop to stash</span>
         </div>
+      )}
+
+      {/* Resize handle - only visible when open */}
+      {isOpen && (
+        <div
+          className={styles.resizeHandle}
+          onMouseDown={handleResizeStart}
+          aria-label="Resize sidebar"
+          role="separator"
+          aria-orientation="vertical"
+        />
       )}
     </aside>
   )

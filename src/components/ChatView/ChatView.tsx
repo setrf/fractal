@@ -742,9 +742,11 @@ export function ChatView({
                       onConceptRemove={(conceptId) => handleRemoveConcept(index, conceptId)}
                     />
                   ) : (
-                    <ReactMarkdown className={styles.markdown}>
-                      {msg.content}
-                    </ReactMarkdown>
+                    <div className={styles.markdown}>
+                      <ReactMarkdown>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
               </div>

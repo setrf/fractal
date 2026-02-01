@@ -35,26 +35,27 @@
 
 /* Size variants */
 .small {
-  width: 20px;
-  height: 20px;
-  font-size: var(--text-xs);
-}
-
-.medium {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   font-size: var(--text-sm);
 }
 
-.large {
-  width: 36px;
-  height: 36px;
+.medium {
+  width: 32px;
+  height: 32px;
   font-size: var(--text-base);
+}
+
+.large {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-lg);
 }
 
 /* Icon styling */
 .icon {
   line-height: 1;
+  font-size: inherit;
 }
 
 /* Stashed state - already in stash */

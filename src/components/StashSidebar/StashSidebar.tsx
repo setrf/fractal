@@ -70,6 +70,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     count,
     addItem,
     reorderItem,
+    externalDragHover,
   } = useStashContext()
 
   const [isDragOver, setIsDragOver] = useState(false)
@@ -412,7 +413,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
           {/* Items list */}
           <div
-            className={`${styles.itemsList} ${isDragOver ? styles.dragOver : ''}`}
+            className={`${styles.itemsList} ${isDragOver || externalDragHover ? styles.dragOver : ''}`}
           >
             {items.length === 0 ? (
               <div className={styles.emptyState}>
@@ -475,7 +476,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       )}
 
       {/* Drag overlay */}
-      {isDragOver && (
+      {(isDragOver || externalDragHover) && (
         <div className={styles.dragOverlay}>
           <span className={styles.dragText}>Drop to stash</span>
         </div>

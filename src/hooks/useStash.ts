@@ -104,6 +104,12 @@ export interface UseStashReturn {
 
   /** Reorder an item from one index to another */
   reorderItem: (fromIndex: number, toIndex: number) => void
+
+  /** Whether an external element is being dragged over the stash area */
+  externalDragHover: boolean
+
+  /** Set external drag hover state (for popups being dragged to stash) */
+  setExternalDragHover: (hovering: boolean) => void
 }
 
 /**
@@ -159,6 +165,7 @@ export function useStash(): UseStashReturn {
   const [isOpen, setIsOpen] = useState(true)
   const [filterType, setFilterType] = useState<StashItemType | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [externalDragHover, setExternalDragHover] = useState(false)
 
   // Debounce timer ref
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -388,5 +395,7 @@ export function useStash(): UseStashReturn {
     count: items.length, // Total count, not filtered
     hasItem,
     reorderItem,
+    externalDragHover,
+    setExternalDragHover,
   }
 }

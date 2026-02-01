@@ -253,7 +253,7 @@ export function ConceptPopup({
   const headerRef = useRef<HTMLDivElement>(null)
   
   // Stash context for adding explanations to stash
-  const { addItem, hasItem } = useStashContext()
+  const { addItem, hasItem, setExternalDragHover, isOpen: stashIsOpen } = useStashContext()
   
   // Position and size state
   const [popupPosition, setPopupPosition] = useState(position)
@@ -344,14 +344,45 @@ export function ConceptPopup({
   useEffect(() => {
     if (!isDragging) return
 
+    // Check if mouse is over the stash sidebar
+    const isOverStash = (mouseX: number): boolean => {
+      if (!stashIsOpen) return false
+      // Find the stash sidebar element
+      const sidebar = document.querySelector('aside')
+      if (!sidebar) return false
+      const rect = sidebar.getBoundingClientRect()
+      return mouseX >= rect.left && mouseX <= rect.right
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       const newX = Math.max(0, Math.min(e.clientX - dragOffset.x, window.innerWidth - popupSize.width))
       const newY = Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - 50))
       setPopupPosition({ x: newX, y: newY })
+      
+      // Check if dragging over stash and update visual feedback
+      const overStash = isOverStash(e.clientX)
+      setExternalDragHover(overStash)
     }
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       setIsDragging(false)
+      setExternalDragHover(false)
+      
+      // If dropped over stash, add the item
+      if (isOverStash(e.clientX) && concept && explanation) {
+        addItem({
+          type: 'explanation',
+          content: concept.normalizedName,
+          metadata: {
+            summary: explanation.summary,
+            context: explanation.context,
+            relatedConcepts: explanation.relatedConcepts,
+            conceptCategory: concept.category,
+            normalizedName: concept.normalizedName,
+          },
+        })
+        onClose()
+      }
     }
 
     document.addEventListener('mousemove', handleMouseMove)
@@ -360,8 +391,9 @@ export function ConceptPopup({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
+      setExternalDragHover(false)
     }
-  }, [isDragging, dragOffset, popupSize.width])
+  }, [isDragging, dragOffset, popupSize.width, stashIsOpen, setExternalDragHover, concept, explanation, addItem, onClose])
 
   // ===== RESIZE HANDLERS =====
 

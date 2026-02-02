@@ -13,7 +13,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import styles from './ProbeChat.module.css'
 import { useProbeContext } from '../../context/ProbeContext'
 import { useStashContext } from '../../context/StashContext'
@@ -47,62 +46,27 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [inputHeight, setInputHeight] = useState(480)
+  const [inputHeight, setInputHeight] = useState(160)
   const [isResizing, setIsResizing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
 
-  const handleSynthesize = useCallback(() => {
-    const synthesized = synthesizePrompt(probe.id, stashItems)
-    setInput(synthesized)
-  }, [probe.id, stashItems, synthesizePrompt])
+  // Auto-resize handler
+  useEffect(() => {
+    if (!textareaRef.current || isResizing) return
 
-  // Sync scroll between textarea and overlay
-  const handleScroll = useCallback(() => {
-    if (textareaRef.current && overlayRef.current) {
-      overlayRef.current.scrollTop = textareaRef.current.scrollTop
-    }
-  }, [])
+    // Reset height to compute scrollHeight correctly
+    const textarea = textareaRef.current
+    const originalHeight = textarea.style.height
+    textarea.style.height = 'auto'
+    const scrollHeight = textarea.scrollHeight
+    textarea.style.height = originalHeight
 
-  // Simple Markdown syntax highlighter
-  const renderHighlightedMarkdown = (text: string) => {
-    if (!text) return null
-
-    let html = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-
-    // Headers: ## Header -> <light>##</light> <b>Header</b>
-    html = html.replace(/^(#{1,6})(\s.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdHeader}">$2</span>`)
-
-    // Bold: **text** -> <light>**</light><b>text</b><light>**</light>
-    html = html.replace(/(\*\*)(.*?)(\*\*)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdBold}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
-
-    // Italic: *text* -> <light>*</light><i>text</i><light>*</light>
-    html = html.replace(/(\*)(.*?)(\*)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdItalic}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
-
-    // Lists: - item -> <light>-</light> item
-    html = html.replace(/^(\s*[-*+]\s)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdList}">$2</span>`)
-    html = html.replace(/^(\s*\d+\.\s)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdList}">$2</span>`)
-
-    // Blockquotes: > text -> <light>></light> <quote>text</quote>
-    html = html.replace(/^(\s*>)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdQuote}">$2</span>`)
-
-    // Code blocks: `code`
-    html = html.replace(/(`)(.*?)(`)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdCode}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
-
-    // Links: [text](url)
-    html = html.replace(/(\[)(.*?)(\])(\()(.*?)(\))/g, 
-      `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdBold}">$2</span><span class="${styles.mdSymbol}">$3$4</span><span class="${styles.mdLink}">$5</span><span class="${styles.mdSymbol}">$6</span>`)
-
-    // Horizontal Rule: ---
-    html = html.replace(/^(---\s*)$/gm, `<span class="${styles.mdHr}">$1</span>`)
-
-    return <div dangerouslySetInnerHTML={{ __html: html + '\n' }} />
-  }
+    // Add padding for border/padding
+    const newHeight = Math.max(160, Math.min(600, scrollHeight + 32))
+    setInputHeight(newHeight)
+  }, [input, isResizing])
 
   // Resize handler
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -118,7 +82,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
       const rect = inputAreaRef.current.getBoundingClientRect()
       // Dragging up increases height. Current mouse Y vs bottom of input area.
       const newHeight = rect.bottom - e.clientY - 24 // 24 for padding
-      setInputHeight(Math.max(200, Math.min(1000, newHeight))) // Adjusted constraints for larger default
+      setInputHeight(Math.max(100, Math.min(600, newHeight)))
     }
 
     const handleMouseUp = () => {
@@ -148,6 +112,12 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   const handleRemoveItem = useCallback((itemId: string) => {
     removeStashItemFromProbe(probe.id, itemId)
   }, [probe.id, removeStashItemFromProbe])
+
+  // Handle synthesizing prompt from selected items
+  const handleSynthesize = useCallback(() => {
+    const synthesized = synthesizePrompt(probe.id, stashItems)
+    setInput(synthesized)
+  }, [probe.id, stashItems, synthesizePrompt])
 
   // Handle sending a message
   const handleSend = useCallback(async () => {
@@ -306,36 +276,23 @@ export function ProbeChat({ probe }: ProbeChatProps) {
           className={`${styles.inputResizeHandle} ${isResizing ? styles.isResizing : ''}`}
           onMouseDown={handleResizeStart}
         />
-        
         <div className={styles.inputWrapper}>
-          <div className={styles.editorContainer}>
-            <textarea
-              ref={textareaRef}
-              className={styles.input}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onScroll={handleScroll}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-              disabled={sending}
-              data-onboarding="probe-input"
-            />
-            <div 
-              ref={overlayRef}
-              className={styles.highlightOverlay}
-              aria-hidden="true"
-            >
-              {renderHighlightedMarkdown(input)}
-            </div>
-          </div>
-
+          <textarea
+            ref={textareaRef}
+            className={styles.input}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+            disabled={sending}
+            data-onboarding="probe-input"
+          />
           <button
             className={styles.sendButton}
             onClick={handleSend}
             disabled={!input.trim() || sending}
-            title="Send Message"
           >
-            {sending ? '...' : '→'}
+            Send
           </button>
         </div>
       </div>

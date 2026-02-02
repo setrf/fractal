@@ -191,16 +191,16 @@ function createNodeObject(node: GraphNode): THREE.Object3D {
   const sprite = new SpriteText(fullText)
   sprite.color = 'rgba(255, 255, 255, 0.95)'
   sprite.fontFace = "'JetBrains Mono', 'IBM Plex Mono', monospace"
-  sprite.textHeight = 1.5 * (node.visualScale || 1)
+  sprite.textHeight = (isMobile ? 1.0 : 1.5) * (node.visualScale || 1)
   sprite.fontWeight = '600'
   sprite.center = new THREE.Vector2(0.5, 1)
 
   sprite.backgroundColor = 'rgba(0, 0, 0, 0.7)'
-  sprite.padding = [3, 5]
+  sprite.padding = isMobile ? [2, 3] : [3, 5]
   sprite.borderRadius = 1.5
   sprite.borderWidth = 0
 
-  sprite.position.set(0, - (markerSize + 4), 0)
+  sprite.position.set(0, - (markerSize + (isMobile ? 2 : 4)), 0)
   group.add(sprite)
 
   return group

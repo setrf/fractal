@@ -17,6 +17,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.3] - 2026-02-01
+
+### Added
+
+#### Mobile Optimization
+- **MobileHeader Component**: Consolidated top-level navigation (Stash, View Mode, Probe, Menu) into a fixed header for mobile devices.
+- **Responsive Popup Stacking**: Implemented an offset-based stacking system for minimized popups on mobile, preventing overlap and ensuring accessibility.
+- **Compact Generation Metadata**: Redesigned the Weave Score and model info to fit narrow mobile screens with multi-line layouts.
+- **Adaptive Question Nodes**: Optimized quality badges and tap targets for better touch interaction and screen utilization on mobile.
+- **Smart Sidebar Overlays**: Ensured sidebars (Stash/Probe) behave as full-screen overlays on mobile with exclusive states (one at a time).
+
+#### 3D Graph Refinement
+- **Interactive Geometries**: Updated 3D nodes to use distinct shapes (Sphere, Icosahedron, Box, Torus) synchronized with the legend.
+- **Unified Legend & Filters**: Merged graph legend and visibility toggles into a single, efficient control section.
+- **Enhanced Relationship Visuals**: Added directional arrows to edges and improved hover precision for tracing connections.
+- **Non-blocking Detail Popups**: Removed interaction-blocking backdrops from node details, allowing 3D exploration while reading metadata.
+- **Subtle 3D Labeling**: Significantly reduced 3D tag sizes and refined typography for a cleaner, high-density visualization.
+
+### Fixed
+- Fixed redundant "Fractal" branding on mobile content screens.
+- Fixed layout obstructions where sidebars would hide essential mobile navigation.
+- Fixed 3D background click handling to fluidly dismiss open popups.
+
+---
+
 ## [0.7.2] - 2026-02-01
 
 ### Added

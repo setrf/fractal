@@ -9,10 +9,75 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; /* Use dynamic viewport height if supported */
   max-width: 800px;
   margin: 0 auto;
   padding-top: var(--space-24);
   background: var(--bg-primary);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-top: 56px; /* Match MobileHeader height */
+    height: calc(100dvh - 56px);
+  }
+
+  .header {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .backBtn {
+    width: 36px; /* Slightly larger for touch */
+    height: 36px;
+    font-size: var(--text-lg);
+  }
+
+  .questionText {
+    font-size: var(--text-sm);
+  }
+
+  .messages {
+    padding: var(--space-3) var(--space-2);
+    gap: var(--space-4);
+  }
+
+  .message {
+    max-width: 95%;
+  }
+
+  .messageContent {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border-width: var(--border-width); /* Tinner border on mobile */
+  }
+
+  .messageActions {
+    opacity: 1; /* Always show actions on touch devices */
+    gap: var(--space-2);
+  }
+
+  .generateBtn, .messageStashBtn {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-secondary);
+    border-color: var(--border-primary);
+  }
+
+  .inputArea {
+    padding: var(--space-2);
+    background: var(--bg-primary); /* Match bg */
+  }
+
+  .input {
+    font-size: var(--text-base); /* Prevent auto-zoom on iOS */
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sendBtn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 /* ============================================

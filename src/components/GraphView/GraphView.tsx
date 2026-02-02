@@ -15,6 +15,7 @@ import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
 import { useGraphContext } from '../../context/GraphContext'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { GraphNode, GraphEdge, GraphNodeType } from '../../types/graph'
 import { EDGE_WIDTHS } from '../../types/graph'
 import styles from './GraphView.module.css'
@@ -150,8 +151,12 @@ function resolveNodeColor(node: GraphNode): string {
 function createNodeObject(node: GraphNode): THREE.Object3D {
   const color = resolveNodeColor(node)
 
-  // Wrap long labels without truncation
-  const wrappedLabel = wrapLabel(node.label, 40)
+  // Wrap and truncate long labels for the 3D tag
+  const MAX_TAG_LENGTH = 60
+  const displayLabel = node.label.length > MAX_TAG_LENGTH 
+    ? node.label.slice(0, MAX_TAG_LENGTH) + '...'
+    : node.label
+  const wrappedLabel = wrapLabel(displayLabel, 25)
   const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1)
   const fullText = `${wrappedLabel}\n[${typeLabel}]`
 
@@ -160,7 +165,24 @@ function createNodeObject(node: GraphNode): THREE.Object3D {
   // 1. Icon/Marker Geometry
   const baseSize = node.type === 'question' ? 4 : 2
   const markerSize = baseSize * (node.visualScale || 1)
-  const geometry = new THREE.SphereGeometry(markerSize, 16, 16)
+  
+  let geometry: THREE.BufferGeometry
+  switch (node.type) {
+    case 'concept':
+      geometry = new THREE.IcosahedronGeometry(markerSize)
+      break
+    case 'stash':
+      geometry = new THREE.BoxGeometry(markerSize * 1.5, markerSize * 1.5, markerSize * 1.5)
+      break
+    case 'probe':
+      geometry = new THREE.TorusGeometry(markerSize, markerSize * 0.4, 8, 16)
+      break
+    case 'question':
+    default:
+      geometry = new THREE.SphereGeometry(markerSize, 16, 16)
+      break
+  }
+  
   const markerMaterial = new THREE.MeshBasicMaterial({ color })
   const mesh = new THREE.Mesh(geometry, markerMaterial)
   group.add(mesh)
@@ -168,17 +190,17 @@ function createNodeObject(node: GraphNode): THREE.Object3D {
   // 2. Label Sprite
   const sprite = new SpriteText(fullText)
   sprite.color = 'rgba(255, 255, 255, 0.95)'
-  sprite.fontFace = 'Inter, sans-serif'
-  sprite.textHeight = 2.5 * (node.visualScale || 1)
-  sprite.fontWeight = '500'
+  sprite.fontFace = "'JetBrains Mono', 'IBM Plex Mono', monospace"
+  sprite.textHeight = 1.5 * (node.visualScale || 1)
+  sprite.fontWeight = '600'
   sprite.center = new THREE.Vector2(0.5, 1)
 
-  sprite.backgroundColor = 'rgba(0,0,0,0.6)'
-  sprite.padding = [3, 4]
-  sprite.borderRadius = 2
+  sprite.backgroundColor = 'rgba(0, 0, 0, 0.7)'
+  sprite.padding = [3, 5]
+  sprite.borderRadius = 1.5
   sprite.borderWidth = 0
 
-  sprite.position.set(0, - (markerSize + 3), 0)
+  sprite.position.set(0, - (markerSize + 4), 0)
   group.add(sprite)
 
   return group
@@ -228,6 +250,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
   const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const isMobile = useIsMobile()
   const {
     graphData,
     counts,
@@ -357,28 +380,58 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
       )}
 
       {graphData.nodes.length > 0 && (
-        <ForceGraph3D
-          ref={graphRef}
-          graphData={transformedData}
-          width={dimensions.width}
-          height={dimensions.height}
-          backgroundColor="rgba(0, 0, 0, 0)"
-          nodeLabel={() => ''}
-          nodeColor={(node: GraphNode) => resolveNodeColor(node)}
-          nodeThreeObject={createNodeObject}
-          nodeThreeObjectExtend={false}
-          onNodeClick={handleNodeClick}
-          linkColor={getLinkColor}
-          linkWidth={getLinkWidth}
-          linkOpacity={0.4}
-          linkDirectionalParticles={0}
-          d3AlphaDecay={0.01}
-          d3VelocityDecay={0.5 * frictionMult}
-          cooldownTime={5000}
-          warmupTicks={100}
-          enableNavigationControls={true}
-          showNavInfo={false}
-        />
+        <>
+          <ForceGraph3D
+            ref={graphRef}
+            graphData={transformedData}
+            width={dimensions.width}
+            height={dimensions.height}
+            backgroundColor="rgba(0, 0, 0, 0)"
+            nodeLabel={(node: any) => `
+              <div style="
+                background: oklch(from var(--bg-primary) l c h / 0.95);
+                color: var(--text-primary);
+                padding: 8px 12px;
+                border: 2px solid var(--border-primary);
+                font-family: var(--font-mono);
+                font-size: 12px;
+                max-width: 300px;
+                line-height: 1.4;
+                box-shadow: 4px 4px 0 var(--border-primary);
+              ">
+                <div style="font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 4px; font-size: 10px;">${node.type}</div>
+                <div>${node.label}</div>
+              </div>
+            `}
+            nodeColor={(node: GraphNode) => resolveNodeColor(node)}
+            nodeThreeObject={createNodeObject}
+            nodeThreeObjectExtend={false}
+            onNodeClick={handleNodeClick}
+            onBackgroundClick={(event) => handleNodeClick(null as any, event)}
+            linkColor={getLinkColor}
+            linkWidth={getLinkWidth}
+            linkHoverPrecision={10}
+            linkDirectionalArrowLength={3.5}
+            linkDirectionalArrowRelPos={1}
+            linkOpacity={0.4}
+            linkDirectionalParticles={0}
+            d3AlphaDecay={0.01}
+            d3VelocityDecay={0.5 * frictionMult}
+            cooldownTime={5000}
+            warmupTicks={100}
+            enableNavigationControls={true}
+            showNavInfo={false}
+          />
+          {isMobile && (
+            <div className={styles.mobileOverlay}>
+              <div className={styles.mobileWarning}>
+                <span className={styles.warningIcon}>⚠️</span>
+                <p>3D interaction is limited on mobile.</p>
+                <p className={styles.warningHint}>Switch to Traditional view (⌘) for the best experience.</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div

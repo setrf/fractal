@@ -8,7 +8,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 3000; /* Above everything including mobile header and sidebars */
   pointer-events: none;
   font-family: var(--font-mono);
   color: var(--text-primary);
@@ -41,6 +41,37 @@
   flex-direction: column;
   gap: var(--space-3);
   pointer-events: auto;
+  z-index: 250; /* Above highlight */
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: var(--space-3);
+    gap: var(--space-2);
+    box-shadow: 4px 4px 0 var(--border-primary);
+  }
+
+  .title {
+    font-size: var(--text-sm);
+  }
+
+  .body {
+    font-size: var(--text-xs);
+  }
+
+  .controls {
+    gap: var(--space-2);
+  }
+
+  .button,
+  .buttonGhost,
+  .buttonPrimary {
+    padding: var(--space-2);
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .header {

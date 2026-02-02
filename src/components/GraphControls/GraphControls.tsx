@@ -10,6 +10,7 @@
 
 import { useCallback, useState } from 'react'
 import { useGraphContext } from '../../context/GraphContext'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { GraphNodeType } from '../../types/graph'
 import { nodeTypeLabels } from '../../types/graph'
 import styles from './GraphControls.module.css'
@@ -35,7 +36,7 @@ const NODE_TYPES: { type: GraphNodeType; color: string; shape: string }[] = [
   { type: 'question', color: 'var(--graph-node-question)', shape: '●' },
   { type: 'concept', color: 'var(--graph-node-concept)', shape: '◆' },
   { type: 'stash', color: 'var(--graph-node-stash)', shape: '■' },
-  { type: 'probe', color: 'var(--graph-node-probe)', shape: '○' },
+  { type: 'probe', color: 'var(--graph-node-probe)', shape: '◎' },
 ]
 
 /**
@@ -63,7 +64,9 @@ export function GraphControls({
     setVisualScale
   } = useGraphContext()
 
+  const isMobile = useIsMobile()
   const [showSettings, setShowSettings] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(!isMobile)
 
   // Handle filter toggle
   const handleFilterToggle = useCallback(
@@ -91,13 +94,24 @@ export function GraphControls({
 
   return (
     <div
-      className={styles.container}
+      className={`${styles.container} ${isExpanded ? styles.expanded : styles.collapsed}`}
       data-onboarding="graph-controls"
       style={{
         right: `calc(${rightOffset}px + var(--space-4))`,
-        transition: 'right var(--transition-normal)',
+        transition: 'right var(--transition-normal), transform var(--transition-normal)',
       }}
     >
+      {/* Mobile Expand/Collapse Toggle */}
+      {isMobile && (
+        <button 
+          className={styles.mobileToggle}
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-label={isExpanded ? "Collapse controls" : "Expand controls"}
+        >
+          {isExpanded ? '▼' : '▲ Options'}
+        </button>
+      )}
+
       {/* Camera controls */}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Camera</div>
@@ -218,9 +232,9 @@ export function GraphControls({
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters (Combined with Legend) */}
       <div className={styles.section}>
-        <div className={styles.sectionTitle}>Show</div>
+        <div className={styles.sectionTitle}>Legend & Filters</div>
         <div className={styles.filterList}>
           {NODE_TYPES.map(({ type, color, shape }) => {
             const isVisible = getFilterKey(type)
@@ -254,33 +268,20 @@ export function GraphControls({
         </div>
       </div>
 
-      {/* Legend */}
-      <div className={styles.section}>
-        <div className={styles.sectionTitle}>Legend</div>
-        <div className={styles.legendList}>
-          {NODE_TYPES.map(({ type, color, shape }) => (
-            <div key={type} className={styles.legendItem}>
-              <span className={styles.legendShape} style={{ color }}>
-                {shape}
-              </span>
-              <span className={styles.legendLabel}>{nodeTypeLabels[type]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Keyboard shortcuts hint */}
-      <div className={styles.shortcuts}>
-        <div className={styles.shortcutItem}>
-          <kbd>Drag</kbd> Rotate
+      {!isMobile && (
+        <div className={styles.shortcuts}>
+          <div className={styles.shortcutItem}>
+            <kbd>Drag</kbd> Rotate
+          </div>
+          <div className={styles.shortcutItem}>
+            <kbd>Scroll</kbd> Zoom
+          </div>
+          <div className={styles.shortcutItem}>
+            <kbd>Click</kbd> Details
+          </div>
         </div>
-        <div className={styles.shortcutItem}>
-          <kbd>Scroll</kbd> Zoom
-        </div>
-        <div className={styles.shortcutItem}>
-          <kbd>Click</kbd> Details
-        </div>
-      </div>
+      )}
     </div>
   )
 }

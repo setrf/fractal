@@ -51,15 +51,36 @@
 /* Stats overlay */
 .stats {
   position: fixed;
-  bottom: var(--space-4);
-  left: var(--space-4);
+  bottom: var(--space-3);
+  left: var(--space-3);
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-2);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  background: oklch(from var(--bg-primary) l c h / 0.9);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--border-primary);
+  font-size: 10px;
+  background: oklch(from var(--bg-primary) l c h / 0.85);
+  padding: 4px 8px;
+  border: 1px solid var(--border-primary);
+  z-index: 50;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .stats {
+    position: fixed;
+    top: 60px; /* Below header */
+    left: var(--space-2);
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: 2px 6px;
+    font-size: 8px;
+    background: oklch(from var(--bg-primary) l c h / 0.8);
+    border: 1px solid var(--border-primary);
+    pointer-events: none;
+    z-index: 50;
+    max-width: 90vw;
+    flex-wrap: wrap;
+  }
 }
 
 .statItem {
@@ -186,4 +207,51 @@
   background: var(--bg-secondary);
   box-shadow: 4px 4px 0 var(--border-primary);
   transform: translate(-2px, -2px);
+}
+
+/* Mobile Warning Overlay */
+.mobileOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: transparent; /* Removed tint */
+  pointer-events: none; /* Let clicks pass through if needed, but overlay is mostly for visual warning */
+  z-index: 10;
+}
+
+.mobileWarning {
+  background: var(--bg-primary);
+  border: var(--border-width-strong) solid var(--text-primary);
+  box-shadow: 4px 4px 0 var(--border-strong);
+  padding: var(--space-3);
+  text-align: center;
+  max-width: 240px;
+  pointer-events: auto;
+  margin-bottom: 200px; /* Push higher to be center-ish */
+}
+
+.warningIcon {
+  font-size: var(--text-2xl);
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.mobileWarning p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.warningHint {
+  margin-top: var(--space-2) !important;
+  color: var(--text-secondary) !important;
+  font-size: var(--text-xs) !important;
 }

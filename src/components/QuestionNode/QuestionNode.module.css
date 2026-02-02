@@ -104,6 +104,7 @@
   padding: 2px 6px;
   border: var(--border-width) solid var(--border-primary);
   background: var(--bg-secondary);
+  flex-shrink: 0; /* Prevent wrapping on narrow screens */
 }
 
 /* Action buttons container - horizontal, bottom right */
@@ -114,6 +115,48 @@
   justify-content: flex-end;
   gap: var(--space-2);
   flex-shrink: 0;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+@media (max-width: 768px) {
+  .node {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .text {
+    font-size: var(--text-sm);
+  }
+
+  .qualityBadge {
+    font-size: 10px;
+    height: 20px;
+    padding: 1px 4px;
+  }
+
+  .actions {
+    margin-top: var(--space-2);
+    justify-content: flex-start; /* Left align on mobile for easier reach */
+    gap: var(--space-3); /* More gap between tap targets */
+  }
+
+  .expandBtn,
+  .addBtn,
+  .aiBtn,
+  .lockInBtn {
+    height: 36px; /* Larger tap target */
+    padding: 0 var(--space-3);
+    border-color: var(--border-primary); /* Always show border on mobile */
+    background: var(--bg-secondary);
+  }
+
+  .expandBtn {
+    width: 36px;
+  }
+
+  .stashBtn {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 /* Stash button styling */

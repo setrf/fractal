@@ -74,8 +74,10 @@ export function GraphNodePopup({
   onChat,
   onStash,
 }: GraphNodePopupProps) {
+  const isMobile = window.innerWidth <= 768
+
   // Calculate popup position (ensure it stays within viewport)
-  const popupStyle = {
+  const popupStyle = isMobile ? {} : {
     left: Math.min(position.x, window.innerWidth - 320),
     top: Math.min(position.y, window.innerHeight - 300),
   }
@@ -217,17 +219,15 @@ export function GraphNodePopup({
   }
 
   return (
-    <div className={styles.backdrop} onClick={handleBackdropClick}>
-      <div className={styles.popup} style={popupStyle}>
-        <button
-          className={styles.closeBtn}
-          onClick={onClose}
-          aria-label="Close popup"
-        >
-          ×
-        </button>
-        {renderContent()}
-      </div>
+    <div className={styles.popup} style={popupStyle}>
+      <button
+        className={styles.closeBtn}
+        onClick={onClose}
+        aria-label="Close popup"
+      >
+        ×
+      </button>
+      {renderContent()}
     </div>
   )
 }

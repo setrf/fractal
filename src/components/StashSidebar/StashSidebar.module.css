@@ -30,10 +30,18 @@
 @media (max-width: 768px) {
   .open {
     width: 100vw !important;
+    top: 56px !important; /* Start below MobileHeader */
+    height: calc(100vh - 56px) !important;
+  }
+  
+  .collapsed {
+    width: 0 !important;
+    border-right: none !important;
+    overflow: hidden;
   }
   
   .sidebar {
-    /* Ensure it sits on top of everything */
+    /* Ensure it sits on top of content but below header */
     z-index: 1000;
   }
 }
@@ -54,6 +62,12 @@
   background: transparent;
   z-index: 101;
   transition: background var(--transition-fast);
+}
+
+@media (max-width: 768px) {
+  .resizeHandle {
+    display: none !important;
+  }
 }
 
 .resizeHandle:hover,
@@ -155,9 +169,15 @@
   gap: var(--space-2);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .addNoteButton {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,6 +195,28 @@
   background: var(--bg-tertiary);
   border-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+.closeSidebarButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--border-width) solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.closeSidebarButton:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-error);
+  color: var(--accent-error);
 }
 
 /* Note creation form */

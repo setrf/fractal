@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import styles from './ProbeSidebar.module.css'
 import { useProbeContext } from '../../context/ProbeContext'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { ProbeTabBar } from '../ProbeTabBar'
 import { ProbeChat } from '../ProbeChat'
 
@@ -52,9 +53,10 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
     sidebarWidth,
     setSidebarWidth,
     externalDragHover,
-    setExternalDragHover,
     addStashItemToProbe,
   } = useProbeContext()
+
+  const isMobile = useIsMobile()
 
   const [isDragOver, setIsDragOver] = useState(false)
   
@@ -182,25 +184,27 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
       data-probe-sidebar="true"
       data-onboarding="probe-sidebar"
     >
-      {/* Toggle button - always visible */}
-      <button
-        className={styles.toggleButton}
-        onClick={toggleOpen}
-        aria-label={isOpen ? 'Collapse probe' : 'Expand probe'}
-        title={isOpen ? 'Collapse' : 'Open Probe'}
-      >
-        <span className={styles.toggleIcon} aria-hidden="true">
-          {isOpen ? '▸' : '◂'}
-        </span>
-        {!isOpen && (
-          <span className={styles.collapsedLabel}>
-            <span className={styles.collapsedIcon}>⚡</span>
-            {count > 0 && (
-              <span className={styles.collapsedCount}>{count}</span>
-            )}
+      {/* Toggle button - always visible on desktop, hidden on mobile */}
+      {!isMobile && (
+        <button
+          className={styles.toggleButton}
+          onClick={toggleOpen}
+          aria-label={isOpen ? 'Collapse probe' : 'Expand probe'}
+          title={isOpen ? 'Collapse' : 'Open Probe'}
+        >
+          <span className={styles.toggleIcon} aria-hidden="true">
+            {isOpen ? '▸' : '◂'}
           </span>
-        )}
-      </button>
+          {!isOpen && (
+            <span className={styles.collapsedLabel}>
+              <span className={styles.collapsedIcon}>⚡</span>
+              {count > 0 && (
+                <span className={styles.collapsedCount}>{count}</span>
+              )}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Main content - only visible when open */}
       {isOpen && (
@@ -212,16 +216,28 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
               Probe
               {count > 0 && <span className={styles.count}>({count})</span>}
             </h2>
-            <button
-              className={styles.createButton}
-              onClick={handleCreateProbe}
-              disabled={!canCreateProbe}
-              aria-label="Create new probe"
-              title={canCreateProbe ? 'New Probe' : 'Max 5 probes reached'}
-              data-onboarding="probe-create"
-            >
-              +
-            </button>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.createButton}
+                onClick={handleCreateProbe}
+                disabled={!canCreateProbe}
+                aria-label="Create new probe"
+                title={canCreateProbe ? 'New Probe' : 'Max 5 probes reached'}
+                data-onboarding="probe-create"
+              >
+                +
+              </button>
+              {isMobile && (
+                <button
+                  className={styles.closeSidebarButton}
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close sidebar"
+                  title="Close"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </header>
 
           {/* Tab bar - only show if there are probes */}

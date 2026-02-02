@@ -51,12 +51,10 @@
 
   .popup.minimized {
     height: 48px !important;
-    bottom: 0 !important;
+    bottom: auto !important; /* Allow top/y from JS to position it */
     width: 100vw !important;
     min-width: 100vw !important;
-    /* Stack them vertically? Or just show one?
-       The JS handles stacking logic, but on mobile we might want a simple stack.
-    */
+    z-index: 2100 !important; /* Above expanded popups */
   }
 }
 

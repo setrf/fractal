@@ -17,7 +17,7 @@ import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
 import styles from './QuestionInput.module.css'
 
 // Constants for dynamic sizing
-const MIN_WIDTH = 300
+const MIN_WIDTH = 280
 const MAX_WIDTH = 800
 const PADDING_HORIZONTAL = 80 // Approximate padding + prompt + button width
 
@@ -88,7 +88,10 @@ export function QuestionInput({
     const textWidth = sizer.offsetWidth
 
     // Calculate desired wrapper width (text + padding for prompt, button, gaps)
-    const desiredWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, textWidth + PADDING_HORIZONTAL))
+    const padding = window.innerWidth <= 768 ? 60 : PADDING_HORIZONTAL
+    const maxWidth = Math.min(MAX_WIDTH, window.innerWidth * 0.95)
+    const minWidth = Math.min(MIN_WIDTH, window.innerWidth * 0.9)
+    const desiredWidth = Math.min(maxWidth, Math.max(minWidth, textWidth + padding))
     
     // Apply width to wrapper
     wrapper.style.width = `${desiredWidth}px`

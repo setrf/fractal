@@ -23,6 +23,7 @@ import { StashSidebar } from './components/StashSidebar'
 import { ProbeSidebar } from './components/ProbeSidebar'
 import { NotePopup } from './components/NotePopup'
 import { ConceptPopup } from './components/ConceptPopup'
+import { MobileHeader } from './components/MobileHeader/MobileHeader'
 import { GraphView, type GraphViewHandle } from './components/GraphView'
 import { GraphControls } from './components/GraphControls'
 import { GraphNodePopup } from './components/GraphNodePopup'
@@ -167,27 +168,24 @@ function AppContent() {
   const isMobile = useIsMobile()
 
   // Exclusive sidebar management for mobile
-  useEffect(() => {
-    if (isMobile) {
-      if (stashOpen && probeOpen) {
-        // If both end up open (e.g. resize), close one
-        setProbeOpen(false) 
-      }
-    }
-  }, [isMobile, stashOpen, probeOpen, setProbeOpen])
-
-  // When opening a sidebar on mobile, close the other one
-  useEffect(() => {
-    if (isMobile && stashOpen) {
-      setProbeOpen(false)
-    }
-  }, [isMobile, stashOpen, setProbeOpen])
+  const prevStashOpen = useRef(stashOpen)
+  const prevProbeOpen = useRef(probeOpen)
 
   useEffect(() => {
-    if (isMobile && probeOpen) {
-      setStashOpen(false)
+    if (!isMobile) return
+
+    // If stash JUST opened, close probe
+    if (stashOpen && !prevStashOpen.current) {
+      if (probeOpen) setProbeOpen(false)
     }
-  }, [isMobile, probeOpen, setStashOpen])
+    // If probe JUST opened, close stash
+    else if (probeOpen && !prevProbeOpen.current) {
+      if (stashOpen) setStashOpen(false)
+    }
+
+    prevStashOpen.current = stashOpen
+    prevProbeOpen.current = probeOpen
+  }, [isMobile, stashOpen, probeOpen, setStashOpen, setProbeOpen])
 
   // AI question generation
   const { generate, isLoading: aiLoading, error: aiError, lastMeta } = useAIQuestions()
@@ -778,6 +776,8 @@ function AppContent() {
         endIndex: item.content.length,
       }
       const explanation: ConceptExplanation = {
+        conceptId: concept.id,
+        normalizedName: concept.normalizedName,
         summary: item.metadata.summary || '',
         context: item.metadata.context || '',
         relatedConcepts: item.metadata.relatedConcepts || [],
@@ -900,135 +900,148 @@ function AppContent() {
 
   return (
     <div className={layoutClasses}>
+      {/* Mobile header - consolidated controls for small screens */}
+      {isMobile && (
+        <MobileHeader
+          onOpenOnboarding={onboarding.restart}
+          onCreateNote={handleCreateNote}
+          onMinimizeAll={handleMinimizeAll}
+          onCloseAll={handleCloseAll}
+        />
+      )}
+
       {/* Stash sidebar - always available (left side) */}
       <StashSidebar onItemClick={handleStashItemClick} />
       
       {/* Main content area */}
-      <div className="main-content">
-        {/* Theme toggle - always visible in all views, shifts with probe sidebar */}
-        <ThemeToggle rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
-        
-        {/* View mode toggle - always visible in all views, shifts with probe sidebar */}
-        <ViewModeToggle rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
+      <div className="main-content" style={isMobile ? { paddingTop: '56px' } : undefined}>
+        {/* Desktop toggles - hidden on mobile in favor of MobileHeader */}
+        {!isMobile && (
+          <>
+            {/* Theme toggle - always visible in all views, shifts with probe sidebar */}
+            <ThemeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
+            
+            {/* View mode toggle - always visible in all views, shifts with probe sidebar */}
+            <ViewModeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
 
-        {/* Model selector - always visible in all views, shifts with probe sidebar */}
-        <ModelSelector rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
-        
-        {/* Action buttons - fixed in upper left after stash (visible in all views) */}
-        <div
-          style={{
-            position: 'fixed',
-            top: 'var(--space-3)',
-            left: isMobile 
-              ? 'calc(48px + var(--space-3))' 
-              : (stashOpen ? `calc(${sidebarWidth}px + var(--space-3))` : 'calc(48px + var(--space-3))'),
-            display: 'flex',
-            gap: 'var(--space-2)',
-            zIndex: 99,
-            transition: 'left var(--transition-normal)',
-          }}
-        >
-          <button
-            onClick={handleCreateNote}
-            style={{
-              padding: 'var(--space-2) var(--space-3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              background: 'var(--bg-primary)',
-              border: 'var(--border-width) solid var(--border-primary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'var(--text-primary)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            title="Create a new note"
-            aria-label="Create new note"
-          >
-            + Note
-          </button>
-          <button
-            onClick={handleMinimizeAll}
-            style={{
-              padding: 'var(--space-2) var(--space-3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              background: 'var(--bg-primary)',
-              border: 'var(--border-width) solid var(--border-primary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'var(--text-primary)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            title="Minimize all popups"
-            aria-label="Minimize all popups"
-          >
-            ⌄ Minimize All
-          </button>
-          <button
-            onClick={handleCloseAll}
-            style={{
-              padding: 'var(--space-2) var(--space-3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              background: 'var(--bg-primary)',
-              border: 'var(--border-width) solid var(--border-primary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'var(--text-primary)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            title="Close all popups"
-            aria-label="Close all popups"
-          >
-            × Close All
-          </button>
-          <button
-            onClick={onboarding.restart}
-            style={{
-              padding: 'var(--space-2) var(--space-3)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-              background: 'var(--bg-primary)',
-              border: 'var(--border-width) solid var(--border-primary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'var(--text-primary)'
-              e.currentTarget.style.color = 'var(--text-primary)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            title="Start the onboarding tour"
-            aria-label="Start onboarding tour"
-          >
-            {onboardingButtonLabel}
-          </button>
-        </div>
+            {/* Model selector - always visible in all views, shifts with probe sidebar */}
+            <ModelSelector rightOffset={probeOpen ? probeSidebarWidth : 48} />
+            
+            {/* Action buttons - fixed in upper left after stash (visible in all views) */}
+            <div
+              style={{
+                position: 'fixed',
+                top: 'var(--space-3)',
+                left: stashOpen ? `calc(${sidebarWidth}px + var(--space-3))` : 'calc(48px + var(--space-3))',
+                display: 'flex',
+                gap: 'var(--space-2)',
+                zIndex: 99,
+                transition: 'left var(--transition-normal)',
+              }}
+            >
+              <button
+                onClick={handleCreateNote}
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  background: 'var(--bg-primary)',
+                  border: 'var(--border-width) solid var(--border-primary)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s, color 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--text-primary)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-primary)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+                title="Create a new note"
+                aria-label="Create new note"
+              >
+                + Note
+              </button>
+              <button
+                onClick={handleMinimizeAll}
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  background: 'var(--bg-primary)',
+                  border: 'var(--border-width) solid var(--border-primary)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s, color 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--text-primary)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-primary)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+                title="Minimize all popups"
+                aria-label="Minimize all popups"
+              >
+                ⌄ Minimize All
+              </button>
+              <button
+                onClick={handleCloseAll}
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  background: 'var(--bg-primary)',
+                  border: 'var(--border-width) solid var(--border-primary)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s, color 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--text-primary)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-primary)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+                title="Close all popups"
+                aria-label="Close all popups"
+              >
+                × Close All
+              </button>
+              <button
+                onClick={onboarding.restart}
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  background: 'var(--bg-primary)',
+                  border: 'var(--border-width) solid var(--border-primary)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s, color 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--text-primary)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-primary)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+                title="Start the onboarding tour"
+                aria-label="Start onboarding tour"
+              >
+                {onboardingButtonLabel}
+              </button>
+            </div>
+          </>
+        )}
         
         {/* ============================================
          * GRAPH VIEW
@@ -1045,13 +1058,13 @@ function AppContent() {
             <GraphView
               ref={graphRef}
               onNodeClick={handleGraphNodeClick}
-              leftOffset={isMobile ? 48 : (stashOpen ? sidebarWidth : 48)}
+              leftOffset={isMobile ? 0 : (stashOpen ? sidebarWidth : 48)}
             />
             <GraphControls
               onResetCamera={() => graphRef.current?.resetCamera?.()}
               onZoomIn={() => graphRef.current?.zoomIn?.()}
               onZoomOut={() => graphRef.current?.zoomOut?.()}
-              rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)}
+              rightOffset={isMobile ? 0 : (probeOpen ? probeSidebarWidth : 48)}
             />
             {graphPopupNode && (
               <GraphNodePopup
@@ -1102,7 +1115,7 @@ function AppContent() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              minHeight: '100vh',
+              minHeight: isMobile ? 'calc(100vh - 56px)' : '100vh',
               padding: 'var(--space-4)',
             }}
           >
@@ -1117,25 +1130,28 @@ function AppContent() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 'var(--space-8)',
+                  justifyContent: isMobile ? 'flex-start' : 'center',
+                  gap: isMobile ? 'var(--space-12)' : 'var(--space-8)',
                   width: '100%',
                   flex: 1,
+                  paddingTop: isMobile ? 'var(--space-12)' : 0,
                 }}
               >
                 {/* Branding header */}
-                <header style={{ textAlign: 'center' }}>
-                  <h1
-                    style={{
-                      fontSize: 'var(--text-4xl)',
-                      fontWeight: 700,
-                      letterSpacing: 'var(--tracking-tight)',
-                      marginBottom: 'var(--space-2)',
-                    }}
-                  >
-                    Fractal
-                  </h1>
-                </header>
+                {!isMobile && (
+                  <header style={{ textAlign: 'center' }}>
+                    <h1
+                      style={{
+                        fontSize: 'var(--text-4xl)',
+                        fontWeight: 700,
+                        letterSpacing: 'var(--tracking-tight)',
+                        marginBottom: 'var(--space-2)',
+                      }}
+                    >
+                      Fractal
+                    </h1>
+                  </header>
+                )}
                 
                 {/* Central question input */}
                 <QuestionInput onSubmit={handleQuestionSubmit} />
@@ -1156,24 +1172,26 @@ function AppContent() {
                 }}
               >
                 {/* Minimal header in tree view */}
-                <header
-                  style={{
-                    textAlign: 'center',
-                    marginBottom: 'var(--space-8)',
-                  }}
-                >
-                  <h1
+                {!isMobile && (
+                  <header
                     style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 'var(--text-lg)',
-                      fontWeight: 600,
-                      letterSpacing: 'var(--tracking-tight)',
-                      color: 'var(--text-secondary)',
+                      textAlign: 'center',
+                      marginBottom: 'var(--space-8)',
                     }}
                   >
-                    Fractal
-                  </h1>
-                </header>
+                    <h1
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-lg)',
+                        fontWeight: 600,
+                        letterSpacing: 'var(--tracking-tight)',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      Fractal
+                    </h1>
+                  </header>
+                )}
 
                 {/* AI error message */}
                 {aiError && (
@@ -1196,13 +1214,25 @@ function AppContent() {
                   <div
                     style={{
                       fontFamily: 'var(--font-mono)',
-                      fontSize: 'var(--text-xs)',
+                      fontSize: isMobile ? '10px' : 'var(--text-xs)',
                       color: 'var(--text-tertiary)',
                       marginBottom: 'var(--space-4)',
+                      textAlign: 'center',
+                      padding: '0 var(--space-4)',
+                      lineHeight: 1.4,
                     }}
                     data-onboarding="weave-score"
                   >
-                    Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel}
+                    {isMobile ? (
+                      <>
+                        Quality: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'}/10<br />
+                        Prompt: {lastMeta.promptLabel} · {lastMeta.evalModel.split('/').pop()}
+                      </>
+                    ) : (
+                      <>
+                        Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel}
+                      </>
+                    )}
                   </div>
                 )}
 

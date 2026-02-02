@@ -13,15 +13,66 @@
 /* Main container */
 .container {
   position: fixed;
-  top: calc(var(--space-4) + 48px + var(--space-4));
-  /* Just below header */
+  top: calc(var(--space-4) + 56px + var(--space-4)); /* Below MobileHeader */
   right: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   font-family: var(--font-mono);
   z-index: 1000;
-  /* Ensure it's above everything */
+}
+
+@media (max-width: 768px) {
+  .container {
+    top: auto;
+    bottom: var(--space-4);
+    right: var(--space-4);
+    gap: var(--space-2);
+    width: auto;
+    max-height: calc(100vh - 120px);
+  }
+
+  .section {
+    padding: var(--space-2);
+    /* Make sections slightly more compact */
+  }
+
+  /* Hide Filter and Legend by default on mobile, can be toggled by a new button?
+     For now, let's just make them really compact or collapsible.
+  */
+
+  .settingsPanel {
+    right: 0;
+    bottom: calc(100% + var(--space-2));
+    top: auto;
+    width: 220px;
+    box-shadow: 4px -4px 0 var(--border-primary);
+  }
+
+  .collapsed .section,
+  .collapsed .shortcuts {
+    display: none;
+  }
+}
+
+.mobileToggle {
+  display: none;
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .mobileToggle {
+    display: block;
+    box-shadow: 4px 4px 0 var(--border-primary);
+  }
 }
 
 /* Section container */
@@ -83,8 +134,8 @@
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
-  font-size: var(--text-sm);
-  padding: 2px 0;
+  font-size: 11px;
+  padding: 1px 0;
   transition: opacity var(--transition-fast);
 }
 
@@ -97,14 +148,35 @@
 }
 
 .checkbox {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--text-primary);
+  cursor: pointer;
+  border: var(--border-width) solid var(--border-primary);
+  appearance: none;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.checkbox:checked {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.checkbox:checked::after {
+  content: '✓';
+  color: var(--bg-primary);
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .filterShape {
-  font-size: var(--text-base);
-  width: 16px;
+  font-size: 14px;
+  width: 14px;
   text-align: center;
 }
 

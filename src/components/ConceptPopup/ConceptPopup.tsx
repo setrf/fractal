@@ -502,6 +502,13 @@ export function ConceptPopup({
   const getMinimizedPosition = useCallback((): PopupPosition => {
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
+    const isMobile = viewportWidth <= 768
+
+    if (isMobile) {
+      // Stack from bottom on mobile
+      return { x: 0, y: viewportHeight - 48 - (minimizedStackIndex * 52) }
+    }
+
     const x = viewportWidth - STACK_RIGHT_OFFSET - MINIMIZED_WIDTH
     const y = viewportHeight - STACK_BOTTOM_OFFSET - MINIMIZED_ESTIMATED_HEIGHT - 
               (minimizedStackIndex * (MINIMIZED_ESTIMATED_HEIGHT + STACK_MARGIN))

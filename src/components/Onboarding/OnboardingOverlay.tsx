@@ -102,13 +102,41 @@ export function OnboardingOverlay({
     const cardRect = cardRef.current.getBoundingClientRect()
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
+    const isMobile = viewportWidth <= 768
 
     if (!targetRect) {
       setCardPosition({
         left: (viewportWidth - cardRect.width) / 2,
-        top: Math.min(120, (viewportHeight - cardRect.height) / 2),
+        top: isMobile ? 80 : Math.min(120, (viewportHeight - cardRect.height) / 2),
         placement: 'center',
       })
+      return
+    }
+
+    if (isMobile) {
+      // On mobile, if there's a target, try to place it below if it fits, else above, else center bottom
+      const spaceBelow = viewportHeight - targetRect.bottom - CARD_GAP - VIEWPORT_MARGIN
+      const spaceAbove = targetRect.top - CARD_GAP - VIEWPORT_MARGIN
+      
+      if (spaceBelow >= cardRect.height) {
+        setCardPosition({
+          placement: 'bottom',
+          left: (viewportWidth - cardRect.width) / 2,
+          top: targetRect.bottom + CARD_GAP,
+        })
+      } else if (spaceAbove >= cardRect.height) {
+        setCardPosition({
+          placement: 'top',
+          left: (viewportWidth - cardRect.width) / 2,
+          top: targetRect.top - cardRect.height - CARD_GAP,
+        })
+      } else {
+        setCardPosition({
+          placement: 'floating',
+          left: (viewportWidth - cardRect.width) / 2,
+          top: viewportHeight - cardRect.height - VIEWPORT_MARGIN - 60, // Above typical mobile bottom controls
+        })
+      }
       return
     }
 

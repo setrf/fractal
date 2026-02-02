@@ -191,7 +191,10 @@ export function useProbe(): UseProbeReturn {
   })
 
   // UI state
-  const [isOpen, setIsOpen] = useState(false) // Start collapsed by default
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return false
+    return false // Already false in useProbe, but let's be explicit and consistent
+  })
   const [sidebarWidth, setSidebarWidth] = useState(400) // Slightly wider than stash
   const [externalDragHover, setExternalDragHover] = useState(false)
 

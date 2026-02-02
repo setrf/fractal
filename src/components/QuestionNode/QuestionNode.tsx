@@ -16,6 +16,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { QuestionNode as QuestionNodeType, QuestionNodeAddOptions } from '../../types/question'
 import type { ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
@@ -146,6 +147,7 @@ export function QuestionNode({
   // State for the inline add-child form
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [newQuestion, setNewQuestion] = useState('')
+  const isMobile = useIsMobile()
   
   // State for concept popups (supports multiple open popups)
   const [openPopups, setOpenPopups] = useState<OpenPopup[]>([])
@@ -597,7 +599,7 @@ export function QuestionNode({
               data-onboarding={isRoot ? 'deep-dive' : undefined}
             >
               <span className={styles.icon}>{isGenerating ? '◌' : '✦'}</span>
-              <span>Deep dive</span>
+              {!isMobile && <span>Deep dive</span>}
             </button>
           )}
 
@@ -610,7 +612,7 @@ export function QuestionNode({
               title="Start a conversation about this question"
             >
               <span className={styles.icon}>→</span>
-              <span>Chat</span>
+              {!isMobile && <span>Chat</span>}
             </button>
           )}
           
@@ -622,7 +624,7 @@ export function QuestionNode({
             title="Add your own related question"
           >
             <span className={styles.icon}>↳</span>
-            <span>Customize</span>
+            {!isMobile && <span>Customize</span>}
           </button>
         </div>
       </div>

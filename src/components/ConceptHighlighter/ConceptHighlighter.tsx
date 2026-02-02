@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useMemo } from 'react'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { ExtractedConcept, ConceptCategory } from '../../api'
 import styles from './ConceptHighlighter.module.css'
 
@@ -144,6 +145,8 @@ export function ConceptHighlighter({
   className = '',
   interactive = true,
 }: ConceptHighlighterProps) {
+  const isMobile = useIsMobile()
+
   // Memoize text segmentation
   const segments = useMemo(
     () => segmentText(text, concepts),
@@ -153,20 +156,20 @@ export function ConceptHighlighter({
   // Event handlers
   const handleMouseEnter = useCallback(
     (concept: ExtractedConcept, event: React.MouseEvent) => {
-      if (interactive && onConceptHover) {
+      if (interactive && onConceptHover && !isMobile) {
         onConceptHover(concept, event)
       }
     },
-    [interactive, onConceptHover]
+    [interactive, onConceptHover, isMobile]
   )
 
   const handleMouseLeave = useCallback(
     (concept: ExtractedConcept) => {
-      if (interactive && onConceptLeave) {
+      if (interactive && onConceptLeave && !isMobile) {
         onConceptLeave(concept)
       }
     },
-    [interactive, onConceptLeave]
+    [interactive, onConceptLeave, isMobile]
   )
 
   const handleClick = useCallback(

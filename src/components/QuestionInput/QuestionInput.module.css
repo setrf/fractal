@@ -33,10 +33,31 @@
   border: var(--border-width-strong) solid var(--text-primary);
   background: var(--bg-primary);
   /* Dynamic sizing: min-width for empty state, max-width before wrapping */
-  min-width: 500px;
-  max-width: min(900px, 90vw);
+  min-width: min(500px, 90vw);
+  max-width: min(900px, 95vw);
   /* Smooth shadow transition for focus state */
   transition: box-shadow var(--transition-fast);
+}
+
+@media (max-width: 768px) {
+  .inputWrapper {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-2);
+  }
+
+  .prompt {
+    font-size: var(--text-xl);
+  }
+
+  .input {
+    font-size: var(--text-base); /* Prevent iOS zoom */
+  }
+
+  .submit {
+    width: 36px;
+    height: 36px;
+    font-size: var(--text-lg);
+  }
 }
 
 /* Neobrutalist offset shadow on focus */

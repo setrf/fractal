@@ -14,6 +14,7 @@ import { useState, useCallback, useRef, useEffect, type DragEvent } from 'react'
 import styles from './StashSidebar.module.css'
 import { StashItem } from '../StashItem'
 import { useStashContext } from '../../context/StashContext'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { StashItemType, StashItemInput, StashItem as StashItemData } from '../../types/stash'
 import { stashTypeLabels, stashTypeIcons } from '../../types/stash'
 
@@ -75,6 +76,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     sidebarWidth,
     setSidebarWidth,
   } = useStashContext()
+
+  const isMobile = useIsMobile()
 
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAddingNote, setIsAddingNote] = useState(false)
@@ -344,25 +347,27 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       data-stash-sidebar="true"
       data-onboarding="stash-sidebar"
     >
-      {/* Toggle button - always visible */}
-      <button
-        className={styles.toggleButton}
-        onClick={toggleOpen}
-        aria-label={isOpen ? 'Collapse stash' : 'Expand stash'}
-        title={isOpen ? 'Collapse' : 'Open Stash'}
-      >
-        <span className={styles.toggleIcon} aria-hidden="true">
-          {isOpen ? '◂' : '▸'}
-        </span>
-        {!isOpen && (
-          <span className={styles.collapsedLabel}>
-            <span className={styles.collapsedIcon}>☆</span>
-            {count > 0 && (
-              <span className={styles.collapsedCount}>{count}</span>
-            )}
+      {/* Toggle button - always visible on desktop, hidden on mobile */}
+      {!isMobile && (
+        <button
+          className={styles.toggleButton}
+          onClick={toggleOpen}
+          aria-label={isOpen ? 'Collapse stash' : 'Expand stash'}
+          title={isOpen ? 'Collapse' : 'Open Stash'}
+        >
+          <span className={styles.toggleIcon} aria-hidden="true">
+            {isOpen ? '◂' : '▸'}
           </span>
-        )}
-      </button>
+          {!isOpen && (
+            <span className={styles.collapsedLabel}>
+              <span className={styles.collapsedIcon}>☆</span>
+              {count > 0 && (
+                <span className={styles.collapsedCount}>{count}</span>
+              )}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Main content - only visible when open */}
       {isOpen && (
@@ -374,14 +379,26 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
               Stash
               <span className={styles.count}>({count})</span>
             </h2>
-            <button
-              className={styles.addNoteButton}
-              onClick={() => setIsAddingNote(true)}
-              aria-label="Add a note"
-              title="Add Note"
-            >
-              +
-            </button>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.addNoteButton}
+                onClick={() => setIsAddingNote(true)}
+                aria-label="Add a note"
+                title="Add Note"
+              >
+                +
+              </button>
+              {isMobile && (
+                <button
+                  className={styles.closeSidebarButton}
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close sidebar"
+                  title="Close"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </header>
 
           {/* Note creation form */}

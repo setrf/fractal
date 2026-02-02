@@ -171,7 +171,10 @@ export function useStash(): UseStashReturn {
   const [items, setItems] = useState<StashItem[]>(() => loadFromStorage())
 
   // UI state
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return false
+    return true
+  })
   const [filterType, setFilterType] = useState<StashItemType | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [externalDragHover, setExternalDragHover] = useState(false)

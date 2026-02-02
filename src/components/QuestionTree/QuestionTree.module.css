@@ -112,3 +112,26 @@
 .children > .branch {
   animation: slideIn var(--transition-normal) ease-out;
 }
+
+@media (max-width: 768px) {
+  /* Reduce indentation on mobile to prevent deep nesting from going off-screen */
+  .children {
+    padding-left: var(--space-4); /* Was space-8 (32px) -> now 16px */
+  }
+  
+  /* Adjust vertical connector line position */
+  .connector {
+    left: var(--space-2); /* Was space-4 (16px) -> now 8px */
+  }
+  
+  /* Adjust connector from parent down */
+  .children::before {
+    left: var(--space-2);
+  }
+  
+  /* Adjust horizontal connector to child */
+  .children > .branch::before {
+    left: calc(var(--space-2) * -1);
+    width: var(--space-2);
+  }
+}

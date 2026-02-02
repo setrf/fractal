@@ -27,6 +27,17 @@
   width: 320px; /* Default, overridden by inline style */
 }
 
+@media (max-width: 768px) {
+  .open {
+    width: 100vw !important;
+  }
+  
+  .sidebar {
+    /* Ensure it sits on top of everything */
+    z-index: 1000;
+  }
+}
+
 /* Disable transition during resize for smooth dragging */
 .resizing {
   transition: none !important;

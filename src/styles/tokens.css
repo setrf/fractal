@@ -308,3 +308,14 @@
     --graph-edge-strong: oklch(70% 0.12 250);
   }
 }
+
+/* ============================================
+ * MOBILE RESPONSIVENESS
+ * ============================================ */
+@media (max-width: 768px) {
+  :root {
+    /* Sidebars become full width overlays */
+    --stash-width-expanded: 100vw;
+    --probe-width-expanded: 100vw;
+  }
+}

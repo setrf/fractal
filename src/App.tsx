@@ -39,6 +39,7 @@ import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
 import { useOnboarding } from './hooks/useOnboarding'
+import { useIsMobile } from './hooks/useIsMobile'
 import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 import type { StashItem as StashItemData } from './types/stash'
 import type { PopupPosition } from './components/ConceptPopup'
@@ -161,6 +162,32 @@ function AppContent() {
   } = useQuestionTree()
 
   const { selectedModel } = useModelContext()
+
+  // Mobile detection
+  const isMobile = useIsMobile()
+
+  // Exclusive sidebar management for mobile
+  useEffect(() => {
+    if (isMobile) {
+      if (stashOpen && probeOpen) {
+        // If both end up open (e.g. resize), close one
+        setProbeOpen(false) 
+      }
+    }
+  }, [isMobile, stashOpen, probeOpen, setProbeOpen])
+
+  // When opening a sidebar on mobile, close the other one
+  useEffect(() => {
+    if (isMobile && stashOpen) {
+      setProbeOpen(false)
+    }
+  }, [isMobile, stashOpen, setProbeOpen])
+
+  useEffect(() => {
+    if (isMobile && probeOpen) {
+      setStashOpen(false)
+    }
+  }, [isMobile, probeOpen, setStashOpen])
 
   // AI question generation
   const { generate, isLoading: aiLoading, error: aiError, lastMeta } = useAIQuestions()
@@ -879,20 +906,22 @@ function AppContent() {
       {/* Main content area */}
       <div className="main-content">
         {/* Theme toggle - always visible in all views, shifts with probe sidebar */}
-        <ThemeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
+        <ThemeToggle rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
         
         {/* View mode toggle - always visible in all views, shifts with probe sidebar */}
-        <ViewModeToggle rightOffset={probeOpen ? probeSidebarWidth : 48} />
+        <ViewModeToggle rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
 
         {/* Model selector - always visible in all views, shifts with probe sidebar */}
-        <ModelSelector rightOffset={probeOpen ? probeSidebarWidth : 48} />
+        <ModelSelector rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)} />
         
         {/* Action buttons - fixed in upper left after stash (visible in all views) */}
         <div
           style={{
             position: 'fixed',
             top: 'var(--space-3)',
-            left: stashOpen ? `calc(${sidebarWidth}px + var(--space-3))` : 'calc(48px + var(--space-3))',
+            left: isMobile 
+              ? 'calc(48px + var(--space-3))' 
+              : (stashOpen ? `calc(${sidebarWidth}px + var(--space-3))` : 'calc(48px + var(--space-3))'),
             display: 'flex',
             gap: 'var(--space-2)',
             zIndex: 99,
@@ -1016,13 +1045,13 @@ function AppContent() {
             <GraphView
               ref={graphRef}
               onNodeClick={handleGraphNodeClick}
-              leftOffset={stashOpen ? sidebarWidth : 48}
+              leftOffset={isMobile ? 48 : (stashOpen ? sidebarWidth : 48)}
             />
             <GraphControls
               onResetCamera={() => graphRef.current?.resetCamera?.()}
               onZoomIn={() => graphRef.current?.zoomIn?.()}
               onZoomOut={() => graphRef.current?.zoomOut?.()}
-              rightOffset={probeOpen ? probeSidebarWidth : 48}
+              rightOffset={isMobile ? 48 : (probeOpen ? probeSidebarWidth : 48)}
             />
             {graphPopupNode && (
               <GraphNodePopup

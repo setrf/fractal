@@ -68,6 +68,82 @@
 }
 
 /* ============================================
+ * MOBILE LAYOUT
+ * ============================================ */
+@media (max-width: 768px) {
+  /* On mobile, sidebars are overlays - no margin shift */
+  .app-layout.stash-open .main-content {
+    margin-left: var(--stash-width-collapsed); /* Keep collapsed width visible or 0 if we want it hidden */
+  }
+
+  .app-layout.probe-open .main-content {
+    margin-right: var(--probe-width-collapsed); /* Keep collapsed width visible or 0 if we want it hidden */
+  }
+  
+  /* If we want to completely hide the content behind the sidebar: */
+  .app-layout.stash-open .main-content,
+  .app-layout.probe-open .main-content {
+     margin-left: 0;
+     margin-right: 0;
+  }
+  
+  /* However, since we have a collapsed state, we probably want to keep the margin for the collapsed strip 
+     if it's still visible underneath, or just rely on z-index. 
+     The plan says: "Ensure .main-content margins are 0 when sidebars are open on mobile."
+     But we still have the collapsed sidebar taking up space? 
+     Actually, if the sidebar is overlay, the main content should probably stay put. 
+     But wait, if the sidebar is 100vw, it covers everything.
+     Let's set margins to 0 (or just the collapsed width) so the content doesn't squish.
+  */
+
+  /* Reset margins to just the collapsed width (or 0 if we hide collapsed state) 
+     The sidebar will overlay everything. */
+  .app-layout.stash-open .main-content {
+    margin-left: 0;
+  }
+  
+  .app-layout.probe-open .main-content {
+    margin-right: 0;
+  }
+
+  /* When collapsed, we might still want the little strip, or maybe not on mobile?
+     For now, let's assume the collapsed strip is small enough (48px) to stay,
+     but if we want full screen real estate, we might even hide the collapsed strip?
+     Let's stick to the plan: "Ensure .main-content margins are 0 when sidebars are open on mobile."
+     
+     Wait, if I set margin to 0, the content will be under the collapsed sidebar?
+     The collapsed sidebar is fixed. 
+     If I want the content to NOT shift, I should set margin to 0.
+     BUT the collapsed sidebar (48px) is still there.
+     
+     If I set margin to 0, the 48px sidebar will cover the left 48px of content.
+     So when CLOSED, we probably still want the 48px margin.
+     When OPEN, we definitely want 0 margin because the sidebar is 100vw and covers everything anyway.
+     The content shouldn't try to fit in 0px width.
+  */
+  
+  .app-layout.stash-collapsed .main-content {
+    margin-left: 48px; /* Maintain space for collapsed bar */
+  }
+
+  .app-layout.probe-collapsed .main-content {
+    margin-right: 48px; /* Maintain space for collapsed bar */
+  }
+
+  /* When open, sidebar is 100vw overlay. 
+     We don't want to push content. Content sits behind. */
+  .app-layout.stash-open .main-content {
+    margin-left: 48px; /* Keep it consistent with collapsed, or 0? 
+                        If 0, content jumps left. 
+                        Let's keep 48px so it doesn't jump, just gets covered. */
+  }
+
+  .app-layout.probe-open .main-content {
+    margin-right: 48px;
+  }
+}
+
+/* ============================================
  * GRAPH VIEW MODE
  * Special layout for 3D graph visualization
  * ============================================ */

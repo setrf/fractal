@@ -64,6 +64,10 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - Click nodes for details and actions
   - Zoom, pan, and rotate navigation
   - Filter nodes by type
+- **Mobile Responsiveness** — Fully adapting layout for mobile devices
+  - Sidebars transform into full-width overlays
+  - Concept popups become touch-friendly bottom sheets
+  - Layout adjusts to prevent content occlusion
 - **Add Related Questions** — Click any node to add child questions
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
 - **Model Selection** — Choose from available W&B models for generation, chat, and evaluation

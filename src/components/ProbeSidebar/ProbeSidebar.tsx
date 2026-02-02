@@ -109,9 +109,11 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
 
   // Check if this is an external drop (from stash) by checking data types
   const isExternalDrag = useCallback((e: React.DragEvent): boolean => {
-    return e.dataTransfer.types.includes('application/json') || 
-           e.dataTransfer.types.includes('text/x-stash-item') ||
-           e.dataTransfer.types.includes('text/plain')
+    const types = Array.from(e.dataTransfer.types)
+    return types.includes('application/json') || 
+           types.includes('text/x-stash-item') ||
+           types.includes('text/plain') ||
+           types.includes('Files')
   }, [])
 
   // Drag and drop handlers for EXTERNAL drops (from stash)
@@ -147,23 +149,30 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
       if (!activeProbe) return
 
       try {
-        // Try to get stash item ID
+        // Try to get stash item ID directly first (most reliable for internal drags)
         const itemId = e.dataTransfer.getData('text/x-stash-item')
-        const plainId = e.dataTransfer.getData('text/plain')
-        const resolvedId = itemId || plainId
-        if (resolvedId) {
-          addStashItemToProbe(activeProbe.id, resolvedId)
-          onStashItemDrop?.(resolvedId)
+        if (itemId) {
+          addStashItemToProbe(activeProbe.id, itemId)
+          onStashItemDrop?.(itemId)
+          return
+        }
+
+        // Fallback to plain text if it's just an ID
+        const plainData = e.dataTransfer.getData('text/plain')
+        if (plainData && plainData.startsWith('s_')) { // Stash IDs usually start with s_
+          addStashItemToProbe(activeProbe.id, plainData)
+          onStashItemDrop?.(plainData)
           return
         }
 
         // Try to parse JSON data
-        const data = e.dataTransfer.getData('application/json')
-        if (data) {
-          const parsed = JSON.parse(data)
+        const jsonData = e.dataTransfer.getData('application/json')
+        if (jsonData) {
+          const parsed = JSON.parse(jsonData)
           if (parsed.id) {
             addStashItemToProbe(activeProbe.id, parsed.id)
             onStashItemDrop?.(parsed.id)
+            return
           }
         }
       } catch (error) {

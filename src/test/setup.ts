@@ -186,6 +186,9 @@ beforeAll(() => {
   if (!isMock) {
     globalThis.fetch = fetchMock
   }
+
+  // Mock scrollIntoView
+  window.HTMLElement.prototype.scrollIntoView = vi.fn()
 })
 
 // Reset mocks between tests

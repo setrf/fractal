@@ -300,6 +300,7 @@
   background: oklch(from var(--bg-primary) l c h / 0.9);
   border: 3px dashed var(--border-strong);
   z-index: 10;
+  pointer-events: none;
 }
 
 .dragText {

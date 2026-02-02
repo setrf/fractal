@@ -14,6 +14,7 @@ import { useState, useCallback, useRef, useEffect, type DragEvent } from 'react'
 import styles from './StashSidebar.module.css'
 import { StashItem } from '../StashItem'
 import { useStashContext } from '../../context/StashContext'
+import { useProbeContext } from '../../context/ProbeContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import type { StashItemType, StashItemInput, StashItem as StashItemData } from '../../types/stash'
 import { stashTypeLabels, stashTypeIcons } from '../../types/stash'
@@ -76,6 +77,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     sidebarWidth,
     setSidebarWidth,
   } = useStashContext()
+
+  const { setExternalDragHover: setProbeExternalDragHover } = useProbeContext()
 
   const isMobile = useIsMobile()
 
@@ -194,7 +197,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
   // Check if this is an external drop (from popup) by checking data types
   const isExternalDrag = useCallback((e: React.DragEvent): boolean => {
-    return e.dataTransfer.types.includes('application/json')
+    const types = Array.from(e.dataTransfer.types)
+    return types.includes('application/json') && !types.includes('text/x-stash-reorder')
   }, [])
 
   // Drag and drop handlers for EXTERNAL drops (from popups)
@@ -252,14 +256,18 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     e.dataTransfer.setData('text/x-stash-item', itemId)
     e.dataTransfer.setData('text/plain', itemId)
     e.dataTransfer.setData('application/json', JSON.stringify({ id: itemId }))
-    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.effectAllowed = 'copyMove'
     setDraggedIndex(index)
     setDraggedItemId(itemId)
-  }, [])
+    
+    // Light up the probe sidebar
+    setProbeExternalDragHover(true)
+  }, [setProbeExternalDragHover])
 
   const handleItemDragOver = useCallback((e: React.DragEvent, index: number) => {
     // Check if this is an internal reorder drag
-    const isInternalDrag = e.dataTransfer.types.includes('text/x-stash-reorder')
+    const types = Array.from(e.dataTransfer.types)
+    const isInternalDrag = types.includes('text/x-stash-reorder')
 
     if (isInternalDrag) {
       e.preventDefault()
@@ -280,7 +288,8 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
 
   const handleItemDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     // Check if this is an internal reorder drag
-    const isInternalDrag = e.dataTransfer.types.includes('text/x-stash-reorder')
+    const types = Array.from(e.dataTransfer.types)
+    const isInternalDrag = types.includes('text/x-stash-reorder')
 
     if (isInternalDrag && draggedItemId && draggedIndex !== null && draggedIndex !== toIndex) {
       e.preventDefault()
@@ -300,6 +309,9 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   }, [allItems, displayedItems, draggedIndex, draggedItemId, reorderItem])
 
   const handleItemDragEnd = useCallback((e: React.DragEvent) => {
+    // Stop lighting up the probe sidebar
+    setProbeExternalDragHover(false)
+
     // Check if dropped outside the sidebar - if so, remove the item
     const sidebar = sidebarRef.current
     if (sidebar && draggedItemId) {
@@ -322,7 +334,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     setDraggedIndex(null)
     setDraggedItemId(null)
     setDropTargetIndex(null)
-  }, [draggedItemId, removeItem])
+  }, [draggedItemId, removeItem, setProbeExternalDragHover])
 
   // Get filter label
   const getFilterLabel = (type: StashItemType | null): string => {

@@ -355,62 +355,59 @@
   gap: var(--space-2);
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
-.inputContainer {
+.editorContainer {
   flex: 1;
   position: relative;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-primary);
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
 }
 
-.input, .renderArea {
-  flex: 1;
+.input, .highlightOverlay {
+  grid-area: 1 / 1 / 2 / 2;
   width: 100%;
   height: 100%;
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: var(--border-width) solid var(--border-primary);
+  line-height: 1.5;
   box-sizing: border-box;
   overflow-y: auto;
-  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  border: none;
+  background: transparent;
 }
 
 .input {
+  color: transparent;
+  caret-color: var(--text-primary);
   resize: none;
-  transition: border-color var(--transition-fast);
-}
-
-.input:focus {
+  z-index: 2;
   outline: none;
-  border-color: var(--border-focus);
 }
 
-.input::placeholder {
-  color: var(--text-tertiary);
+.highlightOverlay {
+  color: var(--text-primary);
+  z-index: 1;
+  pointer-events: none;
 }
 
-.renderArea {
-  background: var(--bg-secondary);
-  word-break: break-word;
-}
-
-.renderArea p {
-  margin: 0 0 var(--space-2) 0;
-}
-
-.renderArea p:last-child {
-  margin-bottom: 0;
-}
-
-.renderArea em {
-  font-style: italic;
-  color: var(--text-secondary);
-}
+/* Markdown Highlighting Styles */
+.mdHeader { color: var(--text-secondary); font-weight: 600; }
+.mdBold { font-weight: 600; color: var(--text-primary); }
+.mdItalic { font-style: italic; color: var(--text-secondary); }
+.mdList { color: var(--text-secondary); font-weight: 600; }
+.mdLink { text-decoration: underline; color: var(--text-secondary); }
+.mdQuote { color: var(--text-tertiary); border-left: 2px solid var(--border-primary); padding-left: 4px; }
+.mdCode { background: var(--bg-tertiary); padding: 0 2px; }
 
 .sendButton {
   padding: var(--space-2) var(--space-3);

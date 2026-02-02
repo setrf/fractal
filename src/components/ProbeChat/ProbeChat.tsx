@@ -47,25 +47,57 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [inputHeight, setInputHeight] = useState(480) // Triple the previous default
+  const [inputHeight, setInputHeight] = useState(480)
   const [isResizing, setIsResizing] = useState(false)
-  const [isFocused, setIsFocused] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   const handleSynthesize = useCallback(() => {
     const synthesized = synthesizePrompt(probe.id, stashItems)
     setInput(synthesized)
-    setIsFocused(false) // Show rendered version immediately after synthesis
   }, [probe.id, stashItems, synthesizePrompt])
 
-  // Focus textarea when clicking render area
-  const handleContainerClick = useCallback(() => {
-    setIsFocused(true)
-    // Small timeout to let the textarea mount before focusing
-    setTimeout(() => textareaRef.current?.focus(), 0)
+  // Sync scroll between textarea and overlay
+  const handleScroll = useCallback(() => {
+    if (textareaRef.current && overlayRef.current) {
+      overlayRef.current.scrollTop = textareaRef.current.scrollTop
+    }
   }, [])
+
+  // Simple Markdown syntax highlighter
+  const renderHighlightedMarkdown = (text: string) => {
+    if (!text) return null
+
+    // Replace markdown syntax with spans
+    // This is a simple version that handles core synthesis components
+    let tokens = [{ type: 'text', content: text }]
+
+    const rules = [
+      { regex: /^(#{1,6}\s.*$)/gm, className: styles.mdHeader },
+      { regex: /(\*\*.*?\*\*)/g, className: styles.mdBold },
+      { regex: /(\*.*?\*)/g, className: styles.mdItalic },
+      { regex: /^(\s*[-*+]\s.*$)/gm, className: styles.mdList },
+      { regex: /^(\s*\d+\.\s.*$)/gm, className: styles.mdList },
+      { regex: /^(\s*>.*$)/gm, className: styles.mdQuote },
+      { regex: /(`.*?`)/g, className: styles.mdCode },
+      { regex: /(\[.*?\]\(.*?\))/g, className: styles.mdLink },
+    ]
+
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+
+    rules.forEach(rule => {
+      html = html.replace(rule.regex, (match) => {
+        return `<span class="${rule.className}">${match}</span>`
+      })
+    })
+
+    return <div dangerouslySetInnerHTML={{ __html: html + '\n' }} />
+  }
 
   // Resize handler
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -271,30 +303,25 @@ export function ProbeChat({ probe }: ProbeChatProps) {
         />
         
         <div className={styles.inputWrapper}>
-          <div 
-            className={styles.inputContainer}
-            onClick={!isFocused ? handleContainerClick : undefined}
-          >
-            {isFocused || !input.trim() ? (
-              <textarea
-                ref={textareaRef}
-                className={styles.input}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-                disabled={sending}
-                data-onboarding="probe-input"
-                autoFocus
-              />
-            ) : (
-              <div className={styles.renderArea}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {input}
-                </ReactMarkdown>
-              </div>
-            )}
+          <div className={styles.editorContainer}>
+            <textarea
+              ref={textareaRef}
+              className={styles.input}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onScroll={handleScroll}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+              disabled={sending}
+              data-onboarding="probe-input"
+            />
+            <div 
+              ref={overlayRef}
+              className={styles.highlightOverlay}
+              aria-hidden="true"
+            >
+              {renderHighlightedMarkdown(input)}
+            </div>
           </div>
 
           <button

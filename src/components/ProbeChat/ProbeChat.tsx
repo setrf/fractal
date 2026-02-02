@@ -47,15 +47,25 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [inputHeight, setInputHeight] = useState(240) // Increased default for dual view
+  const [inputHeight, setInputHeight] = useState(160) // Back to normal height
   const [isResizing, setIsResizing] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSynthesize = useCallback(() => {
     const synthesized = synthesizePrompt(probe.id, stashItems)
     setInput(synthesized)
+    setIsFocused(false) // Show rendered version immediately after synthesis
   }, [probe.id, stashItems, synthesizePrompt])
+
+  // Focus textarea when clicking render area
+  const handleContainerClick = useCallback(() => {
+    setIsFocused(true)
+    // Small timeout to let the textarea mount before focusing
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }, [])
 
   // Resize handler
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -261,33 +271,41 @@ export function ProbeChat({ probe }: ProbeChatProps) {
         />
         
         <div className={styles.inputWrapper}>
-          <div className={styles.editorContainer}>
-            <textarea
-              className={styles.input}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-              disabled={sending}
-              data-onboarding="probe-input"
-            />
+          <div 
+            className={styles.inputContainer}
+            onClick={!isFocused ? handleContainerClick : undefined}
+          >
+            {isFocused || !input.trim() ? (
+              <textarea
+                ref={textareaRef}
+                className={styles.input}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+                disabled={sending}
+                data-onboarding="probe-input"
+                autoFocus
+              />
+            ) : (
+              <div className={styles.renderArea}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {input}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
 
-          <div className={styles.preview}>
-            <div className={styles.previewTitle}>Preview</div>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {input || '*No content to preview*'}
-            </ReactMarkdown>
-          </div>
+          <button
+            className={styles.sendButton}
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            title="Send Message"
+          >
+            {sending ? '...' : '→'}
+          </button>
         </div>
-
-        <button
-          className={styles.sendButton}
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-        >
-          {sending ? 'Sending...' : 'Send Message'}
-        </button>
       </div>
     </div>
   )

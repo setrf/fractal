@@ -308,24 +308,65 @@
   padding: var(--space-3);
   border-top: var(--border-width) solid var(--border-primary);
   background: var(--bg-primary);
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.inputResizeHandle {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 10;
+  transition: background var(--transition-fast);
+}
+
+.inputResizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 4px;
+  background: var(--border-primary);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.inputResizeHandle:hover::after,
+.inputResizeHandle.isResizing::after {
+  opacity: 1;
+}
+
+.inputResizeHandle:hover,
+.inputResizeHandle.isResizing {
+  background: oklch(from var(--border-focus) l c h / 0.1);
 }
 
 .inputWrapper {
   display: flex;
   gap: var(--space-2);
+  flex: 1;
 }
 
 .input {
   flex: 1;
-  min-height: 160px;
-  max-height: 600px;
+  width: 100%;
+  min-height: 100%;
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--text-primary);
   background: var(--bg-secondary);
   border: var(--border-width) solid var(--border-primary);
-  resize: vertical;
+  resize: none; /* Disable default resize */
   transition: border-color var(--transition-fast);
 }
 

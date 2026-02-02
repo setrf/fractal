@@ -46,7 +46,40 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [inputHeight, setInputHeight] = useState(160)
+  const [isResizing, setIsResizing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputAreaRef = useRef<HTMLDivElement>(null)
+
+  // Resize handler
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!inputAreaRef.current) return
+      const rect = inputAreaRef.current.getBoundingClientRect()
+      // Dragging up increases height. Current mouse Y vs bottom of input area.
+      const newHeight = rect.bottom - e.clientY - 24 // 24 for padding
+      setInputHeight(Math.max(100, Math.min(600, newHeight)))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   // Get selected stash items for this probe
   const selectedItems = stashItems.filter(item =>
@@ -217,7 +250,15 @@ export function ProbeChat({ probe }: ProbeChatProps) {
       </div>
 
       {/* Input area */}
-      <div className={styles.inputArea}>
+      <div 
+        className={styles.inputArea} 
+        ref={inputAreaRef}
+        style={{ height: inputHeight }}
+      >
+        <div 
+          className={`${styles.inputResizeHandle} ${isResizing ? styles.isResizing : ''}`}
+          onMouseDown={handleResizeStart}
+        />
         <div className={styles.inputWrapper}>
           <textarea
             className={styles.input}

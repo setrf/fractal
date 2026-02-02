@@ -13,6 +13,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import styles from './ProbeChat.module.css'
 import { useProbeContext } from '../../context/ProbeContext'
 import { useStashContext } from '../../context/StashContext'
@@ -48,8 +49,15 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   const [sending, setSending] = useState(false)
   const [inputHeight, setInputHeight] = useState(160)
   const [isResizing, setIsResizing] = useState(false)
+  const [isPreview, setIsPreview] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
+
+  const handleSynthesize = useCallback(() => {
+    const synthesized = synthesizePrompt(probe.id, stashItems)
+    setInput(synthesized)
+    setIsPreview(false) // Show the text so they can see what was generated
+  }, [probe.id, stashItems, synthesizePrompt])
 
   // Resize handler
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -95,12 +103,6 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   const handleRemoveItem = useCallback((itemId: string) => {
     removeStashItemFromProbe(probe.id, itemId)
   }, [probe.id, removeStashItemFromProbe])
-
-  // Handle synthesizing prompt from selected items
-  const handleSynthesize = useCallback(() => {
-    const synthesized = synthesizePrompt(probe.id, stashItems)
-    setInput(synthesized)
-  }, [probe.id, stashItems, synthesizePrompt])
 
   // Handle sending a message
   const handleSend = useCallback(async () => {
@@ -260,22 +262,40 @@ export function ProbeChat({ probe }: ProbeChatProps) {
           onMouseDown={handleResizeStart}
         />
         <div className={styles.inputWrapper}>
-          <textarea
-            className={styles.input}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-            disabled={sending}
-            data-onboarding="probe-input"
-          />
-          <button
-            className={styles.sendButton}
-            onClick={handleSend}
-            disabled={!input.trim() || sending}
-          >
-            Send
-          </button>
+          {isPreview ? (
+            <div className={styles.preview}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {input || '*No content to preview*'}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <textarea
+              className={styles.input}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+              disabled={sending}
+              data-onboarding="probe-input"
+            />
+          )}
+          
+          <div className={styles.inputActions}>
+            <button
+              className={`${styles.previewButton} ${isPreview ? styles.active : ''}`}
+              onClick={() => setIsPreview(!isPreview)}
+              title={isPreview ? "Back to editing" : "Preview markdown"}
+            >
+              {isPreview ? 'Edit' : 'View'}
+            </button>
+            <button
+              className={styles.sendButton}
+              onClick={handleSend}
+              disabled={!input.trim() || sending}
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>

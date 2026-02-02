@@ -134,8 +134,8 @@
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
-  font-size: 11px;
-  padding: 1px 0;
+  font-size: var(--text-sm);
+  padding: 2px 0;
   transition: opacity var(--transition-fast);
 }
 
@@ -175,8 +175,8 @@
 }
 
 .filterShape {
-  font-size: 14px;
-  width: 14px;
+  font-size: var(--text-base);
+  width: 16px;
   text-align: center;
 }
 

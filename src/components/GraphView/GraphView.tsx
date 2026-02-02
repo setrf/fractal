@@ -191,16 +191,16 @@ function createNodeObject(node: GraphNode): THREE.Object3D {
   const sprite = new SpriteText(fullText)
   sprite.color = 'rgba(255, 255, 255, 0.95)'
   sprite.fontFace = "'JetBrains Mono', 'IBM Plex Mono', monospace"
-  sprite.textHeight = (isMobile ? 1.0 : 1.5) * (node.visualScale || 1)
+  sprite.textHeight = 2.5 * (node.visualScale || 1)
   sprite.fontWeight = '600'
   sprite.center = new THREE.Vector2(0.5, 1)
 
   sprite.backgroundColor = 'rgba(0, 0, 0, 0.7)'
-  sprite.padding = isMobile ? [2, 3] : [3, 5]
-  sprite.borderRadius = 1.5
+  sprite.padding = [4, 6]
+  sprite.borderRadius = 2
   sprite.borderWidth = 0
 
-  sprite.position.set(0, - (markerSize + (isMobile ? 2 : 4)), 0)
+  sprite.position.set(0, - (markerSize + 5), 0)
   group.add(sprite)
 
   return group
@@ -251,6 +251,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const isMobile = useIsMobile()
+  const [showMobileWarning, setShowMobileWarning] = useState(true)
   const {
     graphData,
     counts,
@@ -422,9 +423,16 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
             enableNavigationControls={true}
             showNavInfo={false}
           />
-          {isMobile && (
+          {isMobile && showMobileWarning && (
             <div className={styles.mobileOverlay}>
               <div className={styles.mobileWarning}>
+                <button 
+                  className={styles.dismissWarning} 
+                  onClick={() => setShowMobileWarning(false)}
+                  aria-label="Dismiss warning"
+                >
+                  ×
+                </button>
                 <span className={styles.warningIcon}>⚠️</span>
                 <p>3D interaction is limited on mobile.</p>
                 <p className={styles.warningHint}>Switch to Traditional view (⌘) for the best experience.</p>

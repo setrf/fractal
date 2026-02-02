@@ -51,15 +51,15 @@
 /* Stats overlay */
 .stats {
   position: fixed;
-  bottom: var(--space-3);
-  left: var(--space-3);
+  bottom: var(--space-4);
+  left: var(--space-4);
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   font-family: var(--font-mono);
-  font-size: 10px;
-  background: oklch(from var(--bg-primary) l c h / 0.85);
-  padding: 4px 8px;
-  border: 1px solid var(--border-primary);
+  font-size: var(--text-xs);
+  background: oklch(from var(--bg-primary) l c h / 0.9);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--border-primary);
   z-index: 50;
   pointer-events: none;
 }
@@ -68,12 +68,13 @@
   .stats {
     position: fixed;
     top: 58px; /* Tighter against header */
+    bottom: auto; /* Prevent stretching between top and bottom */
     left: var(--space-1);
     display: flex;
     flex-direction: row;
     gap: var(--space-1);
     padding: 1px 4px;
-    font-size: 7px;
+    font-size: 8px;
     background: oklch(from var(--bg-primary) l c h / 0.75);
     border: 1px solid var(--border-primary);
     pointer-events: none;
@@ -228,14 +229,37 @@
 }
 
 .mobileWarning {
+  position: relative;
   background: var(--bg-primary);
   border: var(--border-width-strong) solid var(--text-primary);
   box-shadow: 4px 4px 0 var(--border-strong);
-  padding: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-3);
   text-align: center;
   max-width: 180px;
   pointer-events: auto;
   margin-bottom: 240px; /* Push higher to be center-ish */
+}
+
+.dismissWarning {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.dismissWarning:hover {
+  color: var(--text-primary);
 }
 
 .warningIcon {

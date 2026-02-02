@@ -445,56 +445,51 @@ export function useProbe(): UseProbeReturn {
       // Build the synthesized prompt
       const sections: string[] = []
 
-      sections.push('## Context from your exploration:\n')
+      sections.push('## Context from your exploration:')
 
       if (highlights.length > 0) {
-        sections.push('### Key Concepts')
+        sections.push('\n### Key Concepts')
         highlights.forEach(item => {
           const source = item.metadata.sourceQuestion
             ? ` (from: "${item.metadata.sourceQuestion}")`
             : ''
           sections.push(`- **${item.content}**${source}`)
         })
-        sections.push('')
       }
 
       if (explanations.length > 0) {
-        sections.push('### Explanations')
+        sections.push('\n### Explanations')
         explanations.forEach(item => {
           const summary = item.metadata.summary || item.content
           sections.push(`- **${item.content}**: ${summary}`)
         })
-        sections.push('')
       }
 
       if (questions.length > 0) {
-        sections.push('### Questions Explored')
+        sections.push('\n### Questions Explored')
         questions.forEach(item => {
           sections.push(`- ${item.content}`)
         })
-        sections.push('')
       }
 
       if (notes.length > 0) {
-        sections.push('### Your Notes')
+        sections.push('\n### Your Notes')
         notes.forEach(item => {
           const title = item.metadata.title ? `**${item.metadata.title}**: ` : ''
           sections.push(`- ${title}${item.content}`)
         })
-        sections.push('')
       }
 
       if (chatMessages.length > 0) {
-        sections.push('### Relevant Chat Excerpts')
+        sections.push('\n### Relevant Chat Excerpts')
         chatMessages.forEach(item => {
           const role = item.metadata.role === 'assistant' ? 'AI' : 'You'
           sections.push(`- [${role}]: "${item.content.slice(0, 200)}${item.content.length > 200 ? '...' : ''}"`)
         })
-        sections.push('')
       }
 
-      sections.push('---\n')
-      sections.push('## Your Direction:')
+      sections.push('\n---')
+      sections.push('\n## Your Direction:')
       sections.push(userDirection || '[Enter your question or direction here]')
 
       return sections.join('\n')

@@ -48,7 +48,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.7.3)
+### Current (v0.7.4)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
@@ -88,8 +88,9 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **The Probe** — Collapsible right sidebar for synthesis-focused conversations
   - Multiple tabbed probes with distinct colors (up to 5)
   - Select Stash items via checkboxes or drag-and-drop
+  - **Auto-Formatting Markdown Input**: Unified text box that automatically renders Markdown when blurred or synthesized
+  - **Vertical Resize**: Large default height (480px) with custom top-edge resizability
   - Auto-synthesize rich prompts from collected context
-  - Fully editable prompts before sending
   - Persistent conversations in localStorage
   - Color-coded badges on Stash items show assignments
 - **Expand/Collapse Branches** — Manage complexity by collapsing explored branches

@@ -47,7 +47,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [inputHeight, setInputHeight] = useState(160) // Back to normal height
+  const [inputHeight, setInputHeight] = useState(480) // Triple the previous default
   const [isResizing, setIsResizing] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -81,7 +81,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
       const rect = inputAreaRef.current.getBoundingClientRect()
       // Dragging up increases height. Current mouse Y vs bottom of input area.
       const newHeight = rect.bottom - e.clientY - 24 // 24 for padding
-      setInputHeight(Math.max(160, Math.min(800, newHeight))) // Adjusted constraints
+      setInputHeight(Math.max(200, Math.min(1000, newHeight))) // Adjusted constraints for larger default
     }
 
     const handleMouseUp = () => {

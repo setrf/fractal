@@ -17,6 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.4] - 2026-02-02
+
+### Added
+
+#### Probe UI/UX Overhaul
+- **Auto-Formatting Markdown Input**: Implemented a unified text box in the Probe sidebar that automatically toggles between a raw text editor (on focus) and a rendered Markdown view (on blur/synthesis).
+- **Advanced Vertical Resizability**:
+  - Replaced standard bottom-right resize with a custom top-edge grab handle.
+  - Increased default height to 480px (triple the previous size).
+  - Expanded maximum height to 1000px for long-form synthesis.
+- **Improved Synthesis Formatting**: Added explicit line breaks before section headers in synthesized prompts for better readability.
+
+#### Core Stability
+- **Resilient Drag-and-Drop**: Fixed issues where sidebar overlays would block drag events; added `pointer-events: none` and improved data-type detection for smoother Stash-to-Probe transfers.
+- **Enhanced Test Suite**: Added `ProbeSidebar.test.tsx` and mocked `scrollIntoView` globally to improve frontend test coverage and reliability.
+
+---
+
 ## [0.7.3] - 2026-02-01
 
 ### Added

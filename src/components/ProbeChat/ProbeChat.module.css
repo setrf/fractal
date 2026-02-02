@@ -438,16 +438,6 @@
   cursor: not-allowed;
 }
 
-.sendButton:hover:not(:disabled) {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-}
-
-.sendButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Scrollbar styling */
 .messages::-webkit-scrollbar,
 .contextArea::-webkit-scrollbar {

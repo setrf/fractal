@@ -70,31 +70,36 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   const renderHighlightedMarkdown = (text: string) => {
     if (!text) return null
 
-    // Replace markdown syntax with spans
-    // This is a simple version that handles core synthesis components
-    let tokens = [{ type: 'text', content: text }]
-
-    const rules = [
-      { regex: /^(#{1,6}\s.*$)/gm, className: styles.mdHeader },
-      { regex: /(\*\*.*?\*\*)/g, className: styles.mdBold },
-      { regex: /(\*.*?\*)/g, className: styles.mdItalic },
-      { regex: /^(\s*[-*+]\s.*$)/gm, className: styles.mdList },
-      { regex: /^(\s*\d+\.\s.*$)/gm, className: styles.mdList },
-      { regex: /^(\s*>.*$)/gm, className: styles.mdQuote },
-      { regex: /(`.*?`)/g, className: styles.mdCode },
-      { regex: /(\[.*?\]\(.*?\))/g, className: styles.mdLink },
-    ]
-
     let html = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
 
-    rules.forEach(rule => {
-      html = html.replace(rule.regex, (match) => {
-        return `<span class="${rule.className}">${match}</span>`
-      })
-    })
+    // Headers: ## Header -> <light>##</light> <b>Header</b>
+    html = html.replace(/^(#{1,6})(\s.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdHeader}">$2</span>`)
+
+    // Bold: **text** -> <light>**</light><b>text</b><light>**</light>
+    html = html.replace(/(\*\*)(.*?)(\*\*)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdBold}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
+
+    // Italic: *text* -> <light>*</light><i>text</i><light>*</light>
+    html = html.replace(/(\*)(.*?)(\*)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdItalic}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
+
+    // Lists: - item -> <light>-</light> item
+    html = html.replace(/^(\s*[-*+]\s)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdList}">$2</span>`)
+    html = html.replace(/^(\s*\d+\.\s)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdList}">$2</span>`)
+
+    // Blockquotes: > text -> <light>></light> <quote>text</quote>
+    html = html.replace(/^(\s*>)(.*$)/gm, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdQuote}">$2</span>`)
+
+    // Code blocks: `code`
+    html = html.replace(/(`)(.*?)(`)/g, `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdCode}">$2</span><span class="${styles.mdSymbol}">$3</span>`)
+
+    // Links: [text](url)
+    html = html.replace(/(\[)(.*?)(\])(\()(.*?)(\))/g, 
+      `<span class="${styles.mdSymbol}">$1</span><span class="${styles.mdBold}">$2</span><span class="${styles.mdSymbol}">$3$4</span><span class="${styles.mdLink}">$5</span><span class="${styles.mdSymbol}">$6</span>`)
+
+    // Horizontal Rule: ---
+    html = html.replace(/^(---\s*)$/gm, `<span class="${styles.mdHr}">$1</span>`)
 
     return <div dangerouslySetInnerHTML={{ __html: html + '\n' }} />
   }

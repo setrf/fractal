@@ -373,10 +373,10 @@
   grid-area: 1 / 1 / 2 / 2;
   width: 100%;
   height: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  line-height: 1.5;
+  line-height: 1.6;
   box-sizing: border-box;
   overflow-y: auto;
   white-space: pre-wrap;
@@ -401,37 +401,81 @@
 }
 
 /* Markdown Highlighting Styles */
-.mdHeader { color: var(--text-secondary); font-weight: 600; }
-.mdBold { font-weight: 600; color: var(--text-primary); }
-.mdItalic { font-style: italic; color: var(--text-secondary); }
-.mdList { color: var(--text-secondary); font-weight: 600; }
-.mdLink { text-decoration: underline; color: var(--text-secondary); }
-.mdQuote { color: var(--text-tertiary); border-left: 2px solid var(--border-primary); padding-left: 4px; }
-.mdCode { background: var(--bg-tertiary); padding: 0 2px; }
+.mdSymbol {
+  opacity: 0.25;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.mdHeader {
+  color: var(--text-primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--border-primary);
+}
+
+.mdBold {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mdItalic {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.mdList {
+  color: var(--text-primary);
+}
+
+.mdLink {
+  text-decoration: underline;
+  color: var(--text-secondary);
+}
+
+.mdQuote {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.mdCode {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.mdHr {
+  display: block;
+  border-top: 1px solid var(--border-primary);
+  margin: var(--space-2) 0;
+  color: transparent;
+}
 
 .sendButton {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  background: var(--bg-secondary);
-  border: var(--border-width) solid var(--text-primary);
-  color: var(--text-primary);
+  font-size: var(--text-lg);
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
+  min-width: 40px;
 }
 
 .sendButton:hover:not(:disabled) {
   background: var(--text-primary);
   color: var(--bg-primary);
+  border-color: var(--text-primary);
 }
 
 .sendButton:disabled {
-  opacity: 0.5;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 

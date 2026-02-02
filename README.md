@@ -48,7 +48,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.7.0)
+### Current (v0.7.3)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
@@ -61,13 +61,15 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - **Visual Scale**: Global multiplier for node and label sizes
   - **Bloom effect** for visual depth and "wow" factor
   - **Smart Multiline Labels**: Full question text visible as sprites without truncation
-  - Click nodes for details and actions
+  - **Non-blocking popups**: Explore the 3D space while reading node details
+  - **Directional relationship arrows** and refined link precision
   - Zoom, pan, and rotate navigation
-  - Filter nodes by type
+  - **Unified Legend & Filters** section for efficient control
 - **Mobile Responsiveness** — Fully adapting layout for mobile devices
-  - Sidebars transform into full-width overlays
-  - Concept popups become touch-friendly bottom sheets
-  - Layout adjusts to prevent content occlusion
+  - **Fixed MobileHeader**: Consolidated navigation and settings for small screens
+  - **Stacking Popups**: Minimized items stack vertically from the bottom to prevent overlap
+  - **Responsive Layout**: Sidebars transform into full-width overlays with exclusive states
+  - **Adaptive UI**: High-density metadata (like Weave Score) scales for narrow viewports
 - **Add Related Questions** — Click any node to add child questions
 - **AI-Generated Questions** — Click the ✦ button to generate related questions using AI (W&B Inference)
 - **Model Selection** — Choose from available W&B models for generation, chat, and evaluation
@@ -559,21 +561,26 @@ npm run test:verbose
 - [x] Visual integration: color badges on Stash items
 - [x] Dedicated synthesis-focused LLM system prompt
 
-### v0.7.0 — Enhanced AI
+### v0.7.0 — Enhanced Visualization & Mobile (Current)
+- [x] 3D Knowledge Graph view
+- [x] Advanced dynamics and physics controls
+- [x] Full mobile responsiveness and optimization
+- [x] Non-blocking detail popups in 3D
+- [x] Directional relationship mapping
 - [ ] Streaming responses for real-time feedback
-- [ ] Model selection UI
-- [ ] Suggest tangents based on context
 - [ ] Concept sub-trees (expand concepts into exploration branches)
 
-### v0.8.0 — Enhanced Visualization
-- [ ] Zoom and pan navigation
+### v0.8.0 — Performance & Interaction
+- [ ] WebGL optimization for large graphs
 - [ ] Mini-map for large trees
 - [ ] Keyboard shortcuts for tree navigation
+- [ ] Batch actions for Stash items
 
 ### v1.0.0 — Full Release
 - [ ] User accounts and sync
 - [ ] Collaborative exploration
 - [ ] Public question tree sharing
+- [ ] Insight generation across probes
 
 ---
 

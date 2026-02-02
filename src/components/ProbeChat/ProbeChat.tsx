@@ -47,16 +47,14 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [inputHeight, setInputHeight] = useState(160)
+  const [inputHeight, setInputHeight] = useState(240) // Increased default for dual view
   const [isResizing, setIsResizing] = useState(false)
-  const [isPreview, setIsPreview] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
 
   const handleSynthesize = useCallback(() => {
     const synthesized = synthesizePrompt(probe.id, stashItems)
     setInput(synthesized)
-    setIsPreview(false) // Show the text so they can see what was generated
   }, [probe.id, stashItems, synthesizePrompt])
 
   // Resize handler
@@ -73,7 +71,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
       const rect = inputAreaRef.current.getBoundingClientRect()
       // Dragging up increases height. Current mouse Y vs bottom of input area.
       const newHeight = rect.bottom - e.clientY - 24 // 24 for padding
-      setInputHeight(Math.max(100, Math.min(600, newHeight)))
+      setInputHeight(Math.max(160, Math.min(800, newHeight))) // Adjusted constraints
     }
 
     const handleMouseUp = () => {
@@ -261,14 +259,9 @@ export function ProbeChat({ probe }: ProbeChatProps) {
           className={`${styles.inputResizeHandle} ${isResizing ? styles.isResizing : ''}`}
           onMouseDown={handleResizeStart}
         />
+        
         <div className={styles.inputWrapper}>
-          {isPreview ? (
-            <div className={styles.preview}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {input || '*No content to preview*'}
-              </ReactMarkdown>
-            </div>
-          ) : (
+          <div className={styles.editorContainer}>
             <textarea
               className={styles.input}
               value={input}
@@ -278,25 +271,23 @@ export function ProbeChat({ probe }: ProbeChatProps) {
               disabled={sending}
               data-onboarding="probe-input"
             />
-          )}
-          
-          <div className={styles.inputActions}>
-            <button
-              className={`${styles.previewButton} ${isPreview ? styles.active : ''}`}
-              onClick={() => setIsPreview(!isPreview)}
-              title={isPreview ? "Back to editing" : "Preview markdown"}
-            >
-              {isPreview ? 'Edit' : 'View'}
-            </button>
-            <button
-              className={styles.sendButton}
-              onClick={handleSend}
-              disabled={!input.trim() || sending}
-            >
-              Send
-            </button>
+          </div>
+
+          <div className={styles.preview}>
+            <div className={styles.previewTitle}>Preview</div>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {input || '*No content to preview*'}
+            </ReactMarkdown>
           </div>
         </div>
+
+        <button
+          className={styles.sendButton}
+          onClick={handleSend}
+          disabled={!input.trim() || sending}
+        >
+          {sending ? 'Sending...' : 'Send Message'}
+        </button>
       </div>
     </div>
   )

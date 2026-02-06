@@ -40,7 +40,11 @@ export interface UseModelSelectionReturn {
   refreshModels: () => Promise<void>
 }
 
-export function useModelSelection(): UseModelSelectionReturn {
+interface UseModelSelectionOptions {
+  autoLoad?: boolean
+}
+
+export function useModelSelection({ autoLoad = true }: UseModelSelectionOptions = {}): UseModelSelectionReturn {
   const [models, setModels] = useState<string[]>([])
   const [selectedModel, setSelectedModelState] = useState<string | null>(() => getStoredModel())
   const [isLoading, setIsLoading] = useState(false)
@@ -74,8 +78,9 @@ export function useModelSelection(): UseModelSelectionReturn {
   }, [])
 
   useEffect(() => {
-    refreshModels()
-  }, [refreshModels])
+    if (!autoLoad) return
+    void refreshModels()
+  }, [autoLoad, refreshModels])
 
   return {
     models,

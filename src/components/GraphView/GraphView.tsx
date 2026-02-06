@@ -17,6 +17,7 @@ import SpriteText from 'three-spritetext'
 import { useGraphContext } from '../../context/GraphContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import type { GraphNode, GraphEdge, GraphNodeType } from '../../types/graph'
+import type { ForceGraphMethods } from 'react-force-graph-3d'
 import { EDGE_WIDTHS } from '../../types/graph'
 import styles from './GraphView.module.css'
 
@@ -247,7 +248,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
   { onNodeClick, width, height, leftOffset = 16 }: GraphViewProps,
   ref
 ) {
-  const graphRef = useRef<any>(null)
+  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphEdge> | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const isMobile = useIsMobile()
@@ -314,26 +315,29 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
     const fg = graphRef.current
 
     // Configure link force for distance based on edge type
-    fg.d3Force('link')
-      ?.distance((link: GraphEdge) => {
-        let baseDist = 100
-        switch (link.type) {
-          case 'question-child': baseDist = 80; break
-          case 'question-concept': baseDist = 100; break
-          case 'concept-related': baseDist = 120; break
-          case 'stash-source': baseDist = 90; break
-          case 'probe-stash': baseDist = 80; break
-          default: baseDist = 100; break
-        }
-        return baseDist * linkDistanceMult
-      })
-      .strength((link: GraphEdge) => link.strength * 0.7)
+    const linkForce = fg.d3Force('link')
+    if (typeof linkForce?.distance === 'function') {
+      linkForce
+        .distance((link: GraphEdge) => {
+          let baseDist = 100
+          switch (link.type) {
+            case 'question-child': baseDist = 80; break
+            case 'question-concept': baseDist = 100; break
+            case 'concept-related': baseDist = 120; break
+            case 'stash-source': baseDist = 90; break
+            case 'probe-stash': baseDist = 80; break
+            default: baseDist = 100; break
+          }
+          return baseDist * linkDistanceMult
+        })
+        ?.strength?.((link: GraphEdge) => link.strength * 0.7)
+    }
 
     // Scale repulsion relative to distance to maintain consistent "pressure"
-    fg.d3Force('charge')?.strength(-100 * repulsionMult * Math.pow(linkDistanceMult, 1.5))
+    fg.d3Force('charge')?.strength?.(-100 * repulsionMult * Math.pow(linkDistanceMult, 1.5))
 
     // Centering force
-    fg.d3Force('center')?.strength(0.5 * centeringMult)
+    fg.d3Force('center')?.strength?.(0.5 * centeringMult)
   }, [graphData, linkDistanceMult, repulsionMult, centeringMult])
 
   const handleNodeClick = useCallback(
@@ -351,6 +355,10 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
     },
     [onNodeClick]
   )
+
+  const handleBackgroundClick = useCallback(() => {
+    // Intentionally no-op: background clicks should not trigger node interactions.
+  }, [])
 
   const getLinkColor = useCallback((link: GraphEdge) => EDGE_COLORS[link.type] || '#666666', [])
   const getLinkWidth = useCallback((link: GraphEdge) => EDGE_WIDTHS[link.type] || 1, [])
@@ -388,7 +396,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
             width={dimensions.width}
             height={dimensions.height}
             backgroundColor="rgba(0, 0, 0, 0)"
-            nodeLabel={(node: any) => `
+            nodeLabel={(node: GraphNode) => `
               <div style="
                 background: oklch(from var(--bg-primary) l c h / 0.95);
                 color: var(--text-primary);
@@ -408,7 +416,7 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
             nodeThreeObject={createNodeObject}
             nodeThreeObjectExtend={false}
             onNodeClick={handleNodeClick}
-            onBackgroundClick={(event) => handleNodeClick(null as any, event)}
+            onBackgroundClick={handleBackgroundClick}
             linkColor={getLinkColor}
             linkWidth={getLinkWidth}
             linkHoverPrecision={10}

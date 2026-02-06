@@ -75,7 +75,7 @@ export interface ModelsResponse {
 export async function generateQuestions(
   question: string,
   model?: string
-): Promise<{ questions: string[]; meta: GenerateQuestionsResponse['data']['meta'] | null }> {
+): Promise<{ questions: string[]; meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null }> {
   const response = await fetch(`${API_BASE_URL}/api/generate`, {
     method: 'POST',
     headers: {

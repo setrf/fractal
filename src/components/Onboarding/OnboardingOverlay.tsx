@@ -54,18 +54,20 @@ export function OnboardingOverlay({
   const cardRef = useRef<HTMLDivElement>(null)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [cardPosition, setCardPosition] = useState<CardPosition | null>(null)
+  const stepBody = step?.body ?? ''
+  const stepSelector = step?.selector ?? null
 
   const stepBodyLines = useMemo(() => {
-    if (!step?.body) return []
-    return step.body.split('\n').map(line => line.trim()).filter(Boolean)
-  }, [step?.body])
+    if (!stepBody) return []
+    return stepBody.split('\n').map(line => line.trim()).filter(Boolean)
+  }, [stepBody])
 
   const updateTargetRect = useCallback(() => {
-    if (!step?.selector) {
+    if (!stepSelector) {
       setTargetRect(null)
       return
     }
-    const element = document.querySelector(step.selector) as HTMLElement | null
+    const element = document.querySelector(stepSelector) as HTMLElement | null
     if (!element) {
       setTargetRect(null)
       return
@@ -80,10 +82,11 @@ export function OnboardingOverlay({
       element.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
     setTargetRect(rect)
-  }, [step?.selector])
+  }, [stepSelector])
 
   useEffect(() => {
     if (!isOpen) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- overlay must measure and sync target rect on open/scroll/resize
     updateTargetRect()
     const handleScroll = () => updateTargetRect()
     const handleResize = () => updateTargetRect()

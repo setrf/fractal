@@ -37,7 +37,7 @@ vi.mock('openai', () => {
 // Mock weave
 vi.mock('./weave-client.js', () => ({
   weave: {
-    op: (fn: Function) => fn,
+    op: <T extends (...args: never[]) => unknown>(fn: T) => fn,
   },
 }))
 

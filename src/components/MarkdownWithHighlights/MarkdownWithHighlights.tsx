@@ -249,7 +249,7 @@ export function MarkdownWithHighlights({
         rehypePlugins={[rehypeRaw, [rehypeSanitize, highlightSanitizeSchema]]}
         components={{
           // Custom renderer for mark elements to add remove buttons
-          mark: ({ node, children, ...props }) => {
+          mark: ({ children, ...props }) => {
             const conceptId = (props as Record<string, unknown>)['data-concept-id'] as string
             return (
               <mark {...props} className={`${styles.highlight} ${(props as Record<string, unknown>)['className'] || ''}`}>

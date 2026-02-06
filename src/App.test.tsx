@@ -193,7 +193,7 @@ describe('App Integration Tests', () => {
       await user.keyboard('{Enter}')
       
       // Add first child
-      let addButton = await screen.findByRole('button', { name: /customize with your own question/i })
+      const addButton = await screen.findByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       let childInput = screen.getByPlaceholderText(/what comes next/i)
       await user.type(childInput, 'Child 1')

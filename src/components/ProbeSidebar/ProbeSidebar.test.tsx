@@ -16,7 +16,7 @@ vi.mock('../../hooks/useIsMobile', () => ({
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
-    <ModelProvider>
+    <ModelProvider autoLoad={false}>
       <StashProvider>
         <ProbeProvider>
           {ui}

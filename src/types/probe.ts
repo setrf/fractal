@@ -268,7 +268,7 @@ export const getNextAvailableColor = (existingProbes: Probe[]): ProbeColor | nul
  * @param existingProbes - Current probes (for numbering)
  * @returns A default name like "Probe 1" or "Probe Blue"
  */
-export const createDefaultProbeName = (color: ProbeColor, existingProbes: Probe[]): string => {
+export const createDefaultProbeName = (_color: ProbeColor, existingProbes: Probe[]): string => {
   // Use numbered naming: "Probe 1", "Probe 2", etc.
   const number = existingProbes.length + 1
   return `Probe ${number}`

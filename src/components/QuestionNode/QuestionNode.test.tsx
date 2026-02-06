@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, userEvent, waitFor } from '../../test/test-utils'
+import { render, screen, waitFor } from '../../test/test-utils'
 import { QuestionNode } from './QuestionNode'
 import type { QuestionNode as QuestionNodeType } from '../../types/question'
 import { createQuestionNode } from '../../types/question'
@@ -294,7 +294,7 @@ describe('QuestionNode Component', () => {
       const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
-      const childInput = screen.getByPlaceholderText(/what comes next/i)
+      screen.getByPlaceholderText(/what comes next/i)
       await user.keyboard('{Escape}')
       
       await waitFor(() => {
@@ -328,7 +328,7 @@ describe('QuestionNode Component', () => {
       const addButton = screen.getByRole('button', { name: /customize with your own question/i })
       await user.click(addButton)
       
-      const childInput = screen.getByPlaceholderText(/what comes next/i)
+      screen.getByPlaceholderText(/what comes next/i)
       await user.keyboard('{Enter}')
       
       console.log(`[TEST] onAddChild not called for empty: ${mockOnAddChild.mock.calls.length === 0}`)

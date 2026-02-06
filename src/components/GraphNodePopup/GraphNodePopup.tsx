@@ -8,8 +8,7 @@
  * - Probe: Name, color, message count
  */
 
-import { useCallback } from 'react'
-import type { GraphNode, GraphNodeType } from '../../types/graph'
+import type { GraphNode } from '../../types/graph'
 import type { QuestionNode } from '../../types/question'
 import type { ExtractedConcept } from '../../types/concept'
 import type { StashItem } from '../../types/stash'
@@ -81,16 +80,6 @@ export function GraphNodePopup({
     left: Math.min(position.x, window.innerWidth - 320),
     top: Math.min(position.y, window.innerHeight - 300),
   }
-
-  // Handle backdrop click
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        onClose()
-      }
-    },
-    [onClose]
-  )
 
   // Render content based on node type
   const renderContent = () => {

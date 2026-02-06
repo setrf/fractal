@@ -18,7 +18,7 @@ import * as THREE from 'three'
 
 // Ensure THREE is globally available for some older/bundled libraries
 if (typeof window !== 'undefined') {
-  (window as any).THREE = THREE
+  ;(window as Window & { THREE?: typeof THREE }).THREE = THREE
 }
 
 // Global styles must be imported before App

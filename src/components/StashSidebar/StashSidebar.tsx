@@ -10,7 +10,7 @@
  * - Drag-and-drop zone for adding items
  */
 
-import { useState, useCallback, useRef, useEffect, type DragEvent } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import styles from './StashSidebar.module.css'
 import { StashItem } from '../StashItem'
 import { useStashContext } from '../../context/StashContext'
@@ -65,6 +65,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     clearAll,
     exportToJSON,
     isOpen,
+    setIsOpen,
     toggleOpen,
     filterType,
     setFilterType,
@@ -131,7 +132,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing])
+  }, [isResizing, setSidebarWidth])
 
   // Handle creating a new note
   const handleCreateNote = useCallback(() => {

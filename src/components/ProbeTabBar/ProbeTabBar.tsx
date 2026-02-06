@@ -99,12 +99,6 @@ export function ProbeTabBar() {
     setContextMenuId(null)
   }, [deleteProbe])
 
-  // Handle clear messages
-  const handleClearMessages = useCallback((probeId: string) => {
-    // This could be added to the context if needed
-    setContextMenuId(null)
-  }, [])
-
   return (
     <div className={styles.tabBar}>
       {probes.map((probe) => (

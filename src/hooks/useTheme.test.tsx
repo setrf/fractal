@@ -14,7 +14,7 @@
  * Note: These tests mock localStorage and matchMedia.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTheme } from './useTheme'
 import { localStorageMock } from '../test/setup'

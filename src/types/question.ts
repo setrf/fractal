@@ -280,12 +280,12 @@ export const getPathToNode = (
   nodeId: string
 ): QuestionNode[] => {
   const path: QuestionNode[] = []
-  let current = tree.nodes[nodeId]
+  let current: QuestionNode | undefined = tree.nodes[nodeId]
   
   // Walk up the tree via parentId references
   while (current) {
     path.unshift(current) // Prepend to maintain root-first order
-    current = current.parentId ? tree.nodes[current.parentId] : null
+    current = current.parentId ? tree.nodes[current.parentId] : undefined
   }
   
   return path

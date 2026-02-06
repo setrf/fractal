@@ -14,7 +14,7 @@
  * - Auto and manual highlighting of concepts in messages
  */
 
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
 import type { ChatMessage, ExtractedConcept, ConceptExplanation, ConceptCategory } from '../../api'
 import { ConceptHighlighter } from '../ConceptHighlighter'
 import { MarkdownWithHighlights } from '../MarkdownWithHighlights'
@@ -103,7 +103,6 @@ export function ChatView({
   isConceptLoading = false,
   conceptError,
   onConceptHover,
-  onConceptLeave,
   onConceptClick,
   extractConcepts,
   // Popup control triggers
@@ -373,7 +372,7 @@ export function ChatView({
     if (!extractConcepts) return
     
     // Use a timeout to debounce extraction and wait for message to stabilize
-    const timeouts: NodeJS.Timeout[] = []
+    const timeouts: ReturnType<typeof setTimeout>[] = []
     
     messages.forEach((msg, index) => {
       // Only auto-extract for assistant messages
@@ -841,7 +840,7 @@ export function ChatView({
 
       {/* Concept explanation popups - multiple can be open */}
       {/* Only render locally if global popup management is NOT enabled */}
-      {!onOpenPopup && openPopups.map((popup, _index) => {
+      {!onOpenPopup && openPopups.map((popup) => {
         // Get explanation for this specific popup from the maps, or fall back to legacy props
         const explanation = conceptExplanations[popup.concept.id] 
           || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)

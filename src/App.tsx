@@ -12,7 +12,7 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ViewModeToggle } from './components/ViewModeToggle'
 import { ModelSelector } from './components/ModelSelector'
@@ -24,7 +24,7 @@ import { ProbeSidebar } from './components/ProbeSidebar'
 import { NotePopup } from './components/NotePopup'
 import { ConceptPopup } from './components/ConceptPopup'
 import { MobileHeader } from './components/MobileHeader/MobileHeader'
-import { GraphView, type GraphViewHandle } from './components/GraphView'
+import type { GraphViewHandle } from './components/GraphView'
 import { GraphControls } from './components/GraphControls'
 import { GraphNodePopup } from './components/GraphNodePopup'
 import { OnboardingOverlay, type OnboardingStep } from './components/Onboarding'
@@ -87,6 +87,11 @@ interface CanvasNote {
 const QUALITY_SCORE_MAX = 10
 const QUALITY_SCORE_EPSILON = 0.001
 const QUALITY_SCORE_IMPROVEMENT_RATIO = 0.1
+
+const GraphView = lazy(async () => {
+  const module = await import('./components/GraphView')
+  return { default: module.GraphView }
+})
 
 function normalizeWeaveScore(score: number | null | undefined): number | null {
   if (typeof score !== 'number' || !Number.isFinite(score)) return null
@@ -200,8 +205,6 @@ function AppContent() {
     isLoading: explanationLoading,
     error: explanationError,
     fetchExplanation,
-    getExplanation,
-    getLoadingState,
     reset: resetExplanation,
   } = useConceptExplanation()
 
@@ -419,24 +422,27 @@ function AppContent() {
     storageKey: 'fractal_onboarding_v1',
     version: 'v1',
   })
+  const onboardingIsOpen = onboarding.isOpen
+  const onboardingCurrentStep = onboarding.currentStep
+  const onboardingNext = onboarding.next
 
-  const activeOnboardingStep = onboardingSteps[onboarding.currentStep] ?? null
+  const activeOnboardingStep = onboardingSteps[onboardingCurrentStep] ?? null
   const canProceedOnboarding = activeOnboardingStep?.canProceed
     ? activeOnboardingStep.canProceed()
     : true
   const onboardingButtonLabel = onboarding.hasCompleted ? 'Restart Onboarding' : 'Start Onboarding'
 
   useEffect(() => {
-    if (!onboarding.isOpen || !activeOnboardingStep) return
+    if (!onboardingIsOpen || !activeOnboardingStep) return
     activeOnboardingStep.onEnter?.()
-  }, [onboarding.isOpen, onboarding.currentStep, activeOnboardingStep])
+  }, [onboardingIsOpen, onboardingCurrentStep, activeOnboardingStep])
 
   useEffect(() => {
-    if (!onboarding.isOpen || !activeOnboardingStep?.autoAdvance) return
+    if (!onboardingIsOpen || !activeOnboardingStep?.autoAdvance) return
     if (!canProceedOnboarding) return
-    const timer = setTimeout(() => onboarding.next(), 600)
+    const timer = setTimeout(() => onboardingNext(), 600)
     return () => clearTimeout(timer)
-  }, [onboarding.isOpen, onboarding.next, activeOnboardingStep?.autoAdvance, canProceedOnboarding])
+  }, [onboardingIsOpen, onboardingNext, activeOnboardingStep?.autoAdvance, canProceedOnboarding])
   
   // Extract concepts for root node when it changes
   useEffect(() => {
@@ -1055,11 +1061,28 @@ function AppContent() {
             stashItems={stashItems}
             probes={probes}
           >
-            <GraphView
-              ref={graphRef}
-              onNodeClick={handleGraphNodeClick}
-              leftOffset={isMobile ? 0 : (stashOpen ? sidebarWidth : 48)}
-            />
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    minHeight: isMobile ? 'calc(100vh - 56px)' : '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  Loading graph...
+                </div>
+              }
+            >
+              <GraphView
+                ref={graphRef}
+                onNodeClick={handleGraphNodeClick}
+                leftOffset={isMobile ? 0 : (stashOpen ? sidebarWidth : 48)}
+              />
+            </Suspense>
             <GraphControls
               onResetCamera={() => graphRef.current?.resetCamera?.()}
               onZoomIn={() => graphRef.current?.zoomIn?.()}
@@ -1387,11 +1410,13 @@ function AppContent() {
  * Wraps AppContent with StashProvider and ProbeProvider for global access.
  */
 function App() {
+  const shouldAutoLoadModels = import.meta.env.MODE !== 'test'
+
   return (
     <ViewModeProvider>
       <StashProvider>
         <ProbeProvider>
-          <ModelProvider>
+          <ModelProvider autoLoad={shouldAutoLoadModels}>
             <AppContent />
           </ModelProvider>
         </ProbeProvider>

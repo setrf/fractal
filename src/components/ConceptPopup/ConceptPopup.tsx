@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 /**
  * ConceptPopup Component
  * ======================
@@ -271,10 +273,9 @@ export function ConceptPopup({
   
   // Sync with external minimize state when it changes
   useEffect(() => {
-    if (externalIsMinimized !== undefined && externalIsMinimized !== isMinimized) {
-      setIsMinimized(externalIsMinimized)
-    }
-  }, [externalIsMinimized]) // Only depend on externalIsMinimized, not isMinimized to avoid loops
+    if (externalIsMinimized === undefined) return
+    setIsMinimized((prev) => (prev === externalIsMinimized ? prev : externalIsMinimized))
+  }, [externalIsMinimized])
   
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
@@ -587,7 +588,7 @@ export function ConceptPopup({
    * Handles clicking on a concept within the popup content.
    * Opens a new popup for that concept.
    */
-  const handlePopupConceptClick = useCallback((clickedConcept: ExtractedConcept, _event: React.MouseEvent) => {
+  const handlePopupConceptClick = useCallback((clickedConcept: ExtractedConcept) => {
     // Use the related concept click handler to open a new popup
     if (onRelatedConceptClick) {
       onRelatedConceptClick(clickedConcept.normalizedName)

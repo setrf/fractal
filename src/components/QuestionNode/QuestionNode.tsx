@@ -155,6 +155,7 @@ export function QuestionNode({
   // Respond to minimize all trigger from parent
   useEffect(() => {
     if (minimizeAllTrigger > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger-driven external UI command
       setOpenPopups(prev => prev.map(p => ({ ...p, isMinimized: true })))
     }
   }, [minimizeAllTrigger])
@@ -162,6 +163,7 @@ export function QuestionNode({
   // Respond to close all trigger from parent
   useEffect(() => {
     if (closeAllTrigger > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger-driven external UI command
       setOpenPopups([])
     }
   }, [closeAllTrigger])
@@ -670,7 +672,7 @@ export function QuestionNode({
 
       {/* Concept explanation popups - multiple can be open */}
       {/* Only render locally if global popup management is NOT enabled */}
-      {!onOpenPopup && openPopups.map((popup, _index) => {
+      {!onOpenPopup && openPopups.map((popup) => {
         // Get explanation for this specific popup from the maps, or fall back to legacy props
         const explanation = conceptExplanations[popup.concept.id] 
           || (conceptExplanation?.conceptId === popup.concept.id ? conceptExplanation : null)

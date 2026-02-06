@@ -135,9 +135,16 @@ export function ProbeChat({ probe }: ProbeChatProps) {
     setSending(true)
 
     try {
+      const isApiMessage = (
+        message: Probe['messages'][number]
+      ): message is Probe['messages'][number] & { role: 'user' | 'assistant' } =>
+        message.role === 'user' || message.role === 'assistant'
+
       // Build messages array including history
       const messagesForApi = [
-        ...probe.messages.map(m => ({ role: m.role, content: m.content })),
+        ...probe.messages
+          .filter(isApiMessage)
+          .map(m => ({ role: m.role, content: m.content })),
         { role: 'user' as const, content: trimmedInput },
       ]
 

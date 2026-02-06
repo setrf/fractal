@@ -34,7 +34,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   type Probe,
   type ProbeMessage,
-  type ProbeColor,
   generateProbeId,
   generateProbeMessageId,
   isValidProbe,
@@ -445,51 +444,56 @@ export function useProbe(): UseProbeReturn {
       // Build the synthesized prompt
       const sections: string[] = []
 
-      sections.push('## Context from your exploration:')
+      sections.push('## Context from your exploration:\n')
 
       if (highlights.length > 0) {
-        sections.push('\n### Key Concepts')
+        sections.push('### Key Concepts')
         highlights.forEach(item => {
           const source = item.metadata.sourceQuestion
             ? ` (from: "${item.metadata.sourceQuestion}")`
             : ''
           sections.push(`- **${item.content}**${source}`)
         })
+        sections.push('')
       }
 
       if (explanations.length > 0) {
-        sections.push('\n### Explanations')
+        sections.push('### Explanations')
         explanations.forEach(item => {
           const summary = item.metadata.summary || item.content
           sections.push(`- **${item.content}**: ${summary}`)
         })
+        sections.push('')
       }
 
       if (questions.length > 0) {
-        sections.push('\n### Questions Explored')
+        sections.push('### Questions Explored')
         questions.forEach(item => {
           sections.push(`- ${item.content}`)
         })
+        sections.push('')
       }
 
       if (notes.length > 0) {
-        sections.push('\n### Your Notes')
+        sections.push('### Your Notes')
         notes.forEach(item => {
           const title = item.metadata.title ? `**${item.metadata.title}**: ` : ''
           sections.push(`- ${title}${item.content}`)
         })
+        sections.push('')
       }
 
       if (chatMessages.length > 0) {
-        sections.push('\n### Relevant Chat Excerpts')
+        sections.push('### Relevant Chat Excerpts')
         chatMessages.forEach(item => {
           const role = item.metadata.role === 'assistant' ? 'AI' : 'You'
           sections.push(`- [${role}]: "${item.content.slice(0, 200)}${item.content.length > 200 ? '...' : ''}"`)
         })
+        sections.push('')
       }
 
-      sections.push('\n---')
-      sections.push('\n## Your Direction:')
+      sections.push('---\n')
+      sections.push('## Your Direction:')
       sections.push(userDirection || '[Enter your question or direction here]')
 
       return sections.join('\n')

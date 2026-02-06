@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 /**
  * Test Utilities
  * ==============
@@ -10,8 +12,8 @@
  * - Helper functions for common assertions
  */
 
-import { ReactElement, type ReactNode } from 'react'
-import { render, RenderOptions, screen } from '@testing-library/react'
+import { type ReactElement, type ReactNode } from 'react'
+import { render, type RenderOptions, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StashProvider } from '../context/StashContext'
 import { ProbeProvider } from '../context/ProbeContext'
@@ -23,7 +25,7 @@ function Providers({ children }: { children: ReactNode }) {
     <ViewModeProvider>
       <StashProvider>
         <ProbeProvider>
-          <ModelProvider>{children}</ModelProvider>
+          <ModelProvider autoLoad={false}>{children}</ModelProvider>
         </ProbeProvider>
       </StashProvider>
     </ViewModeProvider>

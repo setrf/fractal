@@ -15,6 +15,8 @@ import OpenAI from 'openai'
 import { weave } from './weave-client.js'
 import { config } from './config.js'
 
+const isTestMode = process.env.NODE_ENV === 'test'
+
 // Create OpenAI client configured for W&B Inference
 const client = new OpenAI({
   baseURL: config.inferenceBaseUrl,
@@ -51,8 +53,10 @@ function parseRobustJson<T>(content: string, fallback: T): T {
 
   try {
     return JSON.parse(cleaned) as T
-  } catch (error) {
-    console.warn('[Inference] JSON parse failed, returning fallback. Content snippet:', content.substring(0, 100))
+  } catch {
+    if (!isTestMode) {
+      console.warn('[Inference] JSON parse failed, returning fallback. Content snippet:', content.substring(0, 100))
+    }
     return fallback
   }
 }
@@ -263,7 +267,9 @@ export const generateRelatedQuestions = weave.op(
       updatePromptStats(promptVariant.id, scored.score)
       console.log(`[Inference] Weave score: ${scored.score}`)
     } catch (error) {
-      console.warn('[Inference] Scoring failed:', error)
+      if (!isTestMode) {
+        console.warn('[Inference] Scoring failed:', error)
+      }
     }
 
     const result: GeneratedQuestions = {
@@ -728,7 +734,9 @@ export const extractConcepts = weave.op(
         
         if (allOccurrences.length === 0) {
           // Concept text not found in source - skip it
-          console.warn(`[Concepts] Text "${c.text}" not found in source, skipping`)
+          if (!isTestMode) {
+            console.warn(`[Concepts] Text "${c.text}" not found in source, skipping`)
+          }
           return null
         }
         

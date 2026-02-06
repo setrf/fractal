@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 /**
  * @fileoverview React Context for global model selection.
  */
@@ -11,10 +13,11 @@ const ModelContext = createContext<ModelContextType | undefined>(undefined)
 
 interface ModelProviderProps {
   children: ReactNode
+  autoLoad?: boolean
 }
 
-export function ModelProvider({ children }: ModelProviderProps) {
-  const modelSelection = useModelSelection()
+export function ModelProvider({ children, autoLoad = true }: ModelProviderProps) {
+  const modelSelection = useModelSelection({ autoLoad })
   return (
     <ModelContext.Provider value={modelSelection}>
       {children}

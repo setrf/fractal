@@ -13,7 +13,7 @@
  * - Hint text showing keyboard shortcut
  */
 
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
 import styles from './QuestionInput.module.css'
 
 // Constants for dynamic sizing

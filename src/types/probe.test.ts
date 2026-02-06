@@ -104,17 +104,17 @@ describe('probe utilities', () => {
     })
 
     it('should return false for invalid color', () => {
-      const probe = { ...validProbe, color: 'invalid' as any }
+      const probe = { ...validProbe, color: 'invalid' as unknown as Probe['color'] }
       expect(isValidProbe(probe)).toBe(false)
     })
 
     it('should return false for non-array messages', () => {
-      const probe = { ...validProbe, messages: 'not an array' as any }
+      const probe = { ...validProbe, messages: 'not an array' as unknown as Probe['messages'] }
       expect(isValidProbe(probe)).toBe(false)
     })
 
     it('should return false for non-array selectedStashItemIds', () => {
-      const probe = { ...validProbe, selectedStashItemIds: 'not an array' as any }
+      const probe = { ...validProbe, selectedStashItemIds: 'not an array' as unknown as Probe['selectedStashItemIds'] }
       expect(isValidProbe(probe)).toBe(false)
     })
 
@@ -149,7 +149,7 @@ describe('probe utilities', () => {
     })
 
     it('should return false for invalid role', () => {
-      const msg = { ...validMessage, role: 'invalid' as any }
+      const msg = { ...validMessage, role: 'invalid' as unknown as ProbeMessage['role'] }
       expect(isValidProbeMessage(msg)).toBe(false)
     })
 
@@ -161,12 +161,12 @@ describe('probe utilities', () => {
     })
 
     it('should return false for non-string content', () => {
-      const msg = { ...validMessage, content: 123 as any }
+      const msg = { ...validMessage, content: 123 as unknown as ProbeMessage['content'] }
       expect(isValidProbeMessage(msg)).toBe(false)
     })
 
     it('should return false for non-number timestamp', () => {
-      const msg = { ...validMessage, timestamp: '2024-01-01' as any }
+      const msg = { ...validMessage, timestamp: '2024-01-01' as unknown as ProbeMessage['timestamp'] }
       expect(isValidProbeMessage(msg)).toBe(false)
     })
   })

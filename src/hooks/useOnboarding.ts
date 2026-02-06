@@ -4,7 +4,7 @@
  * Handles first-visit auto-start, step navigation, and restart/skip flows.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 export type OnboardingStatus = 'pending' | 'completed' | 'skipped'
 
@@ -89,12 +89,6 @@ export function useOnboarding({
   const [isOpen, setIsOpen] = useState(() => autoStart && (stored?.status ?? 'pending') === 'pending')
 
   const hasCompleted = status !== 'pending'
-
-  useEffect(() => {
-    if (!autoStart) return
-    if (hasCompleted) return
-    setIsOpen(true)
-  }, [autoStart, hasCompleted])
 
   const persistStatus = useCallback(
     (nextStatus: OnboardingStatus) => {

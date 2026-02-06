@@ -207,6 +207,7 @@ export function NotePopup({
   // Update minimized position when stack index changes
   useEffect(() => {
     if (isMinimized) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- stack position must sync with external minimize order
       setPopupPosition(getMinimizedPosition())
     }
   }, [isMinimized, minimizedStackIndex, getMinimizedPosition])

@@ -47,6 +47,7 @@ export function ProbeSidebar({ onStashItemDrop }: ProbeSidebarProps = {}) {
     activeProbe,
     createProbe,
     isOpen,
+    setIsOpen,
     toggleOpen,
     count,
     canCreateProbe,

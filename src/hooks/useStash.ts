@@ -43,6 +43,7 @@ import {
  * Prevents excessive writes during rapid updates.
  */
 const SAVE_DEBOUNCE_MS = 500
+const isTestMode = import.meta.env.MODE === 'test'
 
 /**
  * Return type for the useStash hook.
@@ -137,7 +138,9 @@ const loadFromStorage = (): StashItem[] => {
     // Validate each item
     return parsed.filter(isValidStashItem)
   } catch (error) {
-    console.error('[useStash] Failed to load from localStorage:', error)
+    if (!isTestMode) {
+      console.error('[useStash] Failed to load from localStorage:', error)
+    }
     return []
   }
 }
@@ -151,7 +154,9 @@ const saveToStorage = (items: StashItem[]): void => {
   try {
     localStorage.setItem(STASH_STORAGE_KEY, JSON.stringify(items))
   } catch (error) {
-    console.error('[useStash] Failed to save to localStorage:', error)
+    if (!isTestMode) {
+      console.error('[useStash] Failed to save to localStorage:', error)
+    }
   }
 }
 
@@ -309,13 +314,17 @@ export function useStash(): UseStashReturn {
     try {
       const parsed = JSON.parse(json)
       if (!Array.isArray(parsed)) {
-        console.error('[useStash] Import failed: not an array')
+        if (!isTestMode) {
+          console.error('[useStash] Import failed: not an array')
+        }
         return false
       }
 
       const validItems = parsed.filter(isValidStashItem)
       if (validItems.length === 0) {
-        console.error('[useStash] Import failed: no valid items')
+        if (!isTestMode) {
+          console.error('[useStash] Import failed: no valid items')
+        }
         return false
       }
 
@@ -331,7 +340,9 @@ export function useStash(): UseStashReturn {
 
       return true
     } catch (error) {
-      console.error('[useStash] Import failed:', error)
+      if (!isTestMode) {
+        console.error('[useStash] Import failed:', error)
+      }
       return false
     }
   }, [])

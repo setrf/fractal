@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, userEvent, logAccessibleElements } from '../../test/test-utils'
+import { render, screen, logAccessibleElements } from '../../test/test-utils'
 import { QuestionInput } from './QuestionInput'
 
 describe('QuestionInput Component', () => {

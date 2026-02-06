@@ -16,7 +16,6 @@ import styles from './StashItem.module.css'
 import type { StashItem as StashItemType, StashItemType as ItemType } from '../../types/stash'
 import { stashTypeIcons, stashTypeLabels } from '../../types/stash'
 import { useProbeContext } from '../../context/ProbeContext'
-import type { ProbeColor } from '../../types/probe'
 
 /**
  * Props for the StashItem component.

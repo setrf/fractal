@@ -30,3 +30,6 @@ dist-ssr
 
 # Test coverage
 coverage/
+
+# Local prep notes
+TIKTOK_OA_PREP.md

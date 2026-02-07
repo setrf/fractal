@@ -80,6 +80,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **Guided Onboarding Tour** — First-run walkthrough with restart button for demos
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
+  - Extraction now consistently follows the active model and ignores stale async updates per node
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
   - In-memory explanation reuse is scope-aware (concept + context + model) to prevent stale explanations when exploration context changes
 - **The Stash** — Collapsible left sidebar for collecting and organizing excerpts, highlights, and concepts

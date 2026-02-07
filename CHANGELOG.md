@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored `App.tsx` by extracting onboarding step logic and graph interaction handlers into dedicated hooks.
 - Concept explanation fetching now scopes in-memory reuse by concept, context, and model to avoid stale popup content.
 - Added a shared API request wrapper with timeout and abort-signal support, and stale-response guards so older async results no longer overwrite newer UI state.
+- Root and per-node concept extraction in `App.tsx` now consistently uses the active model and ignores stale extraction responses.
 
 ### Planned
 - Streaming responses for real-time feedback

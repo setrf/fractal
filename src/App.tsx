@@ -219,6 +219,9 @@ function AppContent() {
   
   // Track concepts per node (nodeId -> concepts)
   const [nodeConcepts, setNodeConcepts] = useState<Record<string, ExtractedConcept[]>>({})
+  // Track latest concept extraction request per node to ignore stale responses.
+  const conceptExtractionRequestCounter = useRef(0)
+  const latestConceptExtractionByNode = useRef<Map<string, number>>(new Map())
 
   // View state for navigating between tree and chat
   const [chatState, setChatState] = useState<ChatState | null>(null)
@@ -304,16 +307,32 @@ function AppContent() {
     return () => clearTimeout(timer)
   }, [onboardingIsOpen, onboardingNext, activeOnboardingStep?.autoAdvance, canProceedOnboarding])
   
-  // Extract concepts for root node when it changes
-  useEffect(() => {
-    if (rootNode && !nodeConcepts[rootNode.id]) {
-      extractConcepts(rootNode.text).then((extracted) => {
-        if (extracted.length > 0) {
-          setNodeConcepts(prev => ({ ...prev, [rootNode.id]: extracted }))
-        }
-      })
+  const extractNodeConcepts = useCallback(async (nodeId: string, text: string) => {
+    if (nodeConcepts[nodeId]) return
+
+    const requestId = conceptExtractionRequestCounter.current + 1
+    conceptExtractionRequestCounter.current = requestId
+    latestConceptExtractionByNode.current.set(nodeId, requestId)
+
+    const extracted = await extractConceptsWithModel(text)
+    if (latestConceptExtractionByNode.current.get(nodeId) !== requestId) {
+      return
     }
-  }, [rootNode, nodeConcepts, extractConcepts])
+    if (extracted.length === 0) {
+      return
+    }
+
+    setNodeConcepts(prev => {
+      if (prev[nodeId]) return prev
+      return { ...prev, [nodeId]: extracted }
+    })
+  }, [nodeConcepts, extractConceptsWithModel])
+
+  // Extract concepts for root node when it changes.
+  useEffect(() => {
+    if (!rootNode) return
+    void extractNodeConcepts(rootNode.id, rootNode.text)
+  }, [rootNode, extractNodeConcepts])
 
   /**
    * Handles node selection - wraps setActiveNode to also trigger concept extraction.
@@ -325,13 +344,9 @@ function AppContent() {
     // Auto-extract concepts for the selected node if not already done
     const node = tree.nodes[nodeId]
     if (node && !nodeConcepts[nodeId]) {
-      extractConceptsWithModel(node.text).then((extracted) => {
-        if (extracted.length > 0) {
-          setNodeConcepts(prev => ({ ...prev, [nodeId]: extracted }))
-        }
-      })
+      void extractNodeConcepts(nodeId, node.text)
     }
-  }, [tree.nodes, nodeConcepts, extractConceptsWithModel, setActiveNode])
+  }, [tree.nodes, nodeConcepts, extractNodeConcepts, setActiveNode])
 
   /**
    * Generates AI suggestions for a node and adds them as children.
@@ -453,6 +468,8 @@ function AppContent() {
   const handleReset = useCallback(() => {
     reset()
     setNodeConcepts({})
+    latestConceptExtractionByNode.current.clear()
+    conceptExtractionRequestCounter.current = 0
     setChatState(null)
     resetExplanation()
     setCanvasNotes([])

@@ -12,7 +12,7 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ViewModeToggle } from './components/ViewModeToggle'
 import { ModelSelector } from './components/ModelSelector'
@@ -27,9 +27,8 @@ import { MobileHeader } from './components/MobileHeader/MobileHeader'
 import type { GraphViewHandle } from './components/GraphView'
 import { GraphControls } from './components/GraphControls'
 import { GraphNodePopup } from './components/GraphNodePopup'
-import { OnboardingOverlay, type OnboardingStep } from './components/Onboarding'
+import { OnboardingOverlay } from './components/Onboarding'
 import type { ConceptExplanation } from './types/concept'
-import type { GraphNode } from './types/graph'
 import { StashProvider, useStashContext } from './context/StashContext'
 import { ProbeProvider, useProbeContext } from './context/ProbeContext'
 import { GraphProvider } from './context/GraphContext'
@@ -40,6 +39,8 @@ import { useAIQuestions } from './hooks/useAIQuestions'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
 import { useOnboarding } from './hooks/useOnboarding'
+import { useOnboardingSteps } from './hooks/useOnboardingSteps'
+import { useGraphInteractions } from './hooks/useGraphInteractions'
 import { useIsMobile } from './hooks/useIsMobile'
 import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 import type { StashItem as StashItemData } from './types/stash'
@@ -117,15 +118,6 @@ interface ReopenedExplanation {
   concept: ExtractedConcept
   explanation: ConceptExplanation
   isMinimized: boolean
-}
-
-/**
- * Onboarding step configuration for the guided tour.
- */
-interface OnboardingStepConfig extends OnboardingStep {
-  canProceed?: () => boolean
-  onEnter?: () => void
-  autoAdvance?: boolean
 }
 
 /**
@@ -250,11 +242,7 @@ function AppContent() {
 
   // View mode (traditional vs graph)
   const { isGraphView } = useViewModeContext()
-  
-  // Graph node popup state
-  const [graphPopupNode, setGraphPopupNode] = useState<GraphNode | null>(null)
-  const [graphPopupPosition, setGraphPopupPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  
+
   // Graph view ref for camera controls
   const graphRef = useRef<GraphViewHandle | null>(null)
 
@@ -269,152 +257,21 @@ function AppContent() {
   const activeProbeSelectedCount = activeProbe?.selectedStashItemIds.length ?? 0
   const activeProbeMessageCount = activeProbe?.messages.length ?? 0
 
-  const onboardingSteps = useMemo<OnboardingStepConfig[]>(
-    () => [
-      {
-        id: 'welcome',
-        title: 'Welcome to Fractal',
-        body:
-          'Fractal helps you discover better questions, not just answers.\n' +
-          'This tour walks through the core flow used in the demo and judging.',
-      },
-      {
-        id: 'seed-question',
-        title: 'Start with a seed question',
-        body:
-          'Type a question you are genuinely curious about, then press Enter.\n' +
-          'We will build the exploration tree from it.',
-        selector: '[data-onboarding="question-input"]',
-        canProceed: () => Boolean(rootNode),
-        autoAdvance: true,
-      },
-      {
-        id: 'deep-dive',
-        title: 'Generate branches with AI',
-        body:
-          'Click Deep dive to generate related questions.\n' +
-          'This uses W&B Inference with Weave tracing.',
-        selector: '[data-onboarding="deep-dive"]',
-        canProceed: () => rootChildCount > 0,
-        autoAdvance: true,
-      },
-      {
-        id: 'weave-score',
-        title: 'Weave quality score',
-        body:
-          'Each generation is scored by an LLM judge for depth and diversity.\n' +
-          'The score feeds the self-improvement loop.',
-        selector: '[data-onboarding="weave-score"]',
-        canProceed: () => Boolean(lastMeta),
-      },
-      {
-        id: 'concept-highlights',
-        title: 'Concept highlights',
-        body:
-          'Concepts are extracted from your questions and highlighted inline.\n' +
-          'Hover or click to explore them.',
-        selector: '[data-onboarding="question-text"]',
-        canProceed: () => rootConceptCount > 0,
-      },
-      {
-        id: 'concept-popups',
-        title: 'Popups and related concepts',
-        body:
-          'Open a concept popup to read the summary and context.\n' +
-          'Use related concepts to branch your exploration.',
-        selector: '[data-onboarding="concept-popup"]',
-        canProceed: () => hasPopup,
-      },
-      {
-        id: 'stash-item',
-        title: 'Stash important artifacts',
-        body:
-          'Stash questions, highlights, or explanations for later synthesis.\n' +
-          'Try stashing at least one item.',
-        selector: '[data-onboarding="stash-button"]',
-        canProceed: () => stashCount > 0,
-      },
-      {
-        id: 'stash-sidebar',
-        title: 'Browse your Stash',
-        body:
-          'The Stash collects everything you want to keep.\n' +
-          'Filter, search, and open items from here.',
-        selector: '[data-onboarding="stash-sidebar"]',
-        canProceed: () => stashOpen,
-        onEnter: () => setStashOpen(true),
-      },
-      {
-        id: 'probe-create',
-        title: 'Create a Probe',
-        body:
-          'Probes synthesize your Stash into focused conversations.\n' +
-          'Create a probe to begin.',
-        selector: '[data-onboarding="probe-create"]',
-        canProceed: () => probeCount > 0,
-        onEnter: () => setProbeOpen(true),
-      },
-      {
-        id: 'probe-select',
-        title: 'Select Stash context',
-        body:
-          'Use the checkbox to add Stash items into the active probe.\n' +
-          'Select at least one item to continue.',
-        selector: '[data-onboarding="stash-checkbox"]',
-        canProceed: () => activeProbeSelectedCount > 0,
-        onEnter: () => setStashOpen(true),
-      },
-      {
-        id: 'probe-synthesize',
-        title: 'Synthesize and send',
-        body:
-          'Click Synthesize to build a structured prompt, then send.\n' +
-          'You are now running a context-rich LLM query.',
-        selector: '[data-onboarding="probe-synthesize"]',
-        canProceed: () => activeProbeMessageCount > 0,
-        onEnter: () => setProbeOpen(true),
-      },
-      {
-        id: 'model-selection',
-        title: 'Model selection',
-        body:
-          'Swap the model used for generation, chat, and evaluation.\n' +
-          'This lets you compare outputs during the demo.',
-        selector: '[data-onboarding="model-selector"]',
-      },
-      {
-        id: 'graph-view',
-        title: '3D knowledge graph',
-        body:
-          'Switch to Graph view to visualize questions, concepts, stash items, and probes.\n' +
-          'This is the narrative map for the demo.',
-        selector: '[data-onboarding="view-toggle"]',
-        canProceed: () => isGraphView,
-      },
-      {
-        id: 'finish',
-        title: 'You are ready to demo',
-        body:
-          'You have walked the full Fractal loop.\n' +
-          'Restart this tour anytime from the top-left controls.',
-      },
-    ],
-    [
-      rootNode,
-      rootChildCount,
-      rootConceptCount,
-      lastMeta,
-      hasPopup,
-      stashCount,
-      stashOpen,
-      probeCount,
-      activeProbeSelectedCount,
-      activeProbeMessageCount,
-      isGraphView,
-      setStashOpen,
-      setProbeOpen,
-    ]
-  )
+  const onboardingSteps = useOnboardingSteps({
+    hasRootNode: Boolean(rootNode),
+    rootChildCount,
+    rootConceptCount,
+    hasLastMeta: Boolean(lastMeta),
+    hasPopup,
+    stashCount,
+    stashOpen,
+    probeCount,
+    activeProbeSelectedCount,
+    activeProbeMessageCount,
+    isGraphView,
+    setStashOpen,
+    setProbeOpen,
+  })
 
   const onboarding = useOnboarding({
     totalSteps: onboardingSteps.length,
@@ -865,36 +722,17 @@ function AppContent() {
     setCloseAllTrigger(prev => prev + 1)
   }, [])
 
-  /**
-   * Handles click on a graph node - shows popup with details.
-   */
-  const handleGraphNodeClick = useCallback((node: GraphNode, event: MouseEvent) => {
-    setGraphPopupNode(node)
-    setGraphPopupPosition({ x: event.clientX, y: event.clientY })
-  }, [])
-
-  /**
-   * Closes the graph node popup.
-   */
-  const handleGraphPopupClose = useCallback(() => {
-    setGraphPopupNode(null)
-  }, [])
-
-  /**
-   * Handles Deep Dive action from graph popup.
-   */
-  const handleGraphDeepDive = useCallback((nodeId: string, question: string) => {
-    handleGraphPopupClose()
-    handleGenerateAI(nodeId, question)
-  }, [handleGraphPopupClose, handleGenerateAI])
-
-  /**
-   * Handles Chat action from graph popup.
-   */
-  const handleGraphChat = useCallback((nodeId: string, question: string) => {
-    handleGraphPopupClose()
-    handleLockIn(nodeId, question)
-  }, [handleGraphPopupClose, handleLockIn])
+  const {
+    graphPopupNode,
+    graphPopupPosition,
+    handleGraphNodeClick,
+    handleGraphPopupClose,
+    handleGraphDeepDive,
+    handleGraphChat,
+  } = useGraphInteractions({
+    onDeepDive: handleGenerateAI,
+    onChat: handleLockIn,
+  })
 
   // Build layout classes for both sidebars
   const layoutClasses = [

@@ -383,6 +383,8 @@ fractal/
 │   │   ├── useAIQuestions.ts        # AI question generation hook
 │   │   ├── useConceptExtraction.ts  # Concept extraction with caching
 │   │   ├── useConceptExplanation.ts # Concept explanation with localStorage cache
+│   │   ├── useGraphInteractions.ts  # Graph popup and action controller
+│   │   ├── useOnboardingSteps.ts    # Guided tour step configuration controller
 │   │   ├── useQuestionTree.ts       # Question tree state management
 │   │   ├── useStash.ts              # Stash state management with localStorage
 │   │   └── useTheme.ts              # Theme state and persistence

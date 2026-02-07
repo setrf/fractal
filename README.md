@@ -64,6 +64,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - **Smart Multiline Labels**: Full question text visible as sprites without truncation
   - **Non-blocking popups**: Explore the 3D space while reading node details
   - **Directional relationship arrows** and refined link precision
+  - **Lazy-loaded 3D runtime** so graph dependencies load only when Graph view is opened
   - Zoom, pan, and rotate navigation
   - **Unified Legend & Filters** section for efficient control
 - **Mobile Responsiveness** — Fully adapting layout for mobile devices

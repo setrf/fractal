@@ -21,6 +21,12 @@ import type { ForceGraphMethods } from 'react-force-graph-3d'
 import { EDGE_WIDTHS } from '../../types/graph'
 import styles from './GraphView.module.css'
 
+// Keep THREE global for libraries that still expect window.THREE.
+// This runs only when GraphView is lazily loaded.
+if (typeof window !== 'undefined') {
+  ;(window as Window & { THREE?: typeof THREE }).THREE = THREE
+}
+
 /**
  * Props for the GraphView component.
  */

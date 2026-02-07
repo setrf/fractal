@@ -80,6 +80,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
 - **Gwern-style Concept Popups** — Hover or click highlighted concepts for LLM-generated explanations
+  - In-memory explanation reuse is scope-aware (concept + context + model) to prevent stale explanations when exploration context changes
 - **The Stash** — Collapsible left sidebar for collecting and organizing excerpts, highlights, and concepts
   - Stash highlights, explanations, questions, chat messages, and custom notes
   - Filter by type, search across all content

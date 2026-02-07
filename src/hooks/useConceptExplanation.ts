@@ -65,6 +65,18 @@ function getCacheKey(conceptName: string, questionContext: string, model?: strin
   return `${CACHE_KEY_PREFIX}${conceptKey}_${contextHash}_${modelKey}`
 }
 
+function getRequestScopeKey(
+  conceptId: string,
+  conceptName: string,
+  questionContext: string,
+  model?: string
+): string {
+  const contextHash = hashString(questionContext.trim().toLowerCase())
+  const conceptKey = conceptName.toLowerCase().trim()
+  const modelKey = (model || 'default').toLowerCase().trim()
+  return `${conceptId}::${conceptKey}::${contextHash}::${modelKey}`
+}
+
 /**
  * Get cached explanation from localStorage.
  * Returns null if not cached or expired.
@@ -191,6 +203,9 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
   
   // Track in-flight requests to prevent duplicates
   const pendingRequests = useRef<Set<string>>(new Set())
+  // Tracks the request scope that produced the current explanation for a conceptId.
+  // This avoids reusing stale explanations when context/model changes.
+  const scopeByConceptId = useRef<Map<string, string>>(new Map())
 
   /**
    * Get explanation for a specific concept ID.
@@ -217,9 +232,11 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     questionContext: string,
     model?: string
   ): Promise<ConceptExplanation | null> => {
+    const requestScopeKey = getRequestScopeKey(conceptId, conceptName, questionContext, model)
+
     // Check if we already have this explanation
     const existing = explanations[conceptId]
-    if (existing) {
+    if (existing && scopeByConceptId.current.get(conceptId) === requestScopeKey) {
       // Update legacy state too
       setExplanation(existing)
       setCurrentConceptId(conceptId)
@@ -233,6 +250,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       // Update the conceptId in case it changed
       const updatedCached = { ...cached, conceptId }
       setExplanations(prev => ({ ...prev, [conceptId]: updatedCached }))
+      scopeByConceptId.current.set(conceptId, requestScopeKey)
       // Update legacy state too
       setExplanation(updatedCached)
       setCurrentConceptId(conceptId)
@@ -241,8 +259,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     }
 
     // Prevent duplicate requests
-    const requestKey = `${conceptId}_${conceptName}_${model || 'default'}`
-    if (pendingRequests.current.has(requestKey)) {
+    if (pendingRequests.current.has(requestScopeKey)) {
       return null
     }
 
@@ -256,7 +273,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       setIsLoading(true)
       setError(null)
       setCurrentConceptId(conceptId)
-      pendingRequests.current.add(requestKey)
+      pendingRequests.current.add(requestScopeKey)
 
       const result = await explainConceptApi(conceptId, conceptName, questionContext, model)
       
@@ -265,6 +282,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       
       // Update explanations map
       setExplanations(prev => ({ ...prev, [conceptId]: result }))
+      scopeByConceptId.current.set(conceptId, requestScopeKey)
       setLoadingStates(prev => ({
         ...prev,
         [conceptId]: { isLoading: false, error: null }
@@ -286,7 +304,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       return null
     } finally {
       setIsLoading(false)
-      pendingRequests.current.delete(requestKey)
+      pendingRequests.current.delete(requestScopeKey)
     }
   }, [explanations])
 
@@ -300,6 +318,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     setError(null)
     setCurrentConceptId(null)
     pendingRequests.current.clear()
+    scopeByConceptId.current.clear()
   }, [])
 
   /**

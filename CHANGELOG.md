@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Probe chat now strips synthesized context sections before sending requests, so selected stash context is injected once on the server.
 - Moved global `THREE` initialization into the lazy-loaded Graph view module to reduce initial bundle weight.
 - Refactored `App.tsx` by extracting onboarding step logic and graph interaction handlers into dedicated hooks.
+- Concept explanation fetching now scopes in-memory reuse by concept, context, and model to avoid stale popup content.
 
 ### Planned
 - Streaming responses for real-time feedback

@@ -21,6 +21,34 @@ import { sendProbeChatMessage } from '../../api/client'
 import type { Probe } from '../../types/probe'
 import type { StashItem } from '../../types/stash'
 
+const SYNTHESIZED_DIRECTION_HEADER = '## Your Direction:'
+const SYNTHESIZED_DIRECTION_PLACEHOLDER = '[Enter your question or direction here]'
+
+/**
+ * Extract a user direction from Probe input.
+ * If the input is a synthesized prompt template, keep only the direction section
+ * so context is injected once on the server (from selected stash items).
+ */
+export function extractProbeDirection(input: string): string {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+
+  const headerIndex = trimmed.indexOf(SYNTHESIZED_DIRECTION_HEADER)
+  if (headerIndex === -1) {
+    return trimmed
+  }
+
+  const direction = trimmed
+    .slice(headerIndex + SYNTHESIZED_DIRECTION_HEADER.length)
+    .trim()
+
+  if (!direction || direction === SYNTHESIZED_DIRECTION_PLACEHOLDER) {
+    return ''
+  }
+
+  return direction
+}
+
 /**
  * Props for the ProbeChat component.
  */
@@ -121,13 +149,13 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   // Handle sending a message
   const handleSend = useCallback(async () => {
-    const trimmedInput = input.trim()
-    if (!trimmedInput || sending) return
+    const userDirection = extractProbeDirection(input)
+    if (!userDirection || sending) return
 
     // Add user message
     addMessage(probe.id, {
       role: 'user',
-      content: trimmedInput,
+      content: userDirection,
       sourceStashItemIds: probe.selectedStashItemIds,
     })
 
@@ -145,7 +173,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
         ...probe.messages
           .filter(isApiMessage)
           .map(m => ({ role: m.role, content: m.content })),
-        { role: 'user' as const, content: trimmedInput },
+        { role: 'user' as const, content: userDirection },
       ]
 
       // Send to API

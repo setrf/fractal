@@ -89,7 +89,8 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **The Probe** — Collapsible right sidebar for synthesis-focused conversations
   - Multiple tabbed probes with distinct colors (up to 5)
   - Select Stash items via checkboxes or drag-and-drop
-  - Auto-synthesize rich prompts from collected context
+  - Auto-synthesize rich prompt scaffolds from collected context
+  - Server-side context assembly (avoids duplicate context payloads)
   - Fully editable prompts before sending
   - Persistent conversations in localStorage
   - Color-coded badges on Stash items show assignments

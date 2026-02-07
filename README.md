@@ -29,6 +29,7 @@ This is not about finding "the answer." It's about discovering what you're truly
 - [Project Structure](#project-structure)
 - [Design System](#design-system)
 - [Development](#development)
+- [Contributing](#contributing)
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -538,6 +539,33 @@ npm run test:verbose
 2. Use CSS custom properties for all colors, spacing, and typography
 
 3. Prefer composition over prop drilling
+
+---
+
+## Contributing
+
+Contribution workflow in this repo is strict:
+
+1. Update docs and comments with code changes.
+2. Commit early and often (small, focused commits).
+3. Push to `origin` after each commit.
+
+### Git Hook Enforcement
+
+A tracked pre-commit hook enforces docs updates when staged code changes exist.
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-commit
+```
+
+For exceptional cases only:
+
+```bash
+SKIP_DOC_GUARD=1 git commit -m "..."
+```
+
+See `CONTRIBUTING.md` for details.
 
 ---
 

@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+set -eu
+
+# Enforce documentation updates when staged code changes exist.
+# Set SKIP_DOC_GUARD=1 to bypass in exceptional cases.
+if [ "${SKIP_DOC_GUARD:-0}" = "1" ]; then
+  exit 0
+fi
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if [ -z "${staged}" ]; then
+  exit 0
+fi
+
+code_changed=0
+docs_changed=0
+
+for file in ${staged}; do
+  case "${file}" in
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.css|*.scss|*.html|*.json|server/src/*|src/*)
+      code_changed=1
+      ;;
+  esac
+
+  case "${file}" in
+    README.md|CHANGELOG.md|CONTRIBUTING.md|docs/*|*.md)
+      docs_changed=1
+      ;;
+  esac
+done
+
+if [ "${code_changed}" -eq 1 ] && [ "${docs_changed}" -eq 0 ]; then
+  echo "pre-commit: staged code changes detected without staged docs updates."
+  echo "Add a relevant docs/comment update (e.g. README.md, CHANGELOG.md, or docs/*)."
+  echo "If this is intentionally unnecessary, commit with SKIP_DOC_GUARD=1."
+  exit 1
+fi
+
+exit 0

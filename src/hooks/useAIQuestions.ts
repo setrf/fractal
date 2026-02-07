@@ -9,7 +9,7 @@
  * - W&B Weave for tracing and observability
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { generateQuestions, isApiAvailable, type GenerateQuestionsResponse } from '../api'
 
 const isTestMode = import.meta.env.MODE === 'test'
@@ -58,10 +58,16 @@ export function useAIQuestions(): UseAIQuestionsResult {
   const [error, setError] = useState<string | null>(null)
   const [isAvailable, setIsAvailable] = useState(true)
   const [lastMeta, setLastMeta] = useState<NonNullable<GenerateQuestionsResponse['data']['meta']> | null>(null)
+  const latestGenerateRequestId = useRef(0)
+  const latestAvailabilityRequestId = useRef(0)
 
   const checkAvailability = useCallback(async () => {
+    const requestId = latestAvailabilityRequestId.current + 1
+    latestAvailabilityRequestId.current = requestId
     const available = await isApiAvailable()
-    setIsAvailable(available)
+    if (latestAvailabilityRequestId.current === requestId) {
+      setIsAvailable(available)
+    }
     return available
   }, [])
 
@@ -69,13 +75,18 @@ export function useAIQuestions(): UseAIQuestionsResult {
     questions: string[]
     meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null
   }> => {
+    const requestId = latestGenerateRequestId.current + 1
+    latestGenerateRequestId.current = requestId
     setIsLoading(true)
     setError(null)
 
     try {
       console.log(`[AI] Generating questions for: "${question}"`)
       const { questions, meta } = await generateQuestions(question, model)
-      setLastMeta(meta)
+      if (latestGenerateRequestId.current === requestId) {
+        setLastMeta(meta)
+        setIsAvailable(true)
+      }
       console.log(`[AI] Generated ${questions.length} questions`)
       return { questions, meta }
     } catch (err) {
@@ -83,11 +94,15 @@ export function useAIQuestions(): UseAIQuestionsResult {
       if (!isTestMode) {
         console.error('[AI] Generation failed:', errorMessage)
       }
-      setError(errorMessage)
-      setIsAvailable(false)
+      if (latestGenerateRequestId.current === requestId) {
+        setError(errorMessage)
+        setIsAvailable(false)
+      }
       return { questions: [], meta: null }
     } finally {
-      setIsLoading(false)
+      if (latestGenerateRequestId.current === requestId) {
+        setIsLoading(false)
+      }
     }
   }, [])
 

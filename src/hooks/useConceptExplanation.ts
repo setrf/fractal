@@ -206,6 +206,9 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
   // Tracks the request scope that produced the current explanation for a conceptId.
   // This avoids reusing stale explanations when context/model changes.
   const scopeByConceptId = useRef<Map<string, string>>(new Map())
+  // Tracks the most recently requested scope for each concept.
+  // Older in-flight requests must not overwrite newer results.
+  const latestRequestedScopeByConceptId = useRef<Map<string, string>>(new Map())
 
   /**
    * Get explanation for a specific concept ID.
@@ -233,10 +236,14 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     model?: string
   ): Promise<ConceptExplanation | null> => {
     const requestScopeKey = getRequestScopeKey(conceptId, conceptName, questionContext, model)
+    const isLatestScope = () => (
+      latestRequestedScopeByConceptId.current.get(conceptId) === requestScopeKey
+    )
 
     // Check if we already have this explanation
     const existing = explanations[conceptId]
     if (existing && scopeByConceptId.current.get(conceptId) === requestScopeKey) {
+      latestRequestedScopeByConceptId.current.set(conceptId, requestScopeKey)
       // Update legacy state too
       setExplanation(existing)
       setCurrentConceptId(conceptId)
@@ -247,6 +254,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     // Check cache
     const cached = getCachedExplanation(conceptName, questionContext, model)
     if (cached) {
+      latestRequestedScopeByConceptId.current.set(conceptId, requestScopeKey)
       // Update the conceptId in case it changed
       const updatedCached = { ...cached, conceptId }
       setExplanations(prev => ({ ...prev, [conceptId]: updatedCached }))
@@ -264,6 +272,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     }
 
     try {
+      latestRequestedScopeByConceptId.current.set(conceptId, requestScopeKey)
       // Set loading state for this concept
       setLoadingStates(prev => ({
         ...prev,
@@ -276,6 +285,10 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       pendingRequests.current.add(requestScopeKey)
 
       const result = await explainConceptApi(conceptId, conceptName, questionContext, model)
+
+      if (!isLatestScope()) {
+        return null
+      }
       
       // Cache the result
       setCachedExplanation(conceptName, questionContext, result, model)
@@ -293,6 +306,9 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       
       return result
     } catch (err) {
+      if (!isLatestScope()) {
+        return null
+      }
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch explanation'
       setLoadingStates(prev => ({
         ...prev,
@@ -303,7 +319,9 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
       setExplanation(null)
       return null
     } finally {
-      setIsLoading(false)
+      if (isLatestScope()) {
+        setIsLoading(false)
+      }
       pendingRequests.current.delete(requestScopeKey)
     }
   }, [explanations])
@@ -319,6 +337,7 @@ export function useConceptExplanation(): UseConceptExplanationReturn {
     setCurrentConceptId(null)
     pendingRequests.current.clear()
     scopeByConceptId.current.clear()
+    latestRequestedScopeByConceptId.current.clear()
   }, [])
 
   /**

@@ -13,6 +13,16 @@ vi.mock('../api', () => ({
   isApiAvailable: vi.fn(),
 }))
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useAIQuestions Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -215,6 +225,40 @@ describe('useAIQuestions Hook', () => {
       })
       console.log('[TEST] Error after second call:', result.current.error)
       expect(result.current.error).toBeNull()
+    })
+
+    it('should ignore stale responses from older requests', async () => {
+      const firstRequest = createDeferred<{ questions: string[]; meta: null }>()
+      const secondRequest = createDeferred<{ questions: string[]; meta: null }>()
+      vi.mocked(api.generateQuestions)
+        .mockImplementationOnce(() => firstRequest.promise)
+        .mockImplementationOnce(() => secondRequest.promise)
+
+      const { result } = renderHook(() => useAIQuestions())
+
+      let firstPromise: Promise<unknown> = Promise.resolve()
+      let secondPromise: Promise<unknown> = Promise.resolve()
+
+      act(() => {
+        firstPromise = result.current.generate('Older request')
+      })
+      act(() => {
+        secondPromise = result.current.generate('Newer request')
+      })
+
+      await act(async () => {
+        secondRequest.resolve({ questions: ['new'], meta: null })
+        await secondPromise
+      })
+
+      await act(async () => {
+        firstRequest.resolve({ questions: ['old'], meta: null })
+        await firstPromise
+      })
+
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.error).toBeNull()
+      expect(result.current.isAvailable).toBe(true)
     })
   })
 

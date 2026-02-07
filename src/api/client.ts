@@ -1,12 +1,114 @@
 /**
  * Fractal API Client
  * ==================
- * 
+ *
  * Client for communicating with the Fractal backend server.
  * Handles question generation via W&B Inference.
  */
 
+import type { StashItem } from '../types/stash'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000
+
+/**
+ * Optional request controls for all API calls.
+ */
+export interface ApiRequestOptions {
+  /** Abort signal for caller-driven cancellation. */
+  signal?: AbortSignal
+  /** Request timeout in milliseconds. Defaults to 30000ms. */
+  timeoutMs?: number
+}
+
+interface ApiRequestSignalState {
+  signal: AbortSignal
+  timeoutMs: number
+  didTimeout: () => boolean
+  cleanup: () => void
+}
+
+function createApiRequestSignal(options?: ApiRequestOptions): ApiRequestSignalState {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
+  const controller = new AbortController()
+  const cleanupCallbacks: Array<() => void> = []
+  let timedOut = false
+
+  if (options?.signal) {
+    if (options.signal.aborted) {
+      controller.abort(options.signal.reason)
+    } else {
+      const forwardAbort = () => controller.abort(options.signal?.reason)
+      options.signal.addEventListener('abort', forwardAbort, { once: true })
+      cleanupCallbacks.push(() => options.signal?.removeEventListener('abort', forwardAbort))
+    }
+  }
+
+  if (timeoutMs > 0 && Number.isFinite(timeoutMs)) {
+    const timeoutId = setTimeout(() => {
+      timedOut = true
+      controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'TimeoutError'))
+    }, timeoutMs)
+    cleanupCallbacks.push(() => clearTimeout(timeoutId))
+  }
+
+  return {
+    signal: controller.signal,
+    timeoutMs,
+    didTimeout: () => timedOut,
+    cleanup: () => cleanupCallbacks.forEach((fn) => fn()),
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof DOMException
+    && (error.name === 'AbortError' || error.name === 'TimeoutError')
+  )
+}
+
+async function readApiErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
+  try {
+    const error = (await response.json()) as Partial<ApiError>
+    return error.message || error.error || fallbackMessage
+  } catch {
+    return fallbackMessage
+  }
+}
+
+async function requestJson<T>(
+  path: string,
+  init: RequestInit,
+  fallbackErrorMessage: string,
+  options?: ApiRequestOptions
+): Promise<T> {
+  const requestState = createApiRequestSignal(options)
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: requestState.signal,
+    })
+
+    if (!response.ok) {
+      const message = await readApiErrorMessage(response, fallbackErrorMessage)
+      throw new Error(message)
+    }
+
+    return (await response.json()) as T
+  } catch (error) {
+    if (requestState.didTimeout()) {
+      throw new Error(`Request timed out after ${requestState.timeoutMs}ms`)
+    }
+
+    if (isAbortError(error)) {
+      throw new Error('Request cancelled')
+    }
+
+    throw error instanceof Error ? error : new Error(fallbackErrorMessage)
+  } finally {
+    requestState.cleanup()
+  }
+}
 
 /**
  * Response from the generate questions endpoint.
@@ -61,11 +163,11 @@ export interface ModelsResponse {
 
 /**
  * Generate related questions for a given input question.
- * 
+ *
  * @param question - The input question to generate related questions for
  * @param model - Optional model to use (defaults to server's default)
  * @returns Array of related questions
- * 
+ *
  * @example
  * ```ts
  * const questions = await generateQuestions("What is consciousness?")
@@ -74,22 +176,22 @@ export interface ModelsResponse {
  */
 export async function generateQuestions(
   question: string,
-  model?: string
+  model?: string,
+  options?: ApiRequestOptions
 ): Promise<{ questions: string[]; meta: NonNullable<GenerateQuestionsResponse['data']['meta']> | null }> {
-  const response = await fetch(`${API_BASE_URL}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const data = await requestJson<GenerateQuestionsResponse>(
+    '/api/generate',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question, model }),
     },
-    body: JSON.stringify({ question, model }),
-  })
+    'Failed to generate questions',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to generate questions')
-  }
-
-  const data: GenerateQuestionsResponse = await response.json()
   return {
     questions: data.data.questions,
     meta: data.data.meta ?? null,
@@ -99,22 +201,23 @@ export async function generateQuestions(
 /**
  * Check the health of the API server.
  */
-export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`)
-  
-  if (!response.ok) {
-    throw new Error('Health check failed')
-  }
-
-  return response.json()
+export async function checkHealth(options?: ApiRequestOptions): Promise<HealthResponse> {
+  return requestJson<HealthResponse>(
+    '/health',
+    {
+      method: 'GET',
+    },
+    'Health check failed',
+    options
+  )
 }
 
 /**
  * Check if the API is available.
  */
-export async function isApiAvailable(): Promise<boolean> {
+export async function isApiAvailable(options?: ApiRequestOptions): Promise<boolean> {
   try {
-    const health = await checkHealth()
+    const health = await checkHealth(options)
     return health.status === 'healthy'
   } catch {
     return false
@@ -124,15 +227,16 @@ export async function isApiAvailable(): Promise<boolean> {
 /**
  * Fetch available models from the backend.
  */
-export async function listModels(): Promise<string[]> {
-  const response = await fetch(`${API_BASE_URL}/api/models`)
+export async function listModels(options?: ApiRequestOptions): Promise<string[]> {
+  const data = await requestJson<ModelsResponse>(
+    '/api/models',
+    {
+      method: 'GET',
+    },
+    'Failed to fetch models',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to fetch models')
-  }
-
-  const data: ModelsResponse = await response.json()
   return data.data.models
 }
 
@@ -166,12 +270,12 @@ export interface ChatApiResponse {
 
 /**
  * Send a chat message and get a response.
- * 
+ *
  * @param rootQuestion - The question being explored (provides context)
  * @param messages - Conversation history
  * @param model - Optional model override
  * @returns The AI response message
- * 
+ *
  * @example
  * ```ts
  * const response = await sendChatMessage(
@@ -184,22 +288,22 @@ export interface ChatApiResponse {
 export async function sendChatMessage(
   rootQuestion: string,
   messages: ChatMessage[],
-  model?: string
+  model?: string,
+  options?: ApiRequestOptions
 ): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const data = await requestJson<ChatApiResponse>(
+    '/api/chat',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ rootQuestion, messages, model }),
     },
-    body: JSON.stringify({ rootQuestion, messages, model }),
-  })
+    'Failed to send chat message',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to send chat message')
-  }
-
-  const data: ChatApiResponse = await response.json()
   return data.data.message
 }
 
@@ -261,11 +365,11 @@ export interface ConceptExplanationResponse {
 
 /**
  * Extract key concepts from question text.
- * 
+ *
  * @param text - The text to extract concepts from
  * @param model - Optional model override
  * @returns Array of extracted concepts with positions and metadata
- * 
+ *
  * @example
  * ```ts
  * const concepts = await extractConcepts("Why do we dream during sleep?")
@@ -277,22 +381,22 @@ export interface ConceptExplanationResponse {
  */
 export async function extractConcepts(
   text: string,
-  model?: string
+  model?: string,
+  options?: ApiRequestOptions
 ): Promise<ExtractedConcept[]> {
-  const response = await fetch(`${API_BASE_URL}/api/concepts/extract`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const data = await requestJson<ConceptExtractionResponse>(
+    '/api/concepts/extract',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, model }),
     },
-    body: JSON.stringify({ text, model }),
-  })
+    'Failed to extract concepts',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to extract concepts')
-  }
-
-  const data: ConceptExtractionResponse = await response.json()
   return data.data.concepts
 }
 
@@ -300,16 +404,14 @@ export async function extractConcepts(
 // PROBE CHAT API
 // ============================================
 
-import type { StashItem } from '../types/stash'
-
 /**
  * Send a probe chat message with stash items as context.
- * 
+ *
  * @param messages - Conversation history
  * @param stashItems - Selected stash items for context
  * @param model - Optional model override
  * @returns The AI response message
- * 
+ *
  * @example
  * ```ts
  * const response = await sendProbeChatMessage(
@@ -321,34 +423,34 @@ import type { StashItem } from '../types/stash'
 export async function sendProbeChatMessage(
   messages: ChatMessage[],
   stashItems: StashItem[],
-  model?: string
+  model?: string,
+  options?: ApiRequestOptions
 ): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/probe/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const data = await requestJson<ChatApiResponse>(
+    '/api/probe/chat',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages, stashItems, model }),
     },
-    body: JSON.stringify({ messages, stashItems, model }),
-  })
+    'Failed to send probe message',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to send probe message')
-  }
-
-  const data: ChatApiResponse = await response.json()
   return data.data.message
 }
 
 /**
  * Get an explanation for a concept in context.
- * 
+ *
  * @param conceptId - ID of the concept
  * @param conceptName - The normalized name of the concept
  * @param questionContext - The question context for the concept
  * @param model - Optional model override
  * @returns Explanation with summary, context, and related concepts
- * 
+ *
  * @example
  * ```ts
  * const explanation = await explainConcept(
@@ -364,21 +466,21 @@ export async function explainConcept(
   conceptId: string,
   conceptName: string,
   questionContext: string,
-  model?: string
+  model?: string,
+  options?: ApiRequestOptions
 ): Promise<ConceptExplanation> {
-  const response = await fetch(`${API_BASE_URL}/api/concepts/explain`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const data = await requestJson<ConceptExplanationResponse>(
+    '/api/concepts/explain',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conceptId, conceptName, questionContext, model }),
     },
-    body: JSON.stringify({ conceptId, conceptName, questionContext, model }),
-  })
+    'Failed to explain concept',
+    options
+  )
 
-  if (!response.ok) {
-    const error: ApiError = await response.json()
-    throw new Error(error.message || 'Failed to explain concept')
-  }
-
-  const data: ConceptExplanationResponse = await response.json()
   return data.data
 }

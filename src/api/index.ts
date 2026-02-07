@@ -12,6 +12,7 @@ export {
   type HealthResponse,
   type ModelsResponse,
   type ApiError,
+  type ApiRequestOptions,
   type ConceptCategory,
   type ExtractedConcept,
   type ConceptExplanation,

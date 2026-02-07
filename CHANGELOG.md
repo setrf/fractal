@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved global `THREE` initialization into the lazy-loaded Graph view module to reduce initial bundle weight.
 - Refactored `App.tsx` by extracting onboarding step logic and graph interaction handlers into dedicated hooks.
 - Concept explanation fetching now scopes in-memory reuse by concept, context, and model to avoid stale popup content.
+- Added a shared API request wrapper with timeout and abort-signal support, and stale-response guards so older async results no longer overwrite newer UI state.
 
 ### Planned
 - Streaming responses for real-time feedback

@@ -5,7 +5,7 @@
  * Fetches available models and persists the user's selection.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { listModels } from '../api'
 
 const STORAGE_KEY = 'fractal_selected_model'
@@ -49,6 +49,7 @@ export function useModelSelection({ autoLoad = true }: UseModelSelectionOptions 
   const [selectedModel, setSelectedModelState] = useState<string | null>(() => getStoredModel())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const latestRefreshRequestId = useRef(0)
 
   const setSelectedModel = useCallback((model: string | null) => {
     const trimmed = model?.trim() || null
@@ -57,10 +58,15 @@ export function useModelSelection({ autoLoad = true }: UseModelSelectionOptions 
   }, [])
 
   const refreshModels = useCallback(async () => {
+    const requestId = latestRefreshRequestId.current + 1
+    latestRefreshRequestId.current = requestId
     setIsLoading(true)
     setError(null)
     try {
       const response = await listModels()
+      if (latestRefreshRequestId.current !== requestId) {
+        return
+      }
       const uniqueModels = Array.from(new Set(response)).sort((a, b) => a.localeCompare(b))
       setModels(uniqueModels)
       setSelectedModelState((prev) => {
@@ -70,10 +76,15 @@ export function useModelSelection({ autoLoad = true }: UseModelSelectionOptions 
         return null
       })
     } catch (err) {
+      if (latestRefreshRequestId.current !== requestId) {
+        return
+      }
       const message = err instanceof Error ? err.message : 'Failed to fetch models'
       setError(message)
     } finally {
-      setIsLoading(false)
+      if (latestRefreshRequestId.current === requestId) {
+        setIsLoading(false)
+      }
     }
   }, [])
 

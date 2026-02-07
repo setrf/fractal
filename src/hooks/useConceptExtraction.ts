@@ -78,8 +78,10 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
   const [error, setError] = useState<string | null>(null)
   const [sourceText, setSourceText] = useState<string | null>(null)
   
-  // Track in-flight requests to prevent duplicates
-  const pendingRequest = useRef<string | null>(null)
+  // Track in-flight requests by cache key to prevent duplicates.
+  const pendingRequests = useRef<Set<string>>(new Set())
+  // Only the latest extraction request should update hook state.
+  const latestRequestId = useRef(0)
 
   /**
    * Extract concepts from the given text.
@@ -107,33 +109,44 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
     }
 
     // Prevent duplicate requests
-    if (pendingRequest.current === cacheKey) {
+    if (pendingRequests.current.has(cacheKey)) {
       // Request already in progress for this text
       return []
     }
 
+    const requestId = latestRequestId.current + 1
+    latestRequestId.current = requestId
+
     try {
       setIsLoading(true)
       setError(null)
-      pendingRequest.current = cacheKey
+      pendingRequests.current.add(cacheKey)
 
       const result = await extractConceptsApi(normalizedText, model)
       
       // Cache the result
       conceptCache.set(cacheKey, result)
-      
-      setConcepts(result)
-      setSourceText(normalizedText)
+
+      if (latestRequestId.current === requestId) {
+        setConcepts(result)
+        setSourceText(normalizedText)
+      }
       
       return result
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract concepts'
-      setError(errorMessage)
-      setConcepts([])
+      if (latestRequestId.current === requestId) {
+        setError(errorMessage)
+        setConcepts([])
+      }
       return []
     } finally {
-      setIsLoading(false)
-      pendingRequest.current = null
+      if (pendingRequests.current.has(cacheKey)) {
+        pendingRequests.current.delete(cacheKey)
+      }
+      if (latestRequestId.current === requestId || pendingRequests.current.size === 0) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
@@ -144,7 +157,8 @@ export function useConceptExtraction(): UseConceptExtractionReturn {
     setConcepts([])
     setError(null)
     setSourceText(null)
-    pendingRequest.current = null
+    pendingRequests.current.clear()
+    latestRequestId.current = 0
   }, [])
 
   /**

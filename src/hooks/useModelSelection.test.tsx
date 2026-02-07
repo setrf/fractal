@@ -11,6 +11,16 @@ vi.mock('../api', () => ({
   listModels: vi.fn(),
 }))
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useModelSelection Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -61,5 +71,37 @@ describe('useModelSelection Hook', () => {
     })
 
     expect(localStorage.getItem('fractal_selected_model')).toBe('model-a')
+  })
+
+  it('should ignore stale refresh responses from older requests', async () => {
+    const firstRequest = createDeferred<string[]>()
+    const secondRequest = createDeferred<string[]>()
+    vi.mocked(api.listModels)
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+
+    const { result } = renderHook(() => useModelSelection({ autoLoad: false }))
+
+    let firstRefresh: Promise<void> = Promise.resolve()
+    let secondRefresh: Promise<void> = Promise.resolve()
+
+    await act(async () => {
+      firstRefresh = result.current.refreshModels()
+      secondRefresh = result.current.refreshModels()
+    })
+
+    await act(async () => {
+      secondRequest.resolve(['model-new'])
+      await secondRefresh
+    })
+
+    await act(async () => {
+      firstRequest.resolve(['model-old'])
+      await firstRefresh
+    })
+
+    expect(result.current.models).toEqual(['model-new'])
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeNull()
   })
 })

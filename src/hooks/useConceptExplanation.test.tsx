@@ -19,6 +19,16 @@ function makeExplanation(summary: string) {
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useConceptExplanation cache scoping', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -75,5 +85,37 @@ describe('useConceptExplanation cache scoping', () => {
     })
 
     expect(mockedExplainConcept).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores stale in-flight responses for older scopes', async () => {
+    const firstRequest = createDeferred<ReturnType<typeof makeExplanation>>()
+    const secondRequest = createDeferred<ReturnType<typeof makeExplanation>>()
+    mockedExplainConcept
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+
+    const { result } = renderHook(() => useConceptExplanation())
+
+    let firstPromise: Promise<unknown> = Promise.resolve()
+    let secondPromise: Promise<unknown> = Promise.resolve()
+
+    act(() => {
+      firstPromise = result.current.fetchExplanation('c1', 'dreams', 'older context', 'model-a')
+    })
+    act(() => {
+      secondPromise = result.current.fetchExplanation('c1', 'dreams', 'newer context', 'model-a')
+    })
+
+    await act(async () => {
+      secondRequest.resolve(makeExplanation('newest'))
+      await secondPromise
+    })
+
+    await act(async () => {
+      firstRequest.resolve(makeExplanation('stale'))
+      await firstPromise
+    })
+
+    expect(result.current.getExplanation('c1')?.summary).toBe('newest')
   })
 })

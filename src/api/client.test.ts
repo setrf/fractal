@@ -91,6 +91,60 @@ describe('API Client', () => {
       await expect(generateQuestions('')).rejects.toThrow('Question is required')
       console.log('[TEST] Error thrown as expected')
     })
+
+    it('should timeout slow requests when timeoutMs is exceeded', async () => {
+      vi.useFakeTimers()
+      try {
+        mockFetch.mockImplementationOnce((_, init?: RequestInit) => (
+          new Promise((_resolve, reject) => {
+            const signal = init?.signal as AbortSignal | undefined
+            signal?.addEventListener('abort', () => {
+              reject(new DOMException('Aborted', 'AbortError'))
+            })
+          })
+        ))
+
+        // Attach rejection handling immediately to avoid unhandled rejection warnings.
+        const requestResult = generateQuestions('Slow request?', undefined, { timeoutMs: 25 })
+          .then(() => null)
+          .catch((err) => err as Error)
+
+        await vi.advanceTimersByTimeAsync(30)
+        const error = await requestResult
+
+        expect(error).toBeInstanceOf(Error)
+        expect(error?.message).toContain('Request timed out after 25ms')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should support caller-driven abort signals', async () => {
+      const controller = new AbortController()
+      controller.abort()
+
+      mockFetch.mockImplementationOnce((_, init?: RequestInit) => {
+        const signal = init?.signal as AbortSignal | undefined
+        if (signal?.aborted) {
+          return Promise.reject(new DOMException('Aborted', 'AbortError'))
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              questions: [],
+              model: 'test-model',
+              usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            },
+          }),
+        })
+      })
+
+      await expect(
+        generateQuestions('Cancelled?', undefined, { signal: controller.signal })
+      ).rejects.toThrow('Request cancelled')
+    })
   })
 
   describe('checkHealth()', () => {
@@ -143,7 +197,10 @@ describe('API Client', () => {
       const models = await listModels()
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/models')
+        expect.stringContaining('/api/models'),
+        expect.objectContaining({
+          method: 'GET',
+        })
       )
       expect(models).toEqual(['model-a', 'model-b'])
     })

@@ -213,6 +213,9 @@ function AppContent() {
   
   // Track which node is currently generating
   const [generatingNodeId, setGeneratingNodeId] = useState<string | null>(null)
+  // Track latest generation request per node so stale responses are ignored.
+  const generationRequestCounter = useRef(0)
+  const latestGenerationRequestByNode = useRef<Map<string, number>>(new Map())
   
   // Track concepts per node (nodeId -> concepts)
   const [nodeConcepts, setNodeConcepts] = useState<Record<string, ExtractedConcept[]>>({})
@@ -335,9 +338,15 @@ function AppContent() {
    * Uses W&B Inference via the backend server.
    */
   const handleGenerateAI = useCallback(async (parentId: string, question: string) => {
+    const requestId = generationRequestCounter.current + 1
+    generationRequestCounter.current = requestId
+    latestGenerationRequestByNode.current.set(parentId, requestId)
     setGeneratingNodeId(parentId)
     try {
       const { questions: suggestions, meta } = await generate(question, activeModel)
+      if (latestGenerationRequestByNode.current.get(parentId) !== requestId) {
+        return
+      }
       const parent = tree.nodes[parentId]
       const normalizedParentScore = normalizeWeaveScore(parent?.meta.qualityScore)
       const parentScore = normalizedParentScore ?? 0
@@ -351,7 +360,10 @@ function AppContent() {
         addChildQuestion(parentId, suggestion, { qualityScore: childScore })
       }
     } finally {
-      setGeneratingNodeId(null)
+      if (latestGenerationRequestByNode.current.get(parentId) === requestId) {
+        latestGenerationRequestByNode.current.delete(parentId)
+        setGeneratingNodeId(current => (current === parentId ? null : current))
+      }
     }
   }, [generate, addChildQuestion, tree.nodes, updateNodeMeta, activeModel])
 

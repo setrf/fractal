@@ -49,7 +49,7 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 
 ## Features
 
-### Current (v0.7.3)
+### Current (v0.7.3+)
 
 - **Central Question Input** — Terminal-style interface to enter your initial question
 - **Branching Tree Visualization** — Questions branch into sub-questions in a visual tree
@@ -77,6 +77,12 @@ The internet optimized for answers. But learning, creativity, and discovery are 
 - **Model Selection** — Choose from available W&B models for generation, chat, and evaluation
 - **Resilient API Calls** — Client requests support timeout and cancellation; stale async responses are ignored in generation/model/concept flows
 - **Weave Eval Loop** — Each generation is scored (0–10) and logged in Weave; prompt variants auto-improve over time
+- **Eval Telemetry Panel** — Live prompt-variant leaderboard, recent eval runs, token usage, and model-by-seed performance memory
+- **A/B Compare Mode** — Run side-by-side generation comparisons across prompt variants/models, then apply the winning branch
+- **Confidence + Uncertainty Signals** — Judge confidence/uncertainty shown in generation metadata, nodes, and graph popups
+- **Best Branch Highlighting** — The highest cumulative-score path is marked directly in the tree and popups
+- **Replay Timeline** — Captures major exploration actions (seed, deep dive, compare, chat, reset) for demo-friendly playback
+- **Token Cost Guardrails** — Session token budget warnings and hard-stop protection prevent runaway spend
 - **Guided Onboarding Tour** — First-run walkthrough with restart button for demos
 - **Chat View** — Lock in on a question to have a deep conversational exploration with AI
 - **Intelligent Concept Extraction** — Automatic detection and highlighting of key concepts in questions
@@ -94,6 +100,8 @@ The internet optimized for answers. But learning, creativity, and discovery are 
   - Multiple tabbed probes with distinct colors (up to 5)
   - Select Stash items via checkboxes or drag-and-drop
   - Auto-synthesize rich prompt scaffolds from collected context
+  - Export a structured PM brief (`.md`) from selected context and synthesized direction
+  - Auto-suggest next experiments after synthesis turns
   - Server-side context assembly (avoids duplicate context payloads)
   - Fully editable prompts before sending
   - Persistent conversations in localStorage
@@ -212,9 +220,11 @@ ConceptPopup ── explanations ► Explanations                  LLM Response
 
 ### Weave Self-Improvement Loop
 
-Each question generation uses one of several prompt variants. We run a lightweight Weave-scored evaluation on the output and update a rolling average per variant. Over time, the system shifts toward higher-scoring prompts while still exploring alternatives.
+Each question generation uses one of several prompt variants. We run a lightweight Weave-scored evaluation on the output and update rolling averages per variant. Over time, the system shifts toward higher-scoring prompts while still exploring alternatives (epsilon-greedy).
 
-In the app, the latest **Weave score** and **prompt variant** are displayed in the tree view after each generation. Each generated child node stores a quality score and shows it directly on the node, with the graph popup surfacing it as well.
+Prompt and model memory are persisted on disk, so adaptation survives server restarts. The server also tracks token usage by operation and enforces a configurable per-session budget guard.
+
+In the app, generation metadata now includes **Weave score**, **prompt variant**, **confidence/uncertainty**, and judge **strengths/weaknesses**. The Eval Telemetry panel surfaces variant rankings, recent runs, model performance by seed type, and current budget status.
 
 ### Backend Architecture
 
@@ -289,6 +299,11 @@ npm install
 cp .env.example .env
 # Edit .env and add your WANDB_API_KEY
 
+# Optional: tune eval persistence + token guardrails
+# POLICY_MEMORY_PATH=./data/policy-memory.json
+# MAX_TOKENS_PER_SESSION=40000
+# TOKEN_WARNING_THRESHOLD=0.8
+
 cd ..
 ```
 
@@ -340,6 +355,8 @@ fractal/
 │   │   ├── client.ts         # API client for backend communication
 │   │   └── index.ts          # API exports
 │   ├── components/
+│   │   ├── EvalPanel/       # Prompt/eval telemetry panel
+│   │   ├── ReplayTimeline/  # Session action replay widget
 │   │   ├── ChatView/         # Deep exploration chat interface
 │   │   │   ├── ChatView.tsx
 │   │   │   ├── ChatView.module.css
@@ -384,6 +401,7 @@ fractal/
 │   │   └── StashContext.tsx  # Global stash state provider
 │   ├── hooks/
 │   │   ├── useAIQuestions.ts        # AI question generation hook
+│   │   ├── useEvalStats.ts          # Eval telemetry fetching with stale-guard
 │   │   ├── useConceptExtraction.ts  # Concept extraction with caching
 │   │   ├── useConceptExplanation.ts # Concept explanation with localStorage cache
 │   │   ├── useGraphInteractions.ts  # Graph popup and action controller
@@ -407,7 +425,10 @@ fractal/
 │   │   ├── config.ts         # Environment configuration
 │   │   ├── routes.ts         # API routes
 │   │   ├── inference.ts      # W&B Inference integration
+│   │   ├── eval-state.ts     # Prompt/model memory + token guardrails
 │   │   └── weave-client.ts   # W&B Weave tracing
+│   ├── scripts/
+│   │   └── run-evals.ts      # Golden regression eval runner
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── .env.example          # Environment template
@@ -492,6 +513,12 @@ Based on 0.25rem (4px) increments:
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run test:verbose` | Run tests with detailed output |
+
+Server-side eval workflow:
+
+| Command | Description |
+|---------|-------------|
+| `cd server && npm run evals:golden` | Run golden regression evals and write a markdown report to `server/reports/` |
 
 ### Testing
 

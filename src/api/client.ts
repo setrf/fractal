@@ -123,6 +123,12 @@ export interface GenerateQuestionsResponse {
       promptLabel: string
       qualityScore: number | null
       evalModel: string
+      confidence: number | null
+      uncertainty: number | null
+      strengths: string[]
+      weaknesses: string[]
+      seedType: string
+      costGuard: CostGuardSnapshot
     }
     usage: {
       promptTokens: number
@@ -161,6 +167,134 @@ export interface ModelsResponse {
   }
 }
 
+export interface CostGuardSnapshot {
+  maxTokensPerSession: number
+  usedTokens: number
+  remainingTokens: number
+  warningThreshold: number
+  usageRatio: number
+  isNearLimit: boolean
+  isLimitExceeded: boolean
+}
+
+export interface EvalPromptVariantSnapshot {
+  id: string
+  label: string
+  count: number
+  avgScore: number
+  avgConfidence: number
+  avgUncertainty: number
+  avgLatencyMs: number
+  lastScore: number | null
+  lastUpdatedAt: string | null
+}
+
+export interface EvalRunRecord {
+  timestamp: string
+  question: string
+  variantId: string
+  variantLabel: string
+  model: string
+  seedType: string
+  score: number
+  confidence: number | null
+  uncertainty: number | null
+  latencyMs: number
+  usage: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+  strengths: string[]
+  weaknesses: string[]
+}
+
+export interface ModelSeedPerformance {
+  model: string
+  seedType: string
+  count: number
+  avgScore: number
+  lastScore: number | null
+  lastUpdatedAt: string | null
+}
+
+export interface EvalStatsResponse {
+  success: boolean
+  data: {
+    promptVariants: EvalPromptVariantSnapshot[]
+    recentRuns: EvalRunRecord[]
+    tokenUsage: {
+      total: {
+        promptTokens: number
+        completionTokens: number
+        totalTokens: number
+      }
+      byOperation: Record<string, {
+        promptTokens: number
+        completionTokens: number
+        totalTokens: number
+      }>
+    }
+    costGuard: CostGuardSnapshot
+    modelPerformance: ModelSeedPerformance[]
+    topModelBySeedType: Record<string, string>
+  }
+}
+
+export interface CompareGenerationsResponse {
+  success: boolean
+  data: {
+    question: string
+    left: GenerateQuestionsResponse['data']
+    right: GenerateQuestionsResponse['data']
+    winner: 'left' | 'right' | 'tie'
+    reason: string
+  }
+}
+
+export interface ProbeBrief {
+  problemStatement: string
+  hypotheses: string[]
+  primaryExperiment: string
+  successMetrics: string[]
+  risks: string[]
+  recommendation: string
+  nextExperiments: string[]
+}
+
+export interface ProbeBriefResponse {
+  success: boolean
+  data: {
+    brief: ProbeBrief
+    markdown: string
+    model: string
+    usage: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
+  }
+}
+
+export interface ProbeExperimentSuggestion {
+  title: string
+  hypothesis: string
+  metric: string
+}
+
+export interface ProbeExperimentSuggestionsResponse {
+  success: boolean
+  data: {
+    suggestions: ProbeExperimentSuggestion[]
+    model: string
+    usage: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
+  }
+}
+
 /**
  * Generate related questions for a given input question.
  *
@@ -196,6 +330,48 @@ export async function generateQuestions(
     questions: data.data.questions,
     meta: data.data.meta ?? null,
   }
+}
+
+export async function compareQuestionGenerations(
+  question: string,
+  params?: {
+    leftModel?: string
+    rightModel?: string
+    leftPromptVariantId?: string
+    rightPromptVariantId?: string
+  },
+  options?: ApiRequestOptions
+): Promise<CompareGenerationsResponse['data']> {
+  const data = await requestJson<CompareGenerationsResponse>(
+    '/api/generate/compare',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question,
+        ...params,
+      }),
+    },
+    'Failed to compare question generations',
+    options
+  )
+
+  return data.data
+}
+
+export async function getEvalStats(options?: ApiRequestOptions): Promise<EvalStatsResponse['data']> {
+  const data = await requestJson<EvalStatsResponse>(
+    '/api/evals/stats',
+    {
+      method: 'GET',
+    },
+    'Failed to fetch eval stats',
+    options
+  )
+
+  return data.data
 }
 
 /**
@@ -238,6 +414,24 @@ export async function listModels(options?: ApiRequestOptions): Promise<string[]>
   )
 
   return data.data.models
+}
+
+export async function getModelPerformance(
+  options?: ApiRequestOptions
+): Promise<ModelSeedPerformance[]> {
+  const data = await requestJson<{
+    success: boolean
+    data: { entries: ModelSeedPerformance[] }
+  }>(
+    '/api/models/performance',
+    {
+      method: 'GET',
+    },
+    'Failed to fetch model performance',
+    options
+  )
+
+  return data.data.entries
 }
 
 // ============================================
@@ -440,6 +634,58 @@ export async function sendProbeChatMessage(
   )
 
   return data.data.message
+}
+
+export async function exportProbeBrief(
+  stashItems: StashItem[],
+  direction: string,
+  model?: string,
+  options?: ApiRequestOptions
+): Promise<ProbeBriefResponse['data']> {
+  const data = await requestJson<ProbeBriefResponse>(
+    '/api/probe/brief',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        stashItems,
+        direction,
+        model,
+      }),
+    },
+    'Failed to export probe brief',
+    options
+  )
+
+  return data.data
+}
+
+export async function suggestProbeExperiments(
+  messages: ChatMessage[],
+  stashItems: StashItem[],
+  model?: string,
+  options?: ApiRequestOptions
+): Promise<ProbeExperimentSuggestionsResponse['data']> {
+  const data = await requestJson<ProbeExperimentSuggestionsResponse>(
+    '/api/probe/experiments',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages,
+        stashItems,
+        model,
+      }),
+    },
+    'Failed to suggest probe experiments',
+    options
+  )
+
+  return data.data
 }
 
 /**

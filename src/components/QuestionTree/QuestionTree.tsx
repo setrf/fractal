@@ -40,6 +40,8 @@ interface QuestionTreeProps {
   generatingNodeId?: string | null
   /** Callback to "lock in" on a question and open chat view */
   onLockIn?: (nodeId: string, question: string) => void
+  /** IDs that belong to the best cumulative-quality branch */
+  bestBranchNodeIds?: Set<string>
   
   // Concept highlighting props
   /** Concepts per node (nodeId -> concepts) */
@@ -98,6 +100,8 @@ interface TreeBranchProps {
   generatingNodeId?: string | null
   /** Callback to "lock in" on a question and open chat view */
   onLockIn?: (nodeId: string, question: string) => void
+  /** IDs that belong to the best cumulative-quality branch */
+  bestBranchNodeIds?: Set<string>
   
   // Concept highlighting props
   /** Concepts per node (nodeId -> concepts) - needed for recursive rendering */
@@ -158,6 +162,7 @@ function TreeBranch({
   onGenerateAI,
   generatingNodeId,
   onLockIn,
+  bestBranchNodeIds,
   nodeConcepts,
   concepts,
   conceptExplanations,
@@ -242,6 +247,7 @@ function TreeBranch({
         onGenerateAI={onGenerateAI}
         isGenerating={generatingNodeId === node.id}
         onLockIn={onLockIn}
+        isBestBranch={Boolean(bestBranchNodeIds?.has(node.id))}
         concepts={concepts}
         conceptExplanations={conceptExplanations}
         conceptLoadingStates={conceptLoadingStates}
@@ -277,6 +283,7 @@ function TreeBranch({
               onGenerateAI={onGenerateAI}
               generatingNodeId={generatingNodeId}
               onLockIn={onLockIn}
+              bestBranchNodeIds={bestBranchNodeIds}
               nodeConcepts={nodeConcepts}
               concepts={nodeConcepts?.[child.id]}
               conceptExplanations={conceptExplanations}
@@ -324,6 +331,7 @@ export function QuestionTree({
   onGenerateAI,
   generatingNodeId,
   onLockIn,
+  bestBranchNodeIds,
   nodeConcepts = {},
   conceptExplanations,
   conceptLoadingStates,
@@ -360,6 +368,7 @@ export function QuestionTree({
         onGenerateAI={onGenerateAI}
         generatingNodeId={generatingNodeId}
         onLockIn={onLockIn}
+        bestBranchNodeIds={bestBranchNodeIds}
         nodeConcepts={nodeConcepts}
         concepts={nodeConcepts[rootNode.id]}
         conceptExplanations={conceptExplanations}

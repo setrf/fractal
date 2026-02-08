@@ -196,6 +196,8 @@ describe('Question Types & Utilities', () => {
       expect(node.meta.isExpanded).toBe(true)
       expect(node.meta.isActive).toBe(false)
       expect(node.meta.qualityScore).toBeNull()
+      expect(node.meta.confidence).toBeNull()
+      expect(node.meta.uncertainty).toBeNull()
     })
   })
 

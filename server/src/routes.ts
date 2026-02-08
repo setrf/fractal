@@ -7,18 +7,28 @@
  * Endpoints:
  * - GET  /health                  - Health check
  * - POST /api/generate            - Generate related questions
+ * - POST /api/generate/compare    - A/B compare generations
  * - POST /api/chat                - Chat about a specific question
  * - POST /api/probe/chat          - Probe synthesis conversation
+ * - POST /api/probe/brief         - Export PM brief from probe context
+ * - POST /api/probe/experiments   - Suggest next experiments
+ * - GET  /api/evals/stats         - Eval telemetry snapshot
  * - GET  /api/models              - List available models
+ * - GET  /api/models/performance  - Model performance memory
  * - POST /api/concepts/extract    - Extract concepts from text
  * - POST /api/concepts/explain    - Get explanation for a concept
  */
 
 import { Router, Request, Response } from 'express'
 import {
+  compareQuestionGenerations,
   generateRelatedQuestions,
+  getEvalStats,
+  getModelPerformanceMemory,
   chat,
   probeChat,
+  generateProbeBrief,
+  suggestProbeExperiments,
   listModels,
   checkInferenceHealth,
   extractConcepts,
@@ -89,6 +99,55 @@ router.post('/api/generate', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[API] Error generating questions:', error)
     
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Compare two generation runs side-by-side.
+ *
+ * Request body:
+ * - question: string (required)
+ * - leftModel: string (optional)
+ * - rightModel: string (optional)
+ * - leftPromptVariantId: string (optional)
+ * - rightPromptVariantId: string (optional)
+ */
+router.post('/api/generate/compare', async (req: Request, res: Response) => {
+  try {
+    const {
+      question,
+      leftModel,
+      rightModel,
+      leftPromptVariantId,
+      rightPromptVariantId,
+    } = req.body
+
+    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'question is required and must be a non-empty string',
+      })
+      return
+    }
+
+    const result = await compareQuestionGenerations(
+      question,
+      leftModel,
+      rightModel,
+      leftPromptVariantId,
+      rightPromptVariantId
+    )
+
+    res.json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    console.error('[API] Error comparing generations:', error)
     res.status(500).json({
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -225,6 +284,86 @@ router.post('/api/probe/chat', async (req: Request, res: Response) => {
 })
 
 /**
+ * Export a structured PM brief from selected probe context.
+ */
+router.post('/api/probe/brief', async (req: Request, res: Response) => {
+  try {
+    const { stashItems, direction, model } = req.body
+
+    if (!stashItems || !Array.isArray(stashItems)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'stashItems is required and must be an array',
+      })
+      return
+    }
+
+    if (!direction || typeof direction !== 'string') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'direction is required and must be a string',
+      })
+      return
+    }
+
+    const result = await generateProbeBrief(stashItems as ProbeStashItem[], direction, model)
+
+    res.json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    console.error('[API] Error exporting probe brief:', error)
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Suggest next experiments from probe context + conversation.
+ */
+router.post('/api/probe/experiments', async (req: Request, res: Response) => {
+  try {
+    const { messages, stashItems, model } = req.body
+
+    if (!messages || !Array.isArray(messages)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'messages is required and must be an array',
+      })
+      return
+    }
+
+    if (!stashItems || !Array.isArray(stashItems)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'stashItems is required and must be an array',
+      })
+      return
+    }
+
+    const result = await suggestProbeExperiments(
+      messages as ChatMessage[],
+      stashItems as ProbeStashItem[],
+      model
+    )
+
+    res.json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    console.error('[API] Error suggesting probe experiments:', error)
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
  * List available models endpoint.
  */
 router.get('/api/models', async (_req: Request, res: Response) => {
@@ -240,6 +379,46 @@ router.get('/api/models', async (_req: Request, res: Response) => {
   } catch (error) {
     console.error('[API] Error listing models:', error)
     
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Get current eval telemetry snapshot.
+ */
+router.get('/api/evals/stats', async (_req: Request, res: Response) => {
+  try {
+    const stats = await getEvalStats()
+    res.json({
+      success: true,
+      data: stats,
+    })
+  } catch (error) {
+    console.error('[API] Error fetching eval stats:', error)
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+/**
+ * Get persisted model-performance memory by seed type.
+ */
+router.get('/api/models/performance', async (_req: Request, res: Response) => {
+  try {
+    const performance = await getModelPerformanceMemory()
+    res.json({
+      success: true,
+      data: {
+        entries: performance,
+      },
+    })
+  } catch (error) {
+    console.error('[API] Error fetching model performance:', error)
     res.status(500).json({
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Unknown error',

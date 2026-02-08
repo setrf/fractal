@@ -71,6 +71,10 @@ export interface QuestionNode {
     isActive: boolean
     /** Quality score for this node (AI-scored or derived) */
     qualityScore: number | null
+    /** Confidence estimate for generated quality (0..1) */
+    confidence: number | null
+    /** Uncertainty estimate for generated quality (0..1) */
+    uncertainty: number | null
   }
 }
 
@@ -172,12 +176,16 @@ export const createQuestionNode = (
     isExpanded: true,
     isActive: false,
     qualityScore: null,
+    confidence: null,
+    uncertainty: null,
     ...metaOverrides,
   },
 })
 
 export interface QuestionNodeAddOptions {
   qualityScore?: number | null
+  confidence?: number | null
+  uncertainty?: number | null
 }
 
 /**

@@ -46,6 +46,8 @@ interface QuestionNodeProps {
   isActive?: boolean
   /** Whether this node has children (affects expand button visibility) */
   hasChildren?: boolean
+  /** Whether this node is on the current best cumulative-quality branch */
+  isBestBranch?: boolean
   /** Callback when node is clicked/selected */
   onSelect?: (nodeId: string) => void
   /** Callback when adding a child question */
@@ -119,6 +121,7 @@ export function QuestionNode({
   isRoot = false,
   isActive = false,
   hasChildren = false,
+  isBestBranch = false,
   onSelect,
   onAddChild,
   onToggleExpand,
@@ -530,7 +533,7 @@ export function QuestionNode({
     <div className={styles.container}>
       {/* Main node element */}
       <div
-        className={`${styles.node} ${isRoot ? styles.root : ''} ${isActive ? styles.active : ''}`}
+        className={`${styles.node} ${isRoot ? styles.root : ''} ${isActive ? styles.active : ''} ${isBestBranch ? styles.bestBranch : ''}`}
         onClick={handleClick}
         tabIndex={0}
         role="button"
@@ -561,9 +564,22 @@ export function QuestionNode({
         </div>
         {/* Action buttons - horizontal row at bottom right */}
         <div className={styles.actions}>
+          {isBestBranch && (
+            <span className={styles.bestBranchBadge}>Best branch</span>
+          )}
           {typeof node.meta.qualityScore === 'number' && (
             <span className={styles.qualityBadge}>
               Quality {node.meta.qualityScore.toFixed(2)} / 10
+            </span>
+          )}
+          {typeof node.meta.confidence === 'number' && (
+            <span className={styles.metaBadge}>
+              Conf {(node.meta.confidence * 100).toFixed(0)}%
+            </span>
+          )}
+          {typeof node.meta.uncertainty === 'number' && (
+            <span className={styles.metaBadge}>
+              Unc {(node.meta.uncertainty * 100).toFixed(0)}%
             </span>
           )}
           {/* Stash button - add question to stash */}

@@ -1,62 +1,63 @@
 # Fractal Server
 
-Backend API server for the Fractal application.
+Backend API for Fractal's AI question exploration, evaluation telemetry, and probe synthesis workflows.
 
 ## Overview
 
-The Fractal server provides:
+The server provides:
 
-- **AI Question Generation** via W&B Inference
-- **Intelligent Concept Extraction** via W&B Inference
-- **Contextual Concept Explanations** via W&B Inference
-- **Chat/Conversation API** for deep question exploration
-- **Tracing & Observability** via W&B Weave
-- **RESTful API** for the React frontend
+- AI question generation with multiple prompt variants
+- Online LLM-judge scoring (quality, confidence, uncertainty)
+- Prompt/model performance memory persisted to disk
+- Session token guardrails with warning/limit behavior
+- A/B generation compare endpoint
+- Chat and Probe synthesis endpoints
+- Probe brief export and next-experiment suggestions
+- Concept extraction and concept explanation endpoints
+- W&B Weave tracing for all major inference operations
 
 ## Tech Stack
 
-- **Runtime**: Node.js 18+
-- **Framework**: Express.js
-- **Language**: TypeScript
-- **LLM Provider**: W&B Inference (OpenAI-compatible API)
-- **Observability**: W&B Weave
+- Runtime: Node.js 18+
+- Framework: Express
+- Language: TypeScript
+- LLM provider: W&B Inference (OpenAI-compatible)
+- Observability: W&B Weave
 
 ## Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- W&B API Key (get one at https://wandb.ai/settings)
+- W&B API key ([wandb.ai/settings](https://wandb.ai/settings))
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Configure environment
 cp .env.example .env
-# Edit .env and add your WANDB_API_KEY
+# edit .env and set WANDB_API_KEY
 ```
 
 ### Environment Variables
 
 | Variable | Description | Required |
-|----------|-------------|----------|
-| `WANDB_API_KEY` | Your Weights & Biases API key | Yes |
+|---|---|---|
+| `WANDB_API_KEY` | W&B API key | Yes |
 | `WANDB_PROJECT` | W&B project name (default: `fractal`) | No |
 | `PORT` | Server port (default: `3001`) | No |
-| `NODE_ENV` | Environment (default: `development`) | No |
+| `NODE_ENV` | Runtime mode (default: `development`) | No |
+| `POLICY_MEMORY_PATH` | Path to persisted eval policy/model memory (default: `./data/policy-memory.json`) | No |
+| `MAX_TOKENS_PER_SESSION` | Session token hard limit (default: `40000`) | No |
+| `TOKEN_WARNING_THRESHOLD` | Warning ratio (0-1) for budget banner (default: `0.8`) | No |
 
-## Running
+## Run
 
 ### Development
 
 ```bash
 npm run dev
 ```
-
-Starts the server with hot-reload via `tsx watch`.
 
 ### Production
 
@@ -67,271 +68,139 @@ npm start
 
 ## API Endpoints
 
-### Health Check
+### Health
 
-```
-GET /health
-```
+`GET /health`
 
-Returns:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-01-31T12:00:00.000Z",
-  "services": {
-    "inference": "up"
-  }
-}
-```
+Returns server status and inference health.
 
 ### Generate Questions
 
-```
-POST /api/generate
-```
+`POST /api/generate`
 
 Request:
+
 ```json
 {
-  "question": "What is consciousness?",
-  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
+  "question": "What drives trust in AI-generated recommendations?",
+  "model": "meta-llama/Llama-3.1-8B-Instruct"
 }
 ```
 
-Response:
+Response shape highlights:
+
+- `questions: string[]`
+- `meta.promptVariant`, `meta.promptLabel`
+- `meta.qualityScore`, `meta.confidence`, `meta.uncertainty`
+- `meta.strengths`, `meta.weaknesses`
+- `meta.seedType`
+- `meta.costGuard`
+- `usage` token stats
+
+### Compare Generation Runs
+
+`POST /api/generate/compare`
+
+Request:
+
 ```json
 {
-  "success": true,
-  "data": {
-    "questions": [
-      "Is consciousness emergent from neural complexity?",
-      "Can artificial systems achieve consciousness?",
-      "How does subjective experience relate to physical reality?"
-    ],
-    "meta": {
-      "promptVariant": "v1-balanced",
-      "promptLabel": "Balanced",
-      "qualityScore": 7.8,
-      "evalModel": "meta-llama/Llama-3.1-8B-Instruct"
-    },
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
-    "usage": {
-      "promptTokens": 152,
-      "completionTokens": 86,
-      "totalTokens": 238
-    }
-  }
+  "question": "How can product teams reduce launch risk?",
+  "leftModel": "meta-llama/Llama-3.1-8B-Instruct",
+  "rightModel": "meta-llama/Llama-3.1-8B-Instruct",
+  "leftPromptVariantId": "v1-balanced",
+  "rightPromptVariantId": "v2-divergent"
 }
 ```
 
-### List Models
+Response includes:
 
-```
-GET /api/models
-```
+- `left` and `right` full generation payloads
+- `winner: "left" | "right" | "tie"`
+- `reason`
 
-Response:
-```json
-{
-  "success": true,
-  "data": {
-    "models": [
-      "meta-llama/Llama-3.1-8B-Instruct",
-      "deepseek-ai/DeepSeek-V3-0324",
-      ...
-    ]
-  }
-}
-```
+### Eval Telemetry Snapshot
+
+`GET /api/evals/stats`
+
+Returns:
+
+- `promptVariants[]` with avg score/confidence/uncertainty/latency
+- `recentRuns[]`
+- `tokenUsage` total + by operation
+- `costGuard`
+- `modelPerformance[]` by seed type
+- `topModelBySeedType`
+
+### Models
+
+- `GET /api/models` returns available model IDs
+- `GET /api/models/performance` returns persisted model performance memory
 
 ### Chat
 
-```
-POST /api/chat
-```
+`POST /api/chat`
 
-Request:
-```json
-{
-  "rootQuestion": "What is consciousness?",
-  "messages": [
-    { "role": "user", "content": "Help me explore this." }
-  ],
-  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "data": {
-    "message": "Consciousness is a fascinating topic...",
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
-    "usage": {
-      "promptTokens": 200,
-      "completionTokens": 150,
-      "totalTokens": 350
-    }
-  }
-}
-```
+Chat for deep-dive exploration of a locked question.
 
 ### Probe Chat
 
-```
-POST /api/probe/chat
+`POST /api/probe/chat`
+
+Synthesis chat with selected stash context.
+
+### Probe Brief Export
+
+`POST /api/probe/brief`
+
+Builds a structured PM brief plus markdown output from stash context + direction.
+
+### Probe Experiment Suggestions
+
+`POST /api/probe/experiments`
+
+Returns 3-5 next experiment suggestions (`title`, `hypothesis`, `metric`).
+
+### Concept Extraction
+
+`POST /api/concepts/extract`
+
+Returns extracted concepts with category and text span indices.
+
+### Concept Explanation
+
+`POST /api/concepts/explain`
+
+Returns concept summary, contextual explanation, and related concepts.
+
+## Golden Regression Evals
+
+Run fixed-question prompt-variant evals and write a markdown report:
+
+```bash
+npm run evals:golden
 ```
 
-Request:
-```json
-{
-  "messages": [
-    { "role": "user", "content": "Synthesize the highlights into a direction." }
-  ],
-  "stashItems": [
-    {
-      "id": "s_1706745600000_abc123",
-      "type": "highlight",
-      "content": "memory consolidation",
-      "metadata": {
-        "sourceQuestion": "Why do we dream?"
-      }
-    }
-  ],
-  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
-}
-```
+Output path:
 
-Response:
-```json
-{
-  "success": true,
-  "data": {
-    "message": "Based on your highlights, a useful direction is...",
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
-    "usage": {
-      "promptTokens": 420,
-      "completionTokens": 180,
-      "totalTokens": 600
-    }
-  }
-}
-```
-
-### Extract Concepts
-
-```
-POST /api/concepts/extract
-```
-
-Request:
-```json
-{
-  "text": "Why do dreams serve an evolutionary function?",
-  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "data": {
-    "concepts": [
-      {
-        "id": "c_1706745600000_abc123",
-        "text": "dreams",
-        "normalizedName": "dreams",
-        "category": "psychology",
-        "startIndex": 7,
-        "endIndex": 13
-      },
-      {
-        "id": "c_1706745600001_def456",
-        "text": "evolutionary",
-        "normalizedName": "evolution",
-        "category": "science",
-        "startIndex": 23,
-        "endIndex": 35
-      }
-    ],
-    "sourceText": "Why do dreams serve an evolutionary function?"
-  }
-}
-```
-
-### Explain Concept
-
-```
-POST /api/concepts/explain
-```
-
-Request:
-```json
-{
-  "conceptId": "c_1706745600000_abc123",
-  "conceptName": "dreams",
-  "questionContext": "Why do dreams serve an evolutionary function?",
-  "model": "meta-llama/Llama-3.1-8B-Instruct"  // optional
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "data": {
-    "conceptId": "c_1706745600000_abc123",
-    "normalizedName": "dreams",
-    "summary": "Dreams are a series of images, ideas, and sensations occurring during sleep.",
-    "context": "In the context of evolutionary biology, dreams may have developed as...",
-    "relatedConcepts": ["REM sleep", "consciousness", "memory consolidation"]
-  }
-}
-```
+- `server/reports/golden-evals-<timestamp>.md`
 
 ## Observability
 
-All LLM calls are automatically traced via W&B Weave. View your traces at:
+All major inference calls are wrapped with Weave ops. View traces at:
 
-```
-https://wandb.ai/your-username/fractal
-```
-
-### What's Traced
-
-- Input questions
-- Generated outputs
-- Token usage
-- Latency
-- Model used
-- Any errors
-
-## Architecture
-
-```
-server/
-├── src/
-│   ├── index.ts          # Server entry point
-│   ├── config.ts         # Environment configuration
-│   ├── routes.ts         # Express routes
-│   ├── inference.ts      # W&B Inference integration
-│   └── weave-client.ts   # W&B Weave initialization
-├── .env.example          # Environment template
-├── package.json
-└── tsconfig.json
-```
+- `https://wandb.ai/<your-account>/<your-project>`
 
 ## Scripts
 
 | Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot-reload |
-| `npm run build` | Compile TypeScript to JavaScript |
+|---|---|
+| `npm run dev` | Start dev server with hot reload |
+| `npm run build` | Compile TypeScript |
 | `npm start` | Run production build |
-| `npm test` | Run tests |
+| `npm test` | Run server tests |
+| `npm run evals:golden` | Run golden regression eval script |
 
 ## License
 
-MIT - See root [LICENSE](../LICENSE)
+MIT (see root `LICENSE`).

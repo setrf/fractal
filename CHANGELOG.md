@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Eval telemetry system with persistent prompt/model memory (`server/src/eval-state.ts`) and seed-type tracking.
+- Session token guardrails with warning threshold + hard budget stop (`MAX_TOKENS_PER_SESSION`, `TOKEN_WARNING_THRESHOLD`).
+- `POST /api/generate/compare` for side-by-side generation A/B runs with winner selection.
+- `GET /api/evals/stats` and `GET /api/models/performance` endpoints for real-time eval visibility.
+- Probe export endpoints:
+  - `POST /api/probe/brief` for structured PM brief generation
+  - `POST /api/probe/experiments` for next-experiment suggestions
+- Golden regression eval runner: `server/scripts/run-evals.ts` (`npm run evals:golden`).
+- New UI components:
+  - `EvalPanel` for prompt leaderboard, recent runs, token/budget status, and model memory
+  - `ReplayTimeline` for playback of key user actions during exploration
+- A/B Compare UI in tree mode with “Apply Left/Right” branch insertion.
+- Confidence/uncertainty metadata surfaced on question nodes, graph popup, and generation summary.
+- Best-branch highlighting based on cumulative branch score.
+- Probe chat upgrades:
+  - Export brief button (downloads markdown)
+  - Automatic experiment suggestion follow-up after synthesis messages
+
 ### Changed
 - Probe chat now strips synthesized context sections before sending requests, so selected stash context is injected once on the server.
 - Moved global `THREE` initialization into the lazy-loaded Graph view module to reduce initial bundle weight.

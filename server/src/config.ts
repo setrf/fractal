@@ -24,6 +24,13 @@ export const config = {
   
   // Default model for question generation
   defaultModel: 'meta-llama/Llama-3.1-8B-Instruct',
+
+  // Eval/policy memory persistence
+  policyMemoryPath: process.env.POLICY_MEMORY_PATH || './data/policy-memory.json',
+
+  // Session-level token guardrails
+  maxTokensPerSession: Number.parseInt(process.env.MAX_TOKENS_PER_SESSION || '40000', 10),
+  tokenWarningThreshold: Number.parseFloat(process.env.TOKEN_WARNING_THRESHOLD || '0.8'),
 } as const
 
 /**

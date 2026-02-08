@@ -1,0 +1,123 @@
+.panel {
+  width: min(960px, calc(100% - var(--space-8)));
+  margin: 0 auto var(--space-4);
+  border: var(--border-width) solid var(--border-primary);
+  background: var(--bg-primary);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.refresh {
+  border: var(--border-width) solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.refresh:hover:enabled {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.error {
+  margin: 0 0 var(--space-2);
+  color: var(--accent-error);
+}
+
+.empty {
+  margin: 0;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.warning {
+  color: var(--accent-error);
+}
+
+.details {
+  border-top: var(--border-width) solid var(--border-primary);
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  margin-top: var(--space-2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+
+.table th,
+.table td {
+  border: var(--border-width) solid var(--border-primary);
+  padding: 4px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: var(--border-width) solid var(--border-primary);
+  padding: var(--space-1) var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .panel {
+    width: calc(100% - var(--space-4));
+    padding: var(--space-2);
+  }
+
+  .summaryRow {
+    gap: var(--space-2);
+  }
+}

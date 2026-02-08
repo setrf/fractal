@@ -62,6 +62,8 @@ export function useQuestionTree() {
   const addRootQuestion = useCallback((text: string, options?: QuestionNodeAddOptions) => {
     const node = createQuestionNode(text, null, { x: 0, y: 0 }, {
       qualityScore: options?.qualityScore ?? null,
+      confidence: options?.confidence ?? null,
+      uncertainty: options?.uncertainty ?? null,
     })
     setTree((prevTree) => addNodeToTree(prevTree, node))
     return node.id
@@ -100,6 +102,8 @@ export function useQuestionTree() {
         },
         {
           qualityScore: options?.qualityScore ?? null,
+          confidence: options?.confidence ?? null,
+          uncertainty: options?.uncertainty ?? null,
         }
       )
 

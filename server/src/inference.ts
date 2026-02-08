@@ -14,6 +14,22 @@
 import OpenAI from 'openai'
 import { weave } from './weave-client.js'
 import { config } from './config.js'
+import {
+  assertTokenBudget,
+  classifySeedType,
+  configureEvalState,
+  ensureEvalStateLoaded,
+  getCostGuardSnapshot,
+  getEvalStatsSnapshot,
+  getModelPerformanceSnapshot,
+  rankPromptVariants,
+  recordEvalRun,
+  recordTokenUsage,
+  selectPromptVariant,
+  type EvalStatsSnapshot,
+  type ModelSeedSnapshot,
+  type TokenUsage,
+} from './eval-state.js'
 
 const isTestMode = process.env.NODE_ENV === 'test'
 
@@ -113,39 +129,58 @@ Return a JSON array of strings only.`,
 ]
 
 const PROMPT_SELECTION_EPSILON = 0.2
-const promptStats = new Map<string, { count: number; avgScore: number }>()
 
-function selectPromptVariant(): PromptVariant {
-  if (QUESTION_PROMPT_VARIANTS.length === 0) {
-    throw new Error('No question prompt variants configured')
-  }
+configureEvalState({
+  policyPath: config.policyMemoryPath,
+  maxTokensPerSession: config.maxTokensPerSession,
+  tokenWarningThreshold: config.tokenWarningThreshold,
+})
 
-  if (Math.random() < PROMPT_SELECTION_EPSILON) {
-    return QUESTION_PROMPT_VARIANTS[Math.floor(Math.random() * QUESTION_PROMPT_VARIANTS.length)]
-  }
-
-  let bestVariant = QUESTION_PROMPT_VARIANTS[0]
-  let bestScore = -Infinity
-  QUESTION_PROMPT_VARIANTS.forEach((variant) => {
-    const stats = promptStats.get(variant.id)
-    const score = stats ? stats.avgScore : 0
-    if (score > bestScore) {
-      bestScore = score
-      bestVariant = variant
-    }
-  })
-  return bestVariant
+function getPromptVariantById(variantId: string): PromptVariant | null {
+  return QUESTION_PROMPT_VARIANTS.find((variant) => variant.id === variantId) ?? null
 }
 
-function updatePromptStats(variantId: string, score: number) {
-  const prev = promptStats.get(variantId)
-  if (!prev) {
-    promptStats.set(variantId, { count: 1, avgScore: score })
-    return
+function pickPromptVariant(forcedVariantId?: string): PromptVariant {
+  if (forcedVariantId) {
+    const forced = getPromptVariantById(forcedVariantId)
+    if (!forced) {
+      throw new Error(`Unknown prompt variant: ${forcedVariantId}`)
+    }
+    return forced
   }
-  const nextCount = prev.count + 1
-  const nextAvg = (prev.avgScore * prev.count + score) / nextCount
-  promptStats.set(variantId, { count: nextCount, avgScore: nextAvg })
+  return selectPromptVariant(QUESTION_PROMPT_VARIANTS, PROMPT_SELECTION_EPSILON)
+}
+
+function normalizeUsage(usage: Partial<TokenUsage> | undefined): TokenUsage {
+  const promptTokens = usage?.promptTokens ?? 0
+  const completionTokens = usage?.completionTokens ?? 0
+  const totalTokens = usage?.totalTokens ?? promptTokens + completionTokens
+  return { promptTokens, completionTokens, totalTokens }
+}
+
+function mergeUsage(...parts: Array<Partial<TokenUsage> | undefined>): TokenUsage {
+  return parts.reduce<TokenUsage>(
+    (acc, usage) => {
+      const normalized = normalizeUsage(usage)
+      acc.promptTokens += normalized.promptTokens
+      acc.completionTokens += normalized.completionTokens
+      acc.totalTokens += normalized.totalTokens
+      return acc
+    },
+    { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+  )
+}
+
+function normalizeConfidence(raw: number | null | undefined, fallbackScore: number): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    if (raw < 0) return 0
+    if (raw > 1) return 1
+    return raw
+  }
+  const scoreBased = fallbackScore / 10
+  if (scoreBased < 0.05) return 0.05
+  if (scoreBased > 0.95) return 0.95
+  return scoreBased
 }
 
 /**
@@ -157,14 +192,18 @@ Score a set of follow-up questions from 0 to 10 based on:
 - Diversity of perspectives
 - Depth and curiosity
 - Usefulness for exploration
+- Reliability of the set for deeper investigation
 
 Return JSON only:
-{"score": number, "strengths": ["..."], "weaknesses": ["..."]}`
+{"score": number, "confidence": number, "uncertainty": number, "strengths": ["..."], "weaknesses": ["..."]}`
 
 interface QuestionSetScore {
   score: number
+  confidence: number
+  uncertainty: number
   strengths: string[]
   weaknesses: string[]
+  usage: TokenUsage
 }
 
 export const scoreQuestionSet = weave.op(
@@ -173,10 +212,19 @@ export const scoreQuestionSet = weave.op(
     questions: string[],
     model: string = config.defaultModel
   ): Promise<QuestionSetScore> {
+    await ensureEvalStateLoaded()
     if (questions.length === 0) {
-      return { score: 0, strengths: [], weaknesses: ['No questions generated'] }
+      return {
+        score: 0,
+        confidence: 0.1,
+        uncertainty: 0.9,
+        strengths: [],
+        weaknesses: ['No questions generated'],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      }
     }
 
+    assertTokenBudget('scoreQuestionSet')
     const response = await client.chat.completions.create({
       model,
       messages: [
@@ -187,13 +235,25 @@ export const scoreQuestionSet = weave.op(
       max_tokens: 300,
     })
 
+    const usage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('score', usage)
+
     const content = response.choices[0]?.message?.content || '{}'
     const parsed = parseRobustJson<Partial<QuestionSetScore>>(content, {})
     const score = typeof parsed.score === 'number' ? parsed.score : Math.min(10, 2 + questions.length)
+    const confidence = normalizeConfidence(parsed.confidence, score)
+    const uncertainty = normalizeConfidence(parsed.uncertainty, 10 - score)
     return {
       score,
+      confidence,
+      uncertainty,
       strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
       weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+      usage,
     }
   }
 )
@@ -209,12 +269,31 @@ export interface GeneratedQuestions {
     promptLabel: string
     qualityScore: number | null
     evalModel: string
+    confidence: number | null
+    uncertainty: number | null
+    strengths: string[]
+    weaknesses: string[]
+    seedType: ReturnType<typeof classifySeedType>
+    costGuard: ReturnType<typeof getCostGuardSnapshot>
   }
   usage: {
     promptTokens: number
     completionTokens: number
     totalTokens: number
   }
+}
+
+export interface GenerateRelatedQuestionOptions {
+  forcedPromptVariantId?: string
+  updatePolicy?: boolean
+}
+
+export interface CompareGenerationResponse {
+  question: string
+  left: GeneratedQuestions
+  right: GeneratedQuestions
+  winner: 'left' | 'right' | 'tie'
+  reason: string
 }
 
 /**
@@ -224,14 +303,18 @@ export interface GeneratedQuestions {
 export const generateRelatedQuestions = weave.op(
   async function generateRelatedQuestions(
     question: string,
-    model: string = config.defaultModel
+    model: string = config.defaultModel,
+    options: GenerateRelatedQuestionOptions = {}
   ): Promise<GeneratedQuestions> {
+    await ensureEvalStateLoaded()
     console.log(`[Inference] Generating questions for: "${question}"`)
     console.log(`[Inference] Using model: ${model}`)
 
-    const promptVariant = selectPromptVariant()
+    const promptVariant = pickPromptVariant(options.forcedPromptVariantId)
     console.log(`[Inference] Using prompt variant: ${promptVariant.id}`)
 
+    assertTokenBudget('generateRelatedQuestions')
+    const generationStartedAt = Date.now()
     const response = await client.chat.completions.create({
       model,
       messages: [
@@ -241,6 +324,12 @@ export const generateRelatedQuestions = weave.op(
       temperature: 0.8,
       max_tokens: 500,
     })
+    const generationUsage: TokenUsage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('generate', generationUsage)
 
     const content = response.choices[0]?.message?.content || '[]'
     
@@ -261,10 +350,36 @@ export const generateRelatedQuestions = weave.op(
     }
 
     let qualityScore: number | null = null
+    let confidence: number | null = null
+    let uncertainty: number | null = null
+    let strengths: string[] = []
+    let weaknesses: string[] = []
+    let scoreUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
     try {
       const scored = await scoreQuestionSet(question, questions, model)
       qualityScore = scored.score
-      updatePromptStats(promptVariant.id, scored.score)
+      confidence = scored.confidence
+      uncertainty = scored.uncertainty
+      strengths = scored.strengths
+      weaknesses = scored.weaknesses
+      scoreUsage = scored.usage
+
+      recordEvalRun({
+        question,
+        variantId: promptVariant.id,
+        variantLabel: promptVariant.label,
+        model,
+        seedType: classifySeedType(question),
+        score: scored.score,
+        confidence: scored.confidence,
+        uncertainty: scored.uncertainty,
+        latencyMs: Date.now() - generationStartedAt,
+        usage: mergeUsage(generationUsage, scored.usage),
+        strengths: scored.strengths,
+        weaknesses: scored.weaknesses,
+        updatePolicy: options.updatePolicy ?? true,
+      })
+
       console.log(`[Inference] Weave score: ${scored.score}`)
     } catch (error) {
       if (!isTestMode) {
@@ -280,12 +395,14 @@ export const generateRelatedQuestions = weave.op(
         promptLabel: promptVariant.label,
         qualityScore,
         evalModel: model,
+        confidence,
+        uncertainty,
+        strengths,
+        weaknesses,
+        seedType: classifySeedType(question),
+        costGuard: getCostGuardSnapshot(),
       },
-      usage: {
-        promptTokens: response.usage?.prompt_tokens || 0,
-        completionTokens: response.usage?.completion_tokens || 0,
-        totalTokens: response.usage?.total_tokens || 0,
-      },
+      usage: mergeUsage(generationUsage, scoreUsage),
     }
 
     console.log(`[Inference] Generated ${questions.length} questions`)
@@ -294,6 +411,68 @@ export const generateRelatedQuestions = weave.op(
     return result
   }
 )
+
+export const compareQuestionGenerations = weave.op(
+  async function compareQuestionGenerations(
+    question: string,
+    leftModel: string = config.defaultModel,
+    rightModel: string = config.defaultModel,
+    leftPromptVariantId?: string,
+    rightPromptVariantId?: string
+  ): Promise<CompareGenerationResponse> {
+    await ensureEvalStateLoaded()
+
+    const ranked = rankPromptVariants(QUESTION_PROMPT_VARIANTS)
+    const fallbackLeft = ranked[0]
+    const fallbackRight = ranked.find((variant) => variant.id !== fallbackLeft.id) ?? ranked[0]
+
+    const resolvedLeftPrompt = leftPromptVariantId ?? fallbackLeft.id
+    const resolvedRightPrompt = rightPromptVariantId ?? fallbackRight.id
+
+    const [left, right] = await Promise.all([
+      generateRelatedQuestions(question, leftModel, {
+        forcedPromptVariantId: resolvedLeftPrompt,
+        updatePolicy: true,
+      }),
+      generateRelatedQuestions(question, rightModel, {
+        forcedPromptVariantId: resolvedRightPrompt,
+        updatePolicy: true,
+      }),
+    ])
+
+    const leftScore = left.meta.qualityScore ?? 0
+    const rightScore = right.meta.qualityScore ?? 0
+
+    if (Math.abs(leftScore - rightScore) < 0.1) {
+      return {
+        question,
+        left,
+        right,
+        winner: 'tie',
+        reason: 'Scores are effectively tied on current evaluation criteria.',
+      }
+    }
+
+    const winner = leftScore > rightScore ? 'left' : 'right'
+    return {
+      question,
+      left,
+      right,
+      winner,
+      reason: `${winner === 'left' ? 'Left' : 'Right'} scored higher (${Math.max(leftScore, rightScore).toFixed(2)} vs ${Math.min(leftScore, rightScore).toFixed(2)}).`,
+    }
+  }
+)
+
+export async function getEvalStats(): Promise<EvalStatsSnapshot> {
+  await ensureEvalStateLoaded()
+  return getEvalStatsSnapshot(QUESTION_PROMPT_VARIANTS)
+}
+
+export async function getModelPerformanceMemory(): Promise<ModelSeedSnapshot[]> {
+  await ensureEvalStateLoaded()
+  return getModelPerformanceSnapshot()
+}
 
 /**
  * Get list of available models from W&B Inference.
@@ -375,6 +554,7 @@ export const chat = weave.op(
     messages: ChatMessage[],
     model: string = config.defaultModel
   ): Promise<ChatResponse> {
+    await ensureEvalStateLoaded()
     console.log(`[Chat] Processing message for question: "${rootQuestion.substring(0, 50)}..."`)
     console.log(`[Chat] Conversation length: ${messages.length} messages`)
     console.log(`[Chat] Using model: ${model}`)
@@ -388,6 +568,7 @@ export const chat = weave.op(
       ...messages,
     ]
 
+    assertTokenBudget('chat')
     const response = await client.chat.completions.create({
       model,
       messages: fullMessages,
@@ -396,15 +577,17 @@ export const chat = weave.op(
     })
 
     const content = response.choices[0]?.message?.content || ''
+    const usage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('chat', usage)
 
     const result: ChatResponse = {
       message: content,
       model,
-      usage: {
-        promptTokens: response.usage?.prompt_tokens || 0,
-        completionTokens: response.usage?.completion_tokens || 0,
-        totalTokens: response.usage?.total_tokens || 0,
-      },
+      usage,
     }
 
     console.log(`[Chat] Response length: ${content.length} chars`)
@@ -529,6 +712,7 @@ export const probeChat = weave.op(
     stashItems: ProbeStashItem[],
     model: string = config.defaultModel
   ): Promise<ChatResponse> {
+    await ensureEvalStateLoaded()
     console.log(`[ProbeChat] Processing message with ${stashItems.length} stash items`)
     console.log(`[ProbeChat] Conversation length: ${messages.length} messages`)
     console.log(`[ProbeChat] Using model: ${model}`)
@@ -546,6 +730,7 @@ export const probeChat = weave.op(
       ...messages,
     ]
 
+    assertTokenBudget('probeChat')
     const response = await client.chat.completions.create({
       model,
       messages: fullMessages,
@@ -554,21 +739,228 @@ export const probeChat = weave.op(
     })
 
     const content = response.choices[0]?.message?.content || ''
+    const usage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('probe-chat', usage)
 
     const result: ChatResponse = {
       message: content,
       model,
-      usage: {
-        promptTokens: response.usage?.prompt_tokens || 0,
-        completionTokens: response.usage?.completion_tokens || 0,
-        totalTokens: response.usage?.total_tokens || 0,
-      },
+      usage,
     }
 
     console.log(`[ProbeChat] Response length: ${content.length} chars`)
     console.log(`[ProbeChat] Token usage: ${result.usage.totalTokens}`)
 
     return result
+  }
+)
+
+// ============================================
+// PM BRIEF + EXPERIMENT SUGGESTIONS
+// ============================================
+
+const PROBE_BRIEF_PROMPT = `You are a senior AI product manager.
+
+Given exploration context and direction, produce a concise PM brief in JSON only.
+Required schema:
+{
+  "problemStatement": "string",
+  "hypotheses": ["string", "string"],
+  "primaryExperiment": "string",
+  "successMetrics": ["string", "string"],
+  "risks": ["string", "string"],
+  "recommendation": "string",
+  "nextExperiments": ["string", "string", "string"]
+}
+
+Keep each item concrete and testable. No markdown. JSON only.`
+
+const PROBE_EXPERIMENT_SUGGESTIONS_PROMPT = `You are an AI PM experimentation coach.
+
+Given conversation + research context, propose 3-5 next experiments.
+Return JSON only:
+{
+  "suggestions": [
+    {
+      "title": "short experiment name",
+      "hypothesis": "what this tests",
+      "metric": "primary metric"
+    }
+  ]
+}`
+
+export interface ProbeBrief {
+  problemStatement: string
+  hypotheses: string[]
+  primaryExperiment: string
+  successMetrics: string[]
+  risks: string[]
+  recommendation: string
+  nextExperiments: string[]
+}
+
+export interface ProbeBriefResult {
+  brief: ProbeBrief
+  markdown: string
+  model: string
+  usage: TokenUsage
+}
+
+export interface ProbeExperimentSuggestion {
+  title: string
+  hypothesis: string
+  metric: string
+}
+
+export interface ProbeExperimentSuggestionsResult {
+  suggestions: ProbeExperimentSuggestion[]
+  model: string
+  usage: TokenUsage
+}
+
+function buildProbeBriefMarkdown(brief: ProbeBrief): string {
+  const toBullets = (items: string[]): string =>
+    items.length > 0 ? items.map((item) => `- ${item}`).join('\n') : '- N/A'
+
+  return [
+    '# PM Brief',
+    '',
+    '## Problem Statement',
+    brief.problemStatement || 'N/A',
+    '',
+    '## Hypotheses',
+    toBullets(brief.hypotheses),
+    '',
+    '## Primary Experiment',
+    brief.primaryExperiment || 'N/A',
+    '',
+    '## Success Metrics',
+    toBullets(brief.successMetrics),
+    '',
+    '## Risks',
+    toBullets(brief.risks),
+    '',
+    '## Recommendation',
+    brief.recommendation || 'N/A',
+    '',
+    '## Next Experiments',
+    toBullets(brief.nextExperiments),
+    '',
+  ].join('\n')
+}
+
+export const generateProbeBrief = weave.op(
+  async function generateProbeBrief(
+    stashItems: ProbeStashItem[],
+    direction: string,
+    model: string = config.defaultModel
+  ): Promise<ProbeBriefResult> {
+    await ensureEvalStateLoaded()
+    const stashContext = buildProbeContext(stashItems)
+    const userPayload = JSON.stringify({
+      direction,
+      context: stashContext,
+    })
+
+    assertTokenBudget('generateProbeBrief')
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: PROBE_BRIEF_PROMPT },
+        { role: 'user', content: userPayload },
+      ],
+      temperature: 0.3,
+      max_tokens: 900,
+    })
+
+    const usage: TokenUsage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('probe-brief', usage)
+
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = parseRobustJson<Partial<ProbeBrief>>(content, {})
+
+    const brief: ProbeBrief = {
+      problemStatement: typeof parsed.problemStatement === 'string' ? parsed.problemStatement : 'Clarify the core user problem and context.',
+      hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.slice(0, 5) : [],
+      primaryExperiment: typeof parsed.primaryExperiment === 'string' ? parsed.primaryExperiment : 'Run a lightweight experiment to validate top hypothesis.',
+      successMetrics: Array.isArray(parsed.successMetrics) ? parsed.successMetrics.slice(0, 5) : [],
+      risks: Array.isArray(parsed.risks) ? parsed.risks.slice(0, 5) : [],
+      recommendation: typeof parsed.recommendation === 'string' ? parsed.recommendation : 'Prioritize the highest-signal, lowest-cost next step.',
+      nextExperiments: Array.isArray(parsed.nextExperiments) ? parsed.nextExperiments.slice(0, 5) : [],
+    }
+
+    return {
+      brief,
+      markdown: buildProbeBriefMarkdown(brief),
+      model,
+      usage,
+    }
+  }
+)
+
+export const suggestProbeExperiments = weave.op(
+  async function suggestProbeExperiments(
+    messages: ChatMessage[],
+    stashItems: ProbeStashItem[],
+    model: string = config.defaultModel
+  ): Promise<ProbeExperimentSuggestionsResult> {
+    await ensureEvalStateLoaded()
+    const stashContext = buildProbeContext(stashItems)
+    const messageContext = messages
+      .slice(-6)
+      .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+      .join('\n')
+
+    assertTokenBudget('suggestProbeExperiments')
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: PROBE_EXPERIMENT_SUGGESTIONS_PROMPT },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            stashContext,
+            recentConversation: messageContext,
+          }),
+        },
+      ],
+      temperature: 0.4,
+      max_tokens: 700,
+    })
+
+    const usage: TokenUsage = {
+      promptTokens: response.usage?.prompt_tokens || 0,
+      completionTokens: response.usage?.completion_tokens || 0,
+      totalTokens: response.usage?.total_tokens || 0,
+    }
+    recordTokenUsage('probe-experiments', usage)
+
+    const content = response.choices[0]?.message?.content || '{}'
+    const parsed = parseRobustJson<{ suggestions?: Array<Partial<ProbeExperimentSuggestion>> }>(content, {})
+    const suggestions = Array.isArray(parsed.suggestions)
+      ? parsed.suggestions
+        .map((item) => ({
+          title: typeof item.title === 'string' ? item.title : '',
+          hypothesis: typeof item.hypothesis === 'string' ? item.hypothesis : '',
+          metric: typeof item.metric === 'string' ? item.metric : '',
+        }))
+        .filter((item) => item.title && item.hypothesis && item.metric)
+        .slice(0, 5)
+      : []
+
+    return {
+      suggestions,
+      model,
+      usage,
+    }
   }
 )
 
@@ -661,9 +1053,11 @@ export const extractConcepts = weave.op(
     questionText: string,
     model: string = config.defaultModel
   ): Promise<ConceptExtractionResult> {
+    await ensureEvalStateLoaded()
     console.log(`[Concepts] Extracting concepts from: "${questionText.substring(0, 50)}..."`)
     console.log(`[Concepts] Using model: ${model}`)
 
+    assertTokenBudget('extractConcepts')
     const response = await client.chat.completions.create({
       model,
       messages: [
@@ -782,6 +1176,7 @@ export const extractConcepts = weave.op(
         totalTokens: response.usage?.total_tokens || 0,
       },
     }
+    recordTokenUsage('concept-extract', result.usage)
 
     console.log(`[Concepts] Extracted ${concepts.length} valid concepts`)
     console.log(`[Concepts] Token usage: ${result.usage.totalTokens}`)
@@ -849,6 +1244,7 @@ export const explainConcept = weave.op(
     questionContext: string,
     model: string = config.defaultModel
   ): Promise<ConceptExplanationResult> {
+    await ensureEvalStateLoaded()
     console.log(`[Concepts] Explaining concept: "${conceptName}"`)
     console.log(`[Concepts] In context of: "${questionContext.substring(0, 50)}..."`)
     console.log(`[Concepts] Using model: ${model}`)
@@ -857,6 +1253,7 @@ export const explainConcept = weave.op(
     
 Question context: "${questionContext}"`
 
+    assertTokenBudget('explainConcept')
     const response = await client.chat.completions.create({
       model,
       messages: [
@@ -899,6 +1296,7 @@ Question context: "${questionContext}"`
         totalTokens: response.usage?.total_tokens || 0,
       },
     }
+    recordTokenUsage('concept-explain', result.usage)
 
     console.log(`[Concepts] Generated explanation with ${explanation.relatedConcepts.length} related concepts`)
     console.log(`[Concepts] Token usage: ${result.usage.totalTokens}`)

@@ -12,7 +12,7 @@
  * via W&B Weave and Inference.
  */
 
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ViewModeToggle } from './components/ViewModeToggle'
 import { ModelSelector } from './components/ModelSelector'
@@ -24,6 +24,8 @@ import { ProbeSidebar } from './components/ProbeSidebar'
 import { NotePopup } from './components/NotePopup'
 import { ConceptPopup } from './components/ConceptPopup'
 import { MobileHeader } from './components/MobileHeader/MobileHeader'
+import { EvalPanel } from './components/EvalPanel'
+import { ReplayTimeline, type ReplayEvent } from './components/ReplayTimeline'
 import type { GraphViewHandle } from './components/GraphView'
 import { GraphControls } from './components/GraphControls'
 import { GraphNodePopup } from './components/GraphNodePopup'
@@ -36,13 +38,14 @@ import { ViewModeProvider, useViewModeContext } from './context/ViewModeContext'
 import { ModelProvider, useModelContext } from './context/ModelContext'
 import { useQuestionTree } from './hooks/useQuestionTree'
 import { useAIQuestions } from './hooks/useAIQuestions'
+import { useEvalStats } from './hooks/useEvalStats'
 import { useConceptExtraction } from './hooks/useConceptExtraction'
 import { useConceptExplanation } from './hooks/useConceptExplanation'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useOnboardingSteps } from './hooks/useOnboardingSteps'
 import { useGraphInteractions } from './hooks/useGraphInteractions'
 import { useIsMobile } from './hooks/useIsMobile'
-import { sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
+import { compareQuestionGenerations, sendChatMessage, type ChatMessage, type ExtractedConcept } from './api'
 import type { StashItem as StashItemData } from './types/stash'
 import type { PopupPosition } from './components/ConceptPopup'
 import { DEFAULT_POPUP_WIDTH, DEFAULT_POPUP_HEIGHT, findNonOverlappingPosition } from './components/ConceptPopup'
@@ -108,6 +111,34 @@ function computeChildQualityScore(parentScore: number, baseScore: number | null)
   return Math.max(baseScore, minHigher)
 }
 
+function computeBestBranchNodeIds(tree: { rootId: string | null; nodes: Record<string, { id: string; childIds: string[]; meta: { qualityScore: number | null } }> }): Set<string> {
+  if (!tree.rootId || !tree.nodes[tree.rootId]) return new Set()
+
+  let bestPath: string[] = [tree.rootId]
+  let bestScore = Number.NEGATIVE_INFINITY
+
+  const dfs = (nodeId: string, path: string[], cumulativeScore: number) => {
+    const node = tree.nodes[nodeId]
+    if (!node) return
+    const nodeScore = typeof node.meta.qualityScore === 'number' ? node.meta.qualityScore : 0
+    const nextScore = cumulativeScore + nodeScore
+    const nextPath = [...path, nodeId]
+
+    if (node.childIds.length === 0) {
+      if (nextScore > bestScore) {
+        bestScore = nextScore
+        bestPath = nextPath
+      }
+      return
+    }
+
+    node.childIds.forEach((childId) => dfs(childId, nextPath, nextScore))
+  }
+
+  dfs(tree.rootId, [], 0)
+  return new Set(bestPath)
+}
+
 /**
  * State for a reopened explanation popup from stash.
  */
@@ -151,6 +182,7 @@ function AppContent() {
   const {
     tree,
     rootNode,
+    activeNode,
     addRootQuestion,
     addChildQuestion,
     setActiveNode,
@@ -159,7 +191,7 @@ function AppContent() {
     reset,
   } = useQuestionTree()
 
-  const { selectedModel } = useModelContext()
+  const { selectedModel, models } = useModelContext()
 
   // Mobile detection
   const isMobile = useIsMobile()
@@ -186,6 +218,12 @@ function AppContent() {
 
   // AI question generation
   const { generate, isLoading: aiLoading, error: aiError, lastMeta } = useAIQuestions()
+  const {
+    stats: evalStats,
+    isLoading: evalStatsLoading,
+    error: evalStatsError,
+    refresh: refreshEvalStats,
+  } = useEvalStats()
   
   // Concept extraction and explanation
   const { extract: extractConcepts } = useConceptExtraction()
@@ -246,6 +284,15 @@ function AppContent() {
   const [minimizeAllTrigger, setMinimizeAllTrigger] = useState(0)
   const [closeAllTrigger, setCloseAllTrigger] = useState(0)
 
+  // A/B compare mode state
+  const [compareLoading, setCompareLoading] = useState(false)
+  const [compareError, setCompareError] = useState<string | null>(null)
+  const [compareResult, setCompareResult] = useState<Awaited<ReturnType<typeof compareQuestionGenerations>> | null>(null)
+  const [compareRightModel, setCompareRightModel] = useState<string | null>(null)
+
+  // Replay timeline state
+  const [replayEvents, setReplayEvents] = useState<ReplayEvent[]>([])
+
   // View mode (traditional vs graph)
   const { isGraphView } = useViewModeContext()
 
@@ -254,6 +301,19 @@ function AppContent() {
 
   // Determine current view
   const currentView: AppView = !rootNode ? 'welcome' : chatVisible ? 'chat' : 'tree'
+
+  const recordReplayEvent = useCallback((type: string, label: string, detail?: string) => {
+    const event: ReplayEvent = {
+      id: `replay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      timestamp: Date.now(),
+      type,
+      label,
+      detail,
+    }
+    setReplayEvents((prev) => [...prev.slice(-199), event])
+  }, [])
+
+  const bestBranchNodeIds = useMemo(() => computeBestBranchNodeIds(tree), [tree])
 
   const stashCount = stashItems.length
   const probeCount = probes.length
@@ -301,6 +361,10 @@ function AppContent() {
   }, [onboardingIsOpen, onboardingCurrentStep, activeOnboardingStep])
 
   useEffect(() => {
+    void refreshEvalStats()
+  }, [refreshEvalStats])
+
+  useEffect(() => {
     if (!onboardingIsOpen || !activeOnboardingStep?.autoAdvance) return
     if (!canProceedOnboarding) return
     const timer = setTimeout(() => onboardingNext(), 600)
@@ -340,13 +404,16 @@ function AppContent() {
    */
   const handleSelectNode = useCallback((nodeId: string) => {
     setActiveNode(nodeId)
+    const node = tree.nodes[nodeId]
+    if (node) {
+      recordReplayEvent('navigate', 'Selected node', node.text)
+    }
     
     // Auto-extract concepts for the selected node if not already done
-    const node = tree.nodes[nodeId]
     if (node && !nodeConcepts[nodeId]) {
       void extractNodeConcepts(nodeId, node.text)
     }
-  }, [tree.nodes, nodeConcepts, extractNodeConcepts, setActiveNode])
+  }, [tree.nodes, nodeConcepts, extractNodeConcepts, setActiveNode, recordReplayEvent])
 
   /**
    * Generates AI suggestions for a node and adds them as children.
@@ -357,6 +424,7 @@ function AppContent() {
     generationRequestCounter.current = requestId
     latestGenerationRequestByNode.current.set(parentId, requestId)
     setGeneratingNodeId(parentId)
+    recordReplayEvent('deep-dive', 'Started AI Deep dive', question)
     try {
       const { questions: suggestions, meta } = await generate(question, activeModel)
       if (latestGenerationRequestByNode.current.get(parentId) !== requestId) {
@@ -370,17 +438,77 @@ function AppContent() {
       }
       const baseScore = normalizeWeaveScore(meta?.qualityScore)
       const childScore = computeChildQualityScore(parentScore, baseScore)
+      const confidence = typeof meta?.confidence === 'number' ? meta.confidence : null
+      const uncertainty = typeof meta?.uncertainty === 'number' ? meta.uncertainty : null
       // Add each generated question as a child
       for (const suggestion of suggestions) {
-        addChildQuestion(parentId, suggestion, { qualityScore: childScore })
+        addChildQuestion(parentId, suggestion, {
+          qualityScore: childScore,
+          confidence,
+          uncertainty,
+        })
       }
+      recordReplayEvent(
+        'deep-dive',
+        `Generated ${suggestions.length} questions`,
+        `Score ${meta?.qualityScore?.toFixed(2) ?? 'N/A'} · ${meta?.promptLabel ?? 'Unknown prompt'}`
+      )
+      void refreshEvalStats()
     } finally {
       if (latestGenerationRequestByNode.current.get(parentId) === requestId) {
         latestGenerationRequestByNode.current.delete(parentId)
         setGeneratingNodeId(current => (current === parentId ? null : current))
       }
     }
-  }, [generate, addChildQuestion, tree.nodes, updateNodeMeta, activeModel])
+  }, [generate, addChildQuestion, tree.nodes, updateNodeMeta, activeModel, recordReplayEvent, refreshEvalStats])
+
+  const handleRunCompare = useCallback(async () => {
+    const targetNode = activeNode ?? rootNode
+    if (!targetNode) return
+    setCompareLoading(true)
+    setCompareError(null)
+    recordReplayEvent('compare', 'Started A/B compare', targetNode.text)
+    try {
+      const result = await compareQuestionGenerations(targetNode.text, {
+        leftModel: activeModel,
+        rightModel: compareRightModel || activeModel,
+      })
+      setCompareResult(result)
+      recordReplayEvent('compare', `Compare winner: ${result.winner}`, result.reason)
+      await refreshEvalStats()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to compare generations'
+      setCompareError(message)
+    } finally {
+      setCompareLoading(false)
+    }
+  }, [activeNode, rootNode, activeModel, compareRightModel, recordReplayEvent, refreshEvalStats])
+
+  const handleAddChild = useCallback((parentId: string, question: string) => {
+    addChildQuestion(parentId, question)
+    recordReplayEvent('customize', 'Added custom branch question', question)
+  }, [addChildQuestion, recordReplayEvent])
+
+  const handleApplyCompareResult = useCallback((side: 'left' | 'right') => {
+    if (!compareResult) return
+    const targetNode = activeNode ?? rootNode
+    if (!targetNode) return
+    const selected = side === 'left' ? compareResult.left : compareResult.right
+    const parentScore = normalizeWeaveScore(tree.nodes[targetNode.id]?.meta.qualityScore) ?? 0
+    const selectedScore = normalizeWeaveScore(selected.meta?.qualityScore ?? null)
+    const childScore = computeChildQualityScore(parentScore, selectedScore)
+    const confidence = typeof selected.meta?.confidence === 'number' ? selected.meta.confidence : null
+    const uncertainty = typeof selected.meta?.uncertainty === 'number' ? selected.meta.uncertainty : null
+
+    selected.questions.forEach((question) => {
+      addChildQuestion(targetNode.id, question, {
+        qualityScore: childScore,
+        confidence,
+        uncertainty,
+      })
+    })
+    recordReplayEvent('compare', `Applied ${side.toUpperCase()} branch`, `${selected.questions.length} questions`)
+  }, [compareResult, activeNode, rootNode, tree.nodes, addChildQuestion, recordReplayEvent])
 
   /**
    * Handles submission of the initial question.
@@ -388,9 +516,10 @@ function AppContent() {
    */
   const handleQuestionSubmit = useCallback((question: string) => {
     const nodeId = addRootQuestion(question)
+    recordReplayEvent('seed', 'Submitted seed question', question)
     // Immediately trigger Deep dive to generate sub-questions
     handleGenerateAI(nodeId, question)
-  }, [addRootQuestion, handleGenerateAI])
+  }, [addRootQuestion, handleGenerateAI, recordReplayEvent])
 
   /**
    * Handles "lock in" on a question to open the chat view.
@@ -401,7 +530,8 @@ function AppContent() {
       setChatState({ nodeId, question })
     }
     setChatVisible(true)
-  }, [chatState?.nodeId])
+    recordReplayEvent('chat', 'Opened deep-dive chat', question)
+  }, [chatState?.nodeId, recordReplayEvent])
 
   /**
    * Returns from chat view to tree view.
@@ -416,8 +546,10 @@ function AppContent() {
    */
   const handleSendChatMessage = useCallback(async (messages: ChatMessage[]): Promise<string> => {
     if (!chatState) throw new Error('No chat state')
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
+    recordReplayEvent('chat', 'Sent chat message', lastUserMessage?.content.slice(0, 140))
     return sendChatMessage(chatState.question, messages, activeModel)
-  }, [chatState, activeModel])
+  }, [chatState, activeModel, recordReplayEvent])
 
   /**
    * Handles concept hover - fetches explanation.
@@ -475,7 +607,12 @@ function AppContent() {
     setCanvasNotes([])
     setReopenedExplanations([])
     setGlobalPopups([])
-  }, [reset, resetExplanation])
+    setCompareResult(null)
+    setCompareError(null)
+    setReplayEvents([])
+    void refreshEvalStats()
+    recordReplayEvent('reset', 'Reset exploration')
+  }, [reset, resetExplanation, refreshEvalStats, recordReplayEvent])
 
   /**
    * Opens a global popup for a concept.
@@ -592,7 +729,8 @@ function AppContent() {
     }
     
     setCanvasNotes(prev => [...prev, newNote])
-  }, [])
+    recordReplayEvent('note', 'Created canvas note')
+  }, [recordReplayEvent])
 
   /**
    * Updates a note's content.
@@ -640,6 +778,7 @@ function AppContent() {
    * Handles clicking a stash item to reopen it as a popup.
    */
   const handleStashItemClick = useCallback((item: StashItemData) => {
+    recordReplayEvent('stash', 'Opened stash artifact', item.content.slice(0, 120))
     // Calculate a centered position for the new popup
     const x = Math.max(100, (window.innerWidth - 300) / 2)
     const y = Math.max(100, (window.innerHeight - 300) / 3)
@@ -721,7 +860,7 @@ function AppContent() {
       }
       setCanvasNotes(prev => [...prev, newNote])
     }
-  }, [])
+  }, [recordReplayEvent])
 
   /**
    * Minimizes all open popups (canvas notes, explanations, global popups, and child component popups).
@@ -963,6 +1102,7 @@ function AppContent() {
                 onClose={handleGraphPopupClose}
                 onDeepDive={handleGraphDeepDive}
                 onChat={handleGraphChat}
+                isBestBranch={bestBranchNodeIds.has(graphPopupNode.id)}
               />
             )}
           </GraphProvider>
@@ -1116,21 +1256,198 @@ function AppContent() {
                     {isMobile ? (
                       <>
                         Quality: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'}/10<br />
-                        Prompt: {lastMeta.promptLabel} · {lastMeta.evalModel.split('/').pop()}
+                        Prompt: {lastMeta.promptLabel} · {lastMeta.evalModel.split('/').pop()}<br />
+                        Conf: {lastMeta.confidence !== null ? `${(lastMeta.confidence * 100).toFixed(0)}%` : '—'} · Unc: {lastMeta.uncertainty !== null ? `${(lastMeta.uncertainty * 100).toFixed(0)}%` : '—'}
                       </>
                     ) : (
                       <>
-                        Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel}
+                        Weave score: {lastMeta.qualityScore !== null ? lastMeta.qualityScore.toFixed(1) : '—'} / 10 · Prompt: {lastMeta.promptLabel} ({lastMeta.promptVariant}) · Eval model: {lastMeta.evalModel} · Confidence: {lastMeta.confidence !== null ? `${(lastMeta.confidence * 100).toFixed(0)}%` : '—'} · Uncertainty: {lastMeta.uncertainty !== null ? `${(lastMeta.uncertainty * 100).toFixed(0)}%` : '—'}
                       </>
+                    )}
+                    {(lastMeta.strengths.length > 0 || lastMeta.weaknesses.length > 0) && (
+                      <div
+                        style={{
+                          marginTop: 'var(--space-2)',
+                          textAlign: 'left',
+                          maxWidth: '860px',
+                          marginInline: 'auto',
+                          border: 'var(--border-width) solid var(--border-primary)',
+                          padding: 'var(--space-2)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {lastMeta.strengths.length > 0 && (
+                          <div>
+                            <strong>Judge strengths:</strong> {lastMeta.strengths.join('; ')}
+                          </div>
+                        )}
+                        {lastMeta.weaknesses.length > 0 && (
+                          <div>
+                            <strong>Judge weaknesses:</strong> {lastMeta.weaknesses.join('; ')}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
+
+                {(lastMeta?.costGuard?.isNearLimit || evalStats?.costGuard?.isNearLimit) && (
+                  <div
+                    style={{
+                      width: 'min(960px, 100%)',
+                      marginBottom: 'var(--space-3)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--accent-error)',
+                      border: 'var(--border-width) solid var(--accent-error)',
+                      padding: 'var(--space-2) var(--space-3)',
+                      background: 'transparent',
+                    }}
+                  >
+                    Token budget warning: {evalStats?.costGuard.usedTokens ?? lastMeta?.costGuard.usedTokens ?? 0}/
+                    {evalStats?.costGuard.maxTokensPerSession ?? lastMeta?.costGuard.maxTokensPerSession ?? 0} tokens used.
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    width: 'min(960px, 100%)',
+                    marginBottom: 'var(--space-3)',
+                    border: 'var(--border-width) solid var(--border-primary)',
+                    padding: 'var(--space-3)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 'var(--space-2)',
+                    }}
+                  >
+                    <strong>A/B Compare</strong>
+                    <span>Target: {activeNode ? 'active node' : 'root node'}</span>
+                    <select
+                      value={compareRightModel ?? ''}
+                      onChange={(event) => setCompareRightModel(event.target.value || null)}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        border: 'var(--border-width) solid var(--border-primary)',
+                        background: 'var(--bg-primary)',
+                        color: 'var(--text-secondary)',
+                        padding: '2px 6px',
+                      }}
+                    >
+                      <option value="">Right model: same as left</option>
+                      {models.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleRunCompare}
+                      disabled={compareLoading || (!activeNode && !rootNode)}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        border: 'var(--border-width) solid var(--border-primary)',
+                        background: 'var(--bg-secondary)',
+                        color: 'var(--text-secondary)',
+                        padding: '2px 8px',
+                        cursor: compareLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {compareLoading ? 'Comparing…' : 'Run Compare'}
+                    </button>
+                  </div>
+
+                  {compareError && (
+                    <div style={{ color: 'var(--accent-error)', marginTop: 'var(--space-2)' }}>
+                      Compare error: {compareError}
+                    </div>
+                  )}
+
+                  {compareResult && (
+                    <div
+                      style={{
+                        marginTop: 'var(--space-2)',
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                        gap: 'var(--space-2)',
+                      }}
+                    >
+                      <div style={{ border: 'var(--border-width) solid var(--border-primary)', padding: 'var(--space-2)' }}>
+                        <strong>Left</strong> · {compareResult.left.meta?.promptLabel} · Score {compareResult.left.meta?.qualityScore?.toFixed(2) ?? '—'}
+                        <ul style={{ margin: 'var(--space-2) 0 0', paddingLeft: 'var(--space-4)' }}>
+                          {compareResult.left.questions.map((question, index) => (
+                            <li key={`left-${index}`}>{question}</li>
+                          ))}
+                        </ul>
+                        <button
+                          onClick={() => handleApplyCompareResult('left')}
+                          style={{
+                            marginTop: 'var(--space-2)',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 'var(--text-xs)',
+                            border: 'var(--border-width) solid var(--border-primary)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-secondary)',
+                            padding: '2px 8px',
+                          }}
+                        >
+                          Apply Left
+                        </button>
+                      </div>
+
+                      <div style={{ border: 'var(--border-width) solid var(--border-primary)', padding: 'var(--space-2)' }}>
+                        <strong>Right</strong> · {compareResult.right.meta?.promptLabel} · Score {compareResult.right.meta?.qualityScore?.toFixed(2) ?? '—'}
+                        <ul style={{ margin: 'var(--space-2) 0 0', paddingLeft: 'var(--space-4)' }}>
+                          {compareResult.right.questions.map((question, index) => (
+                            <li key={`right-${index}`}>{question}</li>
+                          ))}
+                        </ul>
+                        <button
+                          onClick={() => handleApplyCompareResult('right')}
+                          style={{
+                            marginTop: 'var(--space-2)',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 'var(--text-xs)',
+                            border: 'var(--border-width) solid var(--border-primary)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-secondary)',
+                            padding: '2px 8px',
+                          }}
+                        >
+                          Apply Right
+                        </button>
+                      </div>
+
+                      <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1', color: 'var(--text-tertiary)' }}>
+                        Winner: <strong>{compareResult.winner.toUpperCase()}</strong> · {compareResult.reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <EvalPanel
+                  stats={evalStats}
+                  isLoading={evalStatsLoading}
+                  error={evalStatsError}
+                  onRefresh={() => {
+                    void refreshEvalStats()
+                  }}
+                />
 
                 {/* Question tree visualization */}
                 <QuestionTree
                   tree={tree}
                   onSelectNode={handleSelectNode}
-                  onAddChild={addChildQuestion}
+                  onAddChild={handleAddChild}
                   onToggleExpand={toggleNodeExpansion}
                   onGenerateAI={handleGenerateAI}
                   generatingNodeId={generatingNodeId}
@@ -1148,6 +1465,7 @@ function AppContent() {
                   minimizeAllTrigger={minimizeAllTrigger}
                   closeAllTrigger={closeAllTrigger}
                   onOpenPopup={handleOpenPopup}
+                  bestBranchNodeIds={bestBranchNodeIds}
                 />
 
                 {/* AI loading indicator */}
@@ -1192,6 +1510,8 @@ function AppContent() {
             )}
           </main>
         )}
+
+        {!isGraphView && <ReplayTimeline events={replayEvents} />}
 
         {/* Canvas note popups */}
         {canvasNotes.map(note => (

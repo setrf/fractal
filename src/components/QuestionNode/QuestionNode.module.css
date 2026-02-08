@@ -65,6 +65,11 @@
   box-shadow: 3px 3px 0 var(--text-primary);
 }
 
+.node.bestBranch {
+  border-color: var(--chart-2);
+  box-shadow: 0 0 0 1px var(--chart-2);
+}
+
 /* Content area - question text with prefix */
 .content {
   display: flex;
@@ -107,6 +112,33 @@
   flex-shrink: 0; /* Prevent wrapping on narrow screens */
 }
 
+.bestBranchBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--chart-2);
+  padding: 2px 6px;
+  border: var(--border-width) solid var(--chart-2);
+  background: color-mix(in srgb, var(--chart-2) 10%, transparent);
+}
+
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  border: var(--border-width) solid var(--border-primary);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
 /* Action buttons container - horizontal, bottom right */
 .actions {
   display: flex;
@@ -128,6 +160,13 @@
   }
 
   .qualityBadge {
+    font-size: 10px;
+    height: 20px;
+    padding: 1px 4px;
+  }
+
+  .bestBranchBadge,
+  .metaBadge {
     font-size: 10px;
     height: 20px;
     padding: 1px 4px;

@@ -47,6 +47,9 @@ vi.mock('./config.js', () => ({
     inferenceBaseUrl: 'https://test.api.com',
     wandbApiKey: 'test-key',
     defaultModel: 'test-model',
+    policyMemoryPath: './data/test-policy-memory.json',
+    maxTokensPerSession: 100000,
+    tokenWarningThreshold: 0.8,
   },
 }))
 

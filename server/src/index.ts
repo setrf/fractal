@@ -72,6 +72,8 @@ async function main() {
     console.log(`[Server] Environment: ${config.nodeEnv}`)
     console.log(`[Weave] Project: ${config.wandbProject}`)
     console.log(`[Weave] Dashboard: https://wandb.ai/${config.wandbProject}`)
+    console.log(`[Eval] Policy memory: ${config.policyMemoryPath}`)
+    console.log(`[Guard] Max tokens/session: ${config.maxTokensPerSession}`)
     console.log('='.repeat(50))
   })
 }

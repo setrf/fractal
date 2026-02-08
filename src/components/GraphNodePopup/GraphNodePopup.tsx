@@ -32,6 +32,7 @@ export interface GraphNodePopupProps {
   onDeepDive?: (nodeId: string, question: string) => void
   onChat?: (nodeId: string, question: string) => void
   onStash?: (node: GraphNode) => void
+  isBestBranch?: boolean
 }
 
 /**
@@ -72,6 +73,7 @@ export function GraphNodePopup({
   onDeepDive,
   onChat,
   onStash,
+  isBestBranch = false,
 }: GraphNodePopupProps) {
   const isMobile = window.innerWidth <= 768
 
@@ -98,6 +100,13 @@ export function GraphNodePopup({
                 {typeof question.meta.qualityScore === 'number' && (
                   <span>Quality {question.meta.qualityScore.toFixed(2)} / 10</span>
                 )}
+                {typeof question.meta.confidence === 'number' && (
+                  <span>Conf {(question.meta.confidence * 100).toFixed(0)}%</span>
+                )}
+                {typeof question.meta.uncertainty === 'number' && (
+                  <span>Unc {(question.meta.uncertainty * 100).toFixed(0)}%</span>
+                )}
+                {isBestBranch && <span>Best branch</span>}
               </div>
               <div className={styles.actions}>
                 {onDeepDive && (

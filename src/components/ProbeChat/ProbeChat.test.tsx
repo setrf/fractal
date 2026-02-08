@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractProbeDirection } from './ProbeChat'
+import { extractProbeDirection } from './utils'
 
 describe('extractProbeDirection', () => {
   it('returns freeform input unchanged', () => {

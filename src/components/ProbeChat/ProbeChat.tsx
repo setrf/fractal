@@ -14,39 +14,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import styles from './ProbeChat.module.css'
+import { extractProbeDirection, isSynthesizedProbeInput } from './utils'
 import { useProbeContext } from '../../context/ProbeContext'
 import { useStashContext } from '../../context/StashContext'
 import { useModelContext } from '../../context/ModelContext'
-import { sendProbeChatMessage } from '../../api/client'
+import {
+  exportProbeBrief,
+  sendProbeChatMessage,
+  suggestProbeExperiments,
+} from '../../api/client'
 import type { Probe } from '../../types/probe'
 import type { StashItem } from '../../types/stash'
 
-const SYNTHESIZED_DIRECTION_HEADER = '## Your Direction:'
-const SYNTHESIZED_DIRECTION_PLACEHOLDER = '[Enter your question or direction here]'
-
-/**
- * Extract a user direction from Probe input.
- * If the input is a synthesized prompt template, keep only the direction section
- * so context is injected once on the server (from selected stash items).
- */
-export function extractProbeDirection(input: string): string {
-  const trimmed = input.trim()
-  if (!trimmed) return ''
-
-  const headerIndex = trimmed.indexOf(SYNTHESIZED_DIRECTION_HEADER)
-  if (headerIndex === -1) {
-    return trimmed
-  }
-
-  const direction = trimmed
-    .slice(headerIndex + SYNTHESIZED_DIRECTION_HEADER.length)
-    .trim()
-
-  if (!direction || direction === SYNTHESIZED_DIRECTION_PLACEHOLDER) {
-    return ''
-  }
-
-  return direction
+function downloadTextFile(filename: string, content: string): void {
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -74,6 +63,8 @@ export function ProbeChat({ probe }: ProbeChatProps) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [exportingBrief, setExportingBrief] = useState(false)
+  const [briefStatus, setBriefStatus] = useState<string | null>(null)
   const [inputHeight, setInputHeight] = useState(160)
   const [isResizing, setIsResizing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -145,12 +136,36 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   const handleSynthesize = useCallback(() => {
     const synthesized = synthesizePrompt(probe.id, stashItems)
     setInput(synthesized)
+    setBriefStatus(null)
   }, [probe.id, stashItems, synthesizePrompt])
+
+  const handleExportBrief = useCallback(async () => {
+    if (selectedItems.length === 0 || exportingBrief) return
+    const direction = extractProbeDirection(input) || 'Generate a PM brief from this exploration context.'
+    setExportingBrief(true)
+    setBriefStatus(null)
+    try {
+      const brief = await exportProbeBrief(selectedItems, direction, selectedModel || undefined)
+      const fileName = `fractal-pm-brief-${new Date().toISOString().replace(/[:.]/g, '-')}.md`
+      downloadTextFile(fileName, brief.markdown)
+      setBriefStatus(`Exported ${fileName}`)
+      addMessage(probe.id, {
+        role: 'assistant',
+        content: `PM brief exported.\n\nPrimary experiment: ${brief.brief.primaryExperiment}`,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export brief'
+      setBriefStatus(`Export failed: ${message}`)
+    } finally {
+      setExportingBrief(false)
+    }
+  }, [selectedItems, exportingBrief, input, selectedModel, addMessage, probe.id])
 
   // Handle sending a message
   const handleSend = useCallback(async () => {
     const userDirection = extractProbeDirection(input)
     if (!userDirection || sending) return
+    const wasSynthesizedPrompt = isSynthesizedProbeInput(input)
 
     // Add user message
     addMessage(probe.id, {
@@ -184,6 +199,30 @@ export function ProbeChat({ probe }: ProbeChatProps) {
         role: 'assistant',
         content: response,
       })
+
+      if (wasSynthesizedPrompt) {
+        try {
+          const suggestionsResult = await suggestProbeExperiments(
+            [...messagesForApi, { role: 'assistant', content: response }],
+            selectedItems,
+            selectedModel || undefined
+          )
+          if (suggestionsResult.suggestions.length > 0) {
+            const suggestionMarkdown = [
+              '### Suggested next experiments',
+              ...suggestionsResult.suggestions.map((suggestion) => (
+                `- **${suggestion.title}**: ${suggestion.hypothesis} (Metric: ${suggestion.metric})`
+              )),
+            ].join('\n')
+            addMessage(probe.id, {
+              role: 'assistant',
+              content: suggestionMarkdown,
+            })
+          }
+        } catch (suggestionError) {
+          console.warn('[ProbeChat] Failed to auto-suggest experiments:', suggestionError)
+        }
+      }
     } catch (error) {
       console.error('[ProbeChat] Failed to send message:', error)
       addMessage(probe.id, {
@@ -219,14 +258,24 @@ export function ProbeChat({ probe }: ProbeChatProps) {
             <span className={styles.contextCount}> ({selectedItems.length})</span>
           </h3>
           {selectedItems.length > 0 && (
-            <button
-              className={styles.synthesizeButton}
-              onClick={handleSynthesize}
-              title="Generate prompt from selected items"
-              data-onboarding="probe-synthesize"
-            >
-              Synthesize
-            </button>
+            <div className={styles.contextActions}>
+              <button
+                className={styles.synthesizeButton}
+                onClick={handleSynthesize}
+                title="Generate prompt from selected items"
+                data-onboarding="probe-synthesize"
+              >
+                Synthesize
+              </button>
+              <button
+                className={styles.exportButton}
+                onClick={handleExportBrief}
+                disabled={exportingBrief}
+                title="Export PM brief"
+              >
+                {exportingBrief ? 'Exporting…' : 'Export Brief'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -252,6 +301,9 @@ export function ProbeChat({ probe }: ProbeChatProps) {
               </div>
             ))}
           </div>
+        )}
+        {briefStatus && (
+          <p className={styles.briefStatus}>{briefStatus}</p>
         )}
       </div>
 

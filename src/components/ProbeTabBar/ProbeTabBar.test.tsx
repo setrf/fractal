@@ -126,4 +126,42 @@ describe('ProbeTabBar keyboard support', () => {
     expect(screen.queryByRole('tab', { name: /probe 2/i })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /probe 1/i })).toBeInTheDocument()
   })
+
+  it('opens and closes context menu via right click and outside click', async () => {
+    const { user } = render(<ProbeTabBar />)
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+
+    await user.pointer([{ keys: '[MouseRight]', target: firstTab }])
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+
+    await user.click(document.body)
+    expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument()
+  })
+
+  it('toggles context menu for same tab and supports menu actions', async () => {
+    const { user } = render(<ProbeTabBar />)
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+
+    await user.pointer([{ keys: '[MouseRight]', target: firstTab }])
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument()
+
+    // Right click same tab again closes the menu
+    await user.pointer([{ keys: '[MouseRight]', target: firstTab }])
+    expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument()
+
+    // Open again and rename from context menu
+    await user.pointer([{ keys: '[MouseRight]', target: firstTab }])
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    const input = screen.getByDisplayValue('Probe 1')
+    await user.clear(input)
+    await user.type(input, 'Context Rename{Enter}')
+    expect(screen.getByRole('tab', { name: /context\s*rename/i })).toBeInTheDocument()
+
+    // Open menu and delete via context action
+    const renamedTab = screen.getByRole('tab', { name: /context\s*rename/i })
+    await user.pointer([{ keys: '[MouseRight]', target: renamedTab }])
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(screen.queryByRole('tab', { name: /context\s*rename/i })).not.toBeInTheDocument()
+  })
 })

@@ -252,6 +252,48 @@ describe('StashSidebar', () => {
     expect(consoleError).toHaveBeenCalled()
   })
 
+  it('handles external drag leave transitions and item-level external drag over', () => {
+    const { container } = render(<StashSidebar />)
+    const aside = container.querySelector('aside') as HTMLElement
+    const externalTransfer = {
+      types: ['application/json'],
+      dropEffect: 'none',
+      getData: vi.fn(() => ''),
+    }
+
+    fireEvent.dragOver(aside, { dataTransfer: externalTransfer })
+    expect(screen.getByText('Drop to stash')).toBeInTheDocument()
+
+    const inside = document.createElement('div')
+    aside.appendChild(inside)
+    const leaveInsideEvent = createEvent.dragLeave(aside)
+    Object.defineProperty(leaveInsideEvent, 'dataTransfer', { value: externalTransfer })
+    Object.defineProperty(leaveInsideEvent, 'relatedTarget', { value: inside })
+    fireEvent(aside, leaveInsideEvent)
+    expect(screen.getByText('Drop to stash')).toBeInTheDocument()
+
+    const outside = document.createElement('div')
+    document.body.appendChild(outside)
+    const leaveOutsideEvent = createEvent.dragLeave(aside)
+    Object.defineProperty(leaveOutsideEvent, 'dataTransfer', { value: externalTransfer })
+    Object.defineProperty(leaveOutsideEvent, 'relatedTarget', { value: outside })
+    fireEvent(aside, leaveOutsideEvent)
+    expect(screen.queryByText('Drop to stash')).not.toBeInTheDocument()
+
+    fireEvent.dragOver(aside, { dataTransfer: externalTransfer })
+    expect(screen.getByText('Drop to stash')).toBeInTheDocument()
+    const leaveWindowEvent = createEvent.dragLeave(aside)
+    Object.defineProperty(leaveWindowEvent, 'dataTransfer', { value: externalTransfer })
+    Object.defineProperty(leaveWindowEvent, 'relatedTarget', { value: null })
+    fireEvent(aside, leaveWindowEvent)
+    expect(screen.queryByText('Drop to stash')).not.toBeInTheDocument()
+
+    const wrapper = screen.getByTestId('mock-stash-item-s1').closest('[draggable="true"]') as HTMLElement
+    const dragOverEvent = createEvent.dragOver(wrapper)
+    Object.defineProperty(dragOverEvent, 'dataTransfer', { value: externalTransfer })
+    fireEvent(wrapper, dragOverEvent)
+  })
+
   it('handles internal drag reorder and remove-on-drop-outside flow', () => {
     setContext({
       items: [createItem('s1'), createItem('s2')],

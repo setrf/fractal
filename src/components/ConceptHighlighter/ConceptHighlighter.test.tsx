@@ -205,6 +205,27 @@ describe('ConceptHighlighter', () => {
       fireEvent.keyDown(conceptElement, { key: 'Enter' })
       expect(onClick).toHaveBeenCalled()
     })
+
+    it('should invoke onConceptRemove from remove button', () => {
+      const onConceptRemove = vi.fn()
+      const concept = createConcept({
+        id: 'c_remove',
+        normalizedName: 'remove-me',
+        startIndex: 0,
+        endIndex: 4,
+      })
+
+      render(
+        <ConceptHighlighter
+          text="test text"
+          concepts={[concept]}
+          onConceptRemove={onConceptRemove}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /remove highlight: remove-me/i }))
+      expect(onConceptRemove).toHaveBeenCalledWith('c_remove')
+    })
   })
 
   describe('accessibility', () => {
@@ -271,5 +292,28 @@ describe('validateConcepts', () => {
       createConcept({ startIndex: -1, endIndex: 4 }),
     ]
     expect(validateConcepts('test', concepts)).toBe(false)
+  })
+
+  it('warns for invalid indices while rendering valid concepts', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const validConcept = createConcept({
+      id: 'c_valid',
+      text: 'good',
+      normalizedName: 'good',
+      startIndex: 5,
+      endIndex: 9,
+    })
+    const invalidConcept = createConcept({
+      id: 'c_invalid',
+      text: 'bad',
+      normalizedName: 'bad',
+      startIndex: 50,
+      endIndex: 60,
+    })
+
+    render(<ConceptHighlighter text="test good" concepts={[validConcept, invalidConcept]} />)
+    expect(screen.getByText('good')).toBeInTheDocument()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid concept indices'))
+    warnSpy.mockRestore()
   })
 })

@@ -120,7 +120,10 @@ describe('MarkdownWithHighlights', () => {
       />
     )
 
-    fireEvent.click(screen.getByText('Neural'))
+    const mark = document.querySelector('mark.concept-highlight[data-concept-name="Neural"]') as HTMLElement
+    expect(mark).toBeInTheDocument()
+    mark.removeAttribute('data-concept-id')
+    fireEvent.click(mark)
     expect(onConceptClick).toHaveBeenCalledWith(c, expect.any(Object))
   })
 
@@ -136,7 +139,11 @@ describe('MarkdownWithHighlights', () => {
       />
     )
 
-    fireEvent.click(screen.getByText(/Cognition/))
+    const mark = document.querySelector('mark.concept-highlight') as HTMLElement
+    expect(mark).toBeInTheDocument()
+    expect(mark.getAttribute('data-concept-id')).toBeNull()
+    expect(mark.getAttribute('data-concept-name')).toBeNull()
+    fireEvent.click(mark)
     expect(onConceptClick).toHaveBeenCalledWith(c, expect.any(Object))
   })
 

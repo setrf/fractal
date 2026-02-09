@@ -173,6 +173,47 @@ describe('GraphNodePopup', () => {
     expect(screen.getByText('Fallback Label')).toBeInTheDocument()
   })
 
+  it('falls back for invalid concept, stash, and probe payloads', () => {
+    setWindowSize(1280, 900)
+
+    const invalidNodes: GraphNode[] = [
+      {
+        id: 'c_invalid',
+        type: 'concept',
+        label: 'Invalid Concept',
+        data: { nope: true } as unknown as GraphNode['data'],
+        color: '#aa66cc',
+        size: 1,
+        group: 'g',
+      },
+      {
+        id: 's_invalid',
+        type: 'stash',
+        label: 'Invalid Stash',
+        data: { nope: true } as unknown as GraphNode['data'],
+        color: '#44aa88',
+        size: 1,
+        group: 'g',
+      },
+      {
+        id: 'p_invalid',
+        type: 'probe',
+        label: 'Invalid Probe',
+        data: { nope: true } as unknown as GraphNode['data'],
+        color: '#dd8844',
+        size: 1,
+        group: 'g',
+      },
+    ]
+
+    invalidNodes.forEach((node) => {
+      const { unmount } = render(<GraphNodePopup node={node} position={{ x: 0, y: 0 }} onClose={() => {}} />)
+      expect(screen.getByText(node.type)).toBeInTheDocument()
+      expect(screen.getByText(node.label)).toBeInTheDocument()
+      unmount()
+    })
+  })
+
   it('fires onClose when close button is clicked', () => {
     setWindowSize(1280, 900)
     const question = createQuestionNode('Close me')

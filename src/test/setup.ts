@@ -20,7 +20,13 @@ vi.mock('react-force-graph-3d', () => ({
 }))
 
 vi.mock('three', () => {
-  class Object3D {}
+  class Object3D {
+    children: unknown[] = []
+    add(...objects: unknown[]) {
+      this.children.push(...objects)
+    }
+  }
+  class Group extends Object3D {}
   class BufferGeometry {}
   class Material {}
   class SphereGeometry extends BufferGeometry {}
@@ -28,13 +34,26 @@ vi.mock('three', () => {
   class BoxGeometry extends BufferGeometry {}
   class TorusGeometry extends BufferGeometry {}
   class MeshPhongMaterial extends Material {}
-  class MeshBasicMaterial extends Material {}
-  class Mesh {
+  class MeshBasicMaterial extends Material {
+    constructor(_params?: Record<string, unknown>) {
+      super()
+    }
+  }
+  class Mesh extends Object3D {
     geometry: BufferGeometry
     material: Material
     constructor(geometry: BufferGeometry, material: Material) {
+      super()
       this.geometry = geometry
       this.material = material
+    }
+  }
+  class Vector2 {
+    x: number
+    y: number
+    constructor(x = 0, y = 0) {
+      this.x = x
+      this.y = y
     }
   }
   class Vector3 {
@@ -46,7 +65,16 @@ vi.mock('three', () => {
       this.y = y
       this.z = z
     }
+    length() {
+      return Math.hypot(this.x, this.y, this.z)
+    }
     normalize() {
+      const len = this.length()
+      if (len > 0) {
+        this.x /= len
+        this.y /= len
+        this.z /= len
+      }
       return this
     }
     multiplyScalar() {
@@ -55,6 +83,7 @@ vi.mock('three', () => {
   }
   return {
     Object3D,
+    Group,
     BufferGeometry,
     Material,
     SphereGeometry,
@@ -64,6 +93,7 @@ vi.mock('three', () => {
     MeshPhongMaterial,
     MeshBasicMaterial,
     Mesh,
+    Vector2,
     Vector3,
   }
 })

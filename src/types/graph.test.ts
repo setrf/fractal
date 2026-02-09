@@ -12,6 +12,7 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  generateGraphId,
   truncateLabel,
   isValidViewMode,
   DEFAULT_GRAPH_FILTERS,
@@ -59,6 +60,17 @@ describe('Graph Types', () => {
       const exactLength = 'A'.repeat(50)
       const result = truncateLabel(exactLength, 50)
       expect(result).toBe(exactLength)
+    })
+  })
+
+  describe('generateGraphId', () => {
+    it('generates prefixed graph ids for nodes and edges', () => {
+      const nodeId = generateGraphId('gn')
+      const edgeId = generateGraphId('ge')
+
+      expect(nodeId).toMatch(/^gn_\d+_/)
+      expect(edgeId).toMatch(/^ge_\d+_/)
+      expect(nodeId).not.toBe(edgeId)
     })
   })
 

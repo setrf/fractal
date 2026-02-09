@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useStash } from './useStash'
-import type { StashItem, StashItemInput } from '../types/stash'
+import { STASH_MAX_ITEMS, type StashItem, type StashItemInput } from '../types/stash'
 
 // localStorage store that persists across mock calls
 let mockStore: Record<string, string> = {}
@@ -164,6 +164,23 @@ describe('useStash', () => {
 
       expect(result.current.items[0].content).toBe('second')
       expect(result.current.items[1].content).toBe('first')
+    })
+
+    it('should trim to max items when limit is exceeded', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        for (let i = 0; i < STASH_MAX_ITEMS + 5; i++) {
+          result.current.addItem({
+            type: 'note',
+            content: `item-${i}`,
+            metadata: {},
+          })
+        }
+      })
+
+      expect(result.current.items).toHaveLength(STASH_MAX_ITEMS)
+      expect(result.current.items[0].content).toBe(`item-${STASH_MAX_ITEMS + 4}`)
     })
   })
 
@@ -516,6 +533,61 @@ describe('useStash', () => {
       // The items should have been persisted and loaded
       expect(result2.current.items.length).toBe(1)
       expect(result2.current.items[0].content).toBe('persistent')
+    })
+  })
+
+  describe('reorderItem', () => {
+    it('should no-op when from and to indices are equal', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'one', metadata: {} })
+        result.current.addItem({ type: 'note', content: 'two', metadata: {} })
+      })
+
+      const before = result.current.items.map((item) => item.id)
+      act(() => {
+        result.current.reorderItem(0, 0)
+      })
+      expect(result.current.items.map((item) => item.id)).toEqual(before)
+    })
+
+    it('should ignore invalid from/to indices', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'one', metadata: {} })
+        result.current.addItem({ type: 'note', content: 'two', metadata: {} })
+      })
+
+      const before = result.current.items.map((item) => item.id)
+      act(() => {
+        result.current.reorderItem(-1, 1)
+        result.current.reorderItem(0, 99)
+      })
+
+      expect(result.current.items.map((item) => item.id)).toEqual(before)
+    })
+
+    it('reorders valid indices', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'one', metadata: {} })
+        result.current.addItem({ type: 'note', content: 'two', metadata: {} })
+        result.current.addItem({ type: 'note', content: 'three', metadata: {} })
+      })
+
+      const before = result.current.items.map((item) => item.id)
+      const expected = [...before]
+      const [moved] = expected.splice(0, 1)
+      expected.splice(2, 0, moved)
+
+      act(() => {
+        result.current.reorderItem(0, 2)
+      })
+
+      expect(result.current.items.map((item) => item.id)).toEqual(expected)
     })
   })
 })

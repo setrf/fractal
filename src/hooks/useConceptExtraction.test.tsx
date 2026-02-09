@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useConceptExtraction } from './useConceptExtraction'
+import { getCachedConcepts, hasCachedConcepts, useConceptExtraction } from './useConceptExtraction'
 import { extractConcepts, type ExtractedConcept } from '../api'
 
 vi.mock('../api', () => ({
@@ -33,6 +33,11 @@ function createDeferred<T>() {
 describe('useConceptExtraction', () => {
   beforeEach(() => {
     mockedExtractConcepts.mockReset()
+    const { result } = renderHook(() => useConceptExtraction())
+    act(() => {
+      result.current.clearCache()
+      result.current.reset()
+    })
   })
 
   it('reuses cached results for the same text+model scope', async () => {
@@ -105,5 +110,89 @@ describe('useConceptExtraction', () => {
     expect(result.current.sourceText).toBe('Newer context')
     expect(result.current.concepts[0]?.text).toBe('newer')
     expect(result.current.error).toBeNull()
+  })
+
+  it('returns empty result for blank input and clears state', async () => {
+    mockedExtractConcepts.mockResolvedValue([makeConcept('will-not-be-used', 'cx')])
+    const { result } = renderHook(() => useConceptExtraction())
+
+    await act(async () => {
+      await result.current.extract('Some text', 'model-a')
+    })
+    expect(result.current.concepts.length).toBeGreaterThan(0)
+
+    await act(async () => {
+      const blank = await result.current.extract('   ', 'model-a')
+      expect(blank).toEqual([])
+    })
+
+    expect(result.current.concepts).toEqual([])
+    expect(result.current.sourceText).toBeNull()
+    expect(result.current.error).toBeNull()
+  })
+
+  it('deduplicates concurrent requests for the same scope', async () => {
+    const deferred = createDeferred<ExtractedConcept[]>()
+    mockedExtractConcepts.mockImplementation(() => deferred.promise)
+
+    const { result } = renderHook(() => useConceptExtraction())
+
+    let firstPromise: Promise<ExtractedConcept[]> = Promise.resolve([])
+    let duplicatePromise: Promise<ExtractedConcept[]> = Promise.resolve([])
+
+    act(() => {
+      firstPromise = result.current.extract('Shared context', 'model-a')
+      duplicatePromise = result.current.extract('Shared context', 'model-a')
+    })
+
+    await act(async () => {
+      deferred.resolve([makeConcept('shared', 'c-shared')])
+      await firstPromise
+    })
+
+    await expect(duplicatePromise).resolves.toEqual([])
+    expect(mockedExtractConcepts).toHaveBeenCalledTimes(1)
+    expect(result.current.concepts[0]?.text).toBe('shared')
+  })
+
+  it('handles API errors and recovers after reset', async () => {
+    mockedExtractConcepts.mockRejectedValueOnce(new Error('extract failed'))
+    const { result } = renderHook(() => useConceptExtraction())
+
+    await act(async () => {
+      const res = await result.current.extract('Failure case', 'model-a')
+      expect(res).toEqual([])
+    })
+
+    expect(result.current.error).toBe('extract failed')
+    expect(result.current.concepts).toEqual([])
+    expect(result.current.isLoading).toBe(false)
+
+    act(() => {
+      result.current.reset()
+    })
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.sourceText).toBeNull()
+    expect(result.current.concepts).toEqual([])
+  })
+
+  it('exposes cache helpers and cache clearing behavior', async () => {
+    mockedExtractConcepts.mockResolvedValue([makeConcept('cached', 'c-cache')])
+    const { result } = renderHook(() => useConceptExtraction())
+
+    await act(async () => {
+      await result.current.extract('Cache me', 'model-z')
+    })
+
+    expect(hasCachedConcepts('Cache me', 'model-z')).toBe(true)
+    expect(getCachedConcepts('Cache me', 'model-z')?.[0]?.text).toBe('cached')
+
+    act(() => {
+      result.current.clearCache()
+    })
+
+    expect(hasCachedConcepts('Cache me', 'model-z')).toBe(false)
+    expect(getCachedConcepts('Cache me', 'model-z')).toBeUndefined()
   })
 })

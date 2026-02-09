@@ -241,4 +241,37 @@ describe('NotePopup', () => {
     expect(parseInt(popup.style.width, 10)).toBeGreaterThan(300)
     expect(parseInt(popup.style.height, 10)).toBeGreaterThan(250)
   })
+
+  it('resizes from northwest handle and updates top/left with all resize handles rendered', () => {
+    const { container } = render(<NotePopup {...defaultProps} initialContent="resize nw" />)
+    const popup = container.querySelector('[role="dialog"]') as HTMLElement
+
+    const north = container.querySelector('[class*="resizeN"]')
+    const south = container.querySelector('[class*="resizeS"]')
+    const east = container.querySelector('[class*="resizeE"]')
+    const west = container.querySelector('[class*="resizeW"]')
+    const northWest = container.querySelector('[class*="resizeNW"]') as HTMLElement
+    const northEast = container.querySelector('[class*="resizeNE"]')
+    const southWest = container.querySelector('[class*="resizeSW"]')
+    const southEast = container.querySelector('[class*="resizeSE"]')
+
+    expect(north).toBeInTheDocument()
+    expect(south).toBeInTheDocument()
+    expect(east).toBeInTheDocument()
+    expect(west).toBeInTheDocument()
+    expect(northWest).toBeInTheDocument()
+    expect(northEast).toBeInTheDocument()
+    expect(southWest).toBeInTheDocument()
+    expect(southEast).toBeInTheDocument()
+
+    const initialLeft = parseInt(popup.style.left, 10)
+    const initialTop = parseInt(popup.style.top, 10)
+
+    fireEvent.mouseDown(northWest, { clientX: 300, clientY: 250 })
+    fireEvent.mouseMove(document, { clientX: 260, clientY: 210 })
+    fireEvent.mouseUp(document)
+
+    expect(parseInt(popup.style.left, 10)).toBeLessThanOrEqual(initialLeft)
+    expect(parseInt(popup.style.top, 10)).toBeLessThanOrEqual(initialTop)
+  })
 })

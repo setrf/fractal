@@ -501,4 +501,46 @@ describe('useQuestionTree Hook', () => {
       expect(children).toEqual([])
     })
   })
+
+  // ============================================
+  // updateNodeMeta() Tests
+  // ============================================
+  describe('updateNodeMeta()', () => {
+    it('should update metadata for an existing node', () => {
+      const { result } = renderHook(() => useQuestionTree())
+
+      let rootId = ''
+      act(() => {
+        rootId = result.current.addRootQuestion('Root')
+      })
+
+      act(() => {
+        result.current.updateNodeMeta(rootId, {
+          qualityScore: 8.2,
+          confidence: 0.77,
+          uncertainty: 0.23,
+        })
+      })
+
+      expect(result.current.tree.nodes[rootId].meta.qualityScore).toBe(8.2)
+      expect(result.current.tree.nodes[rootId].meta.confidence).toBe(0.77)
+      expect(result.current.tree.nodes[rootId].meta.uncertainty).toBe(0.23)
+    })
+
+    it('should ignore updates for unknown node id', () => {
+      const { result } = renderHook(() => useQuestionTree())
+
+      act(() => {
+        result.current.addRootQuestion('Root')
+      })
+
+      const snapshot = result.current.tree
+
+      act(() => {
+        result.current.updateNodeMeta('missing-id', { qualityScore: 1 })
+      })
+
+      expect(result.current.tree).toEqual(snapshot)
+    })
+  })
 })

@@ -259,6 +259,55 @@ describe('useGraphData Hook', () => {
       expect(stashNode).toBeDefined()
       expect(stashNode?.id).toBe('s_123')
     })
+
+    it('creates stash-source edges for highlight->concept and question->question links', () => {
+      let tree = createEmptyTree()
+      const root = createQuestionNode('What drives learning?')
+      tree = addNodeToTree(tree, root)
+
+      const nodeConcepts: Record<string, ExtractedConcept[]> = {
+        [root.id]: [
+          {
+            id: 'c_learning',
+            text: 'learning',
+            normalizedName: 'learning',
+            category: 'science',
+            startIndex: 12,
+            endIndex: 20,
+          },
+        ],
+      }
+
+      const stashItems: StashItem[] = [
+        {
+          id: 's_highlight',
+          type: 'highlight',
+          content: 'learning',
+          metadata: { normalizedName: 'Learning' },
+          createdAt: Date.now(),
+        },
+        {
+          id: 's_question',
+          type: 'question',
+          content: 'Follow-up',
+          metadata: { questionId: root.id },
+          createdAt: Date.now(),
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useGraphData({
+          tree,
+          nodeConcepts,
+          stashItems,
+          probes: [],
+        })
+      )
+
+      const stashSourceEdges = result.current.edges.filter((edge) => edge.type === 'stash-source')
+      expect(stashSourceEdges.some((edge) => edge.source === 'c_learning' && edge.target === 's_highlight')).toBe(true)
+      expect(stashSourceEdges.some((edge) => edge.source === root.id && edge.target === 's_question')).toBe(true)
+    })
   })
 
   // ============================================

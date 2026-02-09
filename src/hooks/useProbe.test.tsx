@@ -290,4 +290,39 @@ describe('useProbe', () => {
     expect(result.current.sidebarWidth).toBe(512)
     expect(result.current.externalDragHover).toBe(true)
   })
+
+  it('handles localStorage load and save failures gracefully', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const getItemSpy = vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('load failure')
+    })
+    const { result, unmount } = renderHook(() => useProbe())
+    expect(result.current.probes).toEqual([])
+    expect(consoleError).toHaveBeenCalledWith(
+      '[useProbe] Failed to load from localStorage:',
+      expect.any(Error)
+    )
+    getItemSpy.mockRestore()
+    consoleError.mockClear()
+
+    vi.useFakeTimers()
+    const setItemSpy = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('save failure')
+    })
+    act(() => {
+      result.current.createProbe()
+    })
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      '[useProbe] Failed to save to localStorage:',
+      expect.any(Error)
+    )
+
+    setItemSpy.mockRestore()
+    consoleError.mockRestore()
+    unmount()
+  })
 })

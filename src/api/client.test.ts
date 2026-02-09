@@ -5,9 +5,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   generateQuestions,
+  compareQuestionGenerations,
+  getEvalStats,
   checkHealth,
   isApiAvailable,
   listModels,
+  getModelPerformance,
+  sendChatMessage,
+  extractConcepts,
+  sendProbeChatMessage,
+  exportProbeBrief,
+  suggestProbeExperiments,
+  explainConcept,
 } from './client'
 
 // Mock fetch globally
@@ -145,6 +154,28 @@ describe('API Client', () => {
         generateQuestions('Cancelled?', undefined, { signal: controller.signal })
       ).rejects.toThrow('Request cancelled')
     })
+
+    it('should forward abort events from external signal after request starts', async () => {
+      const controller = new AbortController()
+      const addListenerSpy = vi.spyOn(controller.signal, 'addEventListener')
+      const removeListenerSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+      mockFetch.mockImplementationOnce((_, init?: RequestInit) => (
+        new Promise((_resolve, reject) => {
+          const signal = init?.signal as AbortSignal | undefined
+          signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        })
+      ))
+
+      const pending = generateQuestions('Will abort', undefined, { signal: controller.signal })
+      controller.abort()
+
+      await expect(pending).rejects.toThrow('Request cancelled')
+      expect(addListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function), { once: true })
+      expect(removeListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    })
   })
 
   describe('checkHealth()', () => {
@@ -203,6 +234,201 @@ describe('API Client', () => {
         })
       )
       expect(models).toEqual(['model-a', 'model-b'])
+    })
+  })
+
+  describe('additional API wrappers', () => {
+    it('compareQuestionGenerations returns comparison payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            question: 'What is intelligence?',
+            left: { questions: ['Q1'], model: 'left', usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 } },
+            right: { questions: ['Q2'], model: 'right', usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 } },
+            winner: 'left',
+            reason: 'better quality',
+          },
+        }),
+      })
+
+      const data = await compareQuestionGenerations('What is intelligence?', { leftModel: 'a', rightModel: 'b' })
+      expect(data.winner).toBe('left')
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/generate/compare'),
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    it('getEvalStats and getModelPerformance read list payloads', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            promptVariants: [],
+            recentRuns: [],
+            tokenUsage: {
+              total: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+              byOperation: {},
+            },
+            costGuard: {
+              maxTokensPerSession: 1000,
+              usedTokens: 1,
+              remainingTokens: 999,
+              warningThreshold: 0.8,
+              usageRatio: 0.001,
+              isNearLimit: false,
+              isLimitExceeded: false,
+            },
+            modelPerformance: [],
+            topModelBySeedType: {},
+          },
+        }),
+      })
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { entries: [{ model: 'm1', seedType: 'root', count: 2, avgScore: 0.9, lastScore: 0.9, lastUpdatedAt: null }] },
+        }),
+      })
+
+      const stats = await getEvalStats()
+      const perf = await getModelPerformance()
+
+      expect(stats.tokenUsage.total.totalTokens).toBe(3)
+      expect(perf[0].model).toBe('m1')
+    })
+
+    it('chat and concept endpoints return normalized payloads', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              message: 'chat-response',
+              model: 'chat-model',
+              usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              concepts: [
+                {
+                  id: 'c1',
+                  text: 'dreams',
+                  normalizedName: 'dreams',
+                  category: 'psychology',
+                  startIndex: 0,
+                  endIndex: 6,
+                },
+              ],
+              sourceText: 'dreams',
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              conceptId: 'c1',
+              normalizedName: 'dreams',
+              summary: 'summary',
+              context: 'context',
+              relatedConcepts: ['sleep'],
+            },
+          }),
+        })
+
+      const message = await sendChatMessage('root', [{ role: 'user', content: 'hello' }])
+      const concepts = await extractConcepts('dreams')
+      const explanation = await explainConcept('c1', 'dreams', 'context')
+
+      expect(message).toBe('chat-response')
+      expect(concepts[0].normalizedName).toBe('dreams')
+      expect(explanation.relatedConcepts).toEqual(['sleep'])
+    })
+
+    it('probe endpoints return typed payloads', async () => {
+      const stashItems = [
+        { id: 's1', type: 'note', content: 'note', metadata: { createdAt: Date.now() } },
+      ] as any
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              message: 'probe-chat',
+              model: 'probe-model',
+              usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              brief: {
+                problemStatement: 'problem',
+                hypotheses: [],
+                primaryExperiment: 'experiment',
+                successMetrics: [],
+                risks: [],
+                recommendation: 'rec',
+                nextExperiments: [],
+              },
+              markdown: '# brief',
+              model: 'probe-model',
+              usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              suggestions: [{ title: 'A', hypothesis: 'H', metric: 'M' }],
+              model: 'probe-model',
+              usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            },
+          }),
+        })
+
+      const probeMessage = await sendProbeChatMessage([{ role: 'user', content: 'probe' }], stashItems)
+      const brief = await exportProbeBrief(stashItems, 'direction')
+      const suggestions = await suggestProbeExperiments([{ role: 'user', content: 'probe' }], stashItems)
+
+      expect(probeMessage).toBe('probe-chat')
+      expect(brief.brief.primaryExperiment).toBe('experiment')
+      expect(suggestions.suggestions).toHaveLength(1)
+    })
+  })
+
+  describe('error fallback parsing', () => {
+    it('uses fallback error text when API error body is unreadable', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => {
+          throw new Error('invalid json')
+        },
+      })
+
+      await expect(sendChatMessage('root', [{ role: 'user', content: 'x' }])).rejects.toThrow(
+        'Failed to send chat message'
+      )
     })
   })
 

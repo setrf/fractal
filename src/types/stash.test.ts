@@ -110,6 +110,18 @@ describe('stash utilities', () => {
       const item = { ...validItem, createdAt: '2024-01-01' }
       expect(isValidStashItem(item)).toBe(false)
     })
+
+    it('should validate optional string-array fields', () => {
+      const withArrays = {
+        ...validItem,
+        tags: ['a', 'b'],
+        assignedProbeIds: ['p_1', 'p_2'],
+      }
+      expect(isValidStashItem(withArrays)).toBe(true)
+
+      const invalidTags = { ...validItem, tags: ['ok', 123] }
+      expect(isValidStashItem(invalidTags)).toBe(false)
+    })
   })
 
   describe('sortStashByDate', () => {

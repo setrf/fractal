@@ -104,4 +104,47 @@ describe('useModelSelection Hook', () => {
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
   })
+
+  it('returns null when reading stored model throws', () => {
+    const getItemSpy = vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('storage read failed')
+    })
+
+    const { result } = renderHook(() => useModelSelection({ autoLoad: false }))
+    expect(result.current.selectedModel).toBeNull()
+
+    getItemSpy.mockRestore()
+  })
+
+  it('ignores stale errors from older refresh requests', async () => {
+    const firstRequest = createDeferred<string[]>()
+    const secondRequest = createDeferred<string[]>()
+    vi.mocked(api.listModels)
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+
+    const { result } = renderHook(() => useModelSelection({ autoLoad: false }))
+
+    let firstRefresh: Promise<void> = Promise.resolve()
+    let secondRefresh: Promise<void> = Promise.resolve()
+
+    await act(async () => {
+      firstRefresh = result.current.refreshModels()
+      secondRefresh = result.current.refreshModels()
+    })
+
+    await act(async () => {
+      secondRequest.resolve(['model-b'])
+      await secondRefresh
+    })
+
+    await act(async () => {
+      firstRequest.reject(new Error('stale failure'))
+      await firstRefresh
+    })
+
+    expect(result.current.models).toEqual(['model-b'])
+    expect(result.current.error).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  })
 })

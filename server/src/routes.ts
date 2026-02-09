@@ -39,6 +39,170 @@ import {
 
 export const router = Router()
 
+const MAX_QUESTION_LENGTH = 2000
+const MAX_CONTEXT_LENGTH = 4000
+const MAX_MESSAGE_LENGTH = 12000
+const MAX_MESSAGES_PER_REQUEST = 100
+const MAX_STASH_ITEMS_PER_REQUEST = 200
+const MAX_MODEL_NAME_LENGTH = 200
+const MAX_STASH_ITEM_CONTENT_LENGTH = 16000
+
+type ValidationResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; message: string }
+
+const ALLOWED_CHAT_ROLES = new Set<ChatMessage['role']>(['user', 'assistant', 'system'])
+const ALLOWED_STASH_TYPES = new Set<ProbeStashItem['type']>([
+  'highlight',
+  'explanation',
+  'question',
+  'chat-message',
+  'note',
+])
+
+function validateRequiredString(
+  value: unknown,
+  field: string,
+  maxLength: number
+): ValidationResult<string> {
+  if (typeof value !== 'string') {
+    return { ok: false, message: `${field} is required and must be a string` }
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return { ok: false, message: `${field} cannot be empty` }
+  }
+
+  if (trimmed.length > maxLength) {
+    return { ok: false, message: `${field} is too long (max ${maxLength} chars)` }
+  }
+
+  return { ok: true, value: trimmed }
+}
+
+function validateOptionalModel(value: unknown): ValidationResult<string | undefined> {
+  if (value === undefined || value === null || value === '') {
+    return { ok: true, value: undefined }
+  }
+
+  if (typeof value !== 'string') {
+    return { ok: false, message: 'model must be a string when provided' }
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return { ok: true, value: undefined }
+  }
+
+  if (trimmed.length > MAX_MODEL_NAME_LENGTH) {
+    return { ok: false, message: `model is too long (max ${MAX_MODEL_NAME_LENGTH} chars)` }
+  }
+
+  return { ok: true, value: trimmed }
+}
+
+function validateMessages(messages: unknown): ValidationResult<ChatMessage[]> {
+  if (!Array.isArray(messages)) {
+    return { ok: false, message: 'messages is required and must be an array' }
+  }
+
+  if (messages.length > MAX_MESSAGES_PER_REQUEST) {
+    return {
+      ok: false,
+      message: `messages exceeds maximum size (${MAX_MESSAGES_PER_REQUEST})`,
+    }
+  }
+
+  const normalized: ChatMessage[] = []
+  for (let index = 0; index < messages.length; index += 1) {
+    const candidate = messages[index]
+    if (!candidate || typeof candidate !== 'object') {
+      return { ok: false, message: `messages[${index}] must be an object` }
+    }
+
+    const role = (candidate as { role?: unknown }).role
+    const content = (candidate as { content?: unknown }).content
+
+    if (typeof role !== 'string' || !ALLOWED_CHAT_ROLES.has(role as ChatMessage['role'])) {
+      return { ok: false, message: `messages[${index}].role is invalid` }
+    }
+
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return { ok: false, message: `messages[${index}].content must be a non-empty string` }
+    }
+
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return {
+        ok: false,
+        message: `messages[${index}].content is too long (max ${MAX_MESSAGE_LENGTH} chars)`,
+      }
+    }
+
+    normalized.push({ role: role as ChatMessage['role'], content })
+  }
+
+  return { ok: true, value: normalized }
+}
+
+function validateProbeStashItems(stashItems: unknown): ValidationResult<ProbeStashItem[]> {
+  if (!Array.isArray(stashItems)) {
+    return { ok: false, message: 'stashItems is required and must be an array' }
+  }
+
+  if (stashItems.length > MAX_STASH_ITEMS_PER_REQUEST) {
+    return {
+      ok: false,
+      message: `stashItems exceeds maximum size (${MAX_STASH_ITEMS_PER_REQUEST})`,
+    }
+  }
+
+  const normalized: ProbeStashItem[] = []
+  for (let index = 0; index < stashItems.length; index += 1) {
+    const candidate = stashItems[index]
+    if (!candidate || typeof candidate !== 'object') {
+      return { ok: false, message: `stashItems[${index}] must be an object` }
+    }
+
+    const id = (candidate as { id?: unknown }).id
+    const type = (candidate as { type?: unknown }).type
+    const content = (candidate as { content?: unknown }).content
+    const metadata = (candidate as { metadata?: unknown }).metadata
+
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return { ok: false, message: `stashItems[${index}].id must be a non-empty string` }
+    }
+
+    if (typeof type !== 'string' || !ALLOWED_STASH_TYPES.has(type as ProbeStashItem['type'])) {
+      return { ok: false, message: `stashItems[${index}].type is invalid` }
+    }
+
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return { ok: false, message: `stashItems[${index}].content must be a non-empty string` }
+    }
+
+    if (content.length > MAX_STASH_ITEM_CONTENT_LENGTH) {
+      return {
+        ok: false,
+        message: `stashItems[${index}].content is too long (max ${MAX_STASH_ITEM_CONTENT_LENGTH} chars)`,
+      }
+    }
+
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return { ok: false, message: `stashItems[${index}].metadata must be an object` }
+    }
+
+    normalized.push({
+      id,
+      type: type as ProbeStashItem['type'],
+      content,
+      metadata: metadata as ProbeStashItem['metadata'],
+    })
+  }
+
+  return { ok: true, value: normalized }
+}
+
 /**
  * Health check endpoint.
  */
@@ -70,23 +234,30 @@ router.get('/health', async (_req: Request, res: Response) => {
  */
 router.post('/api/generate', async (req: Request, res: Response) => {
   try {
-    const { question, model } = req.body
-
-    if (!question || typeof question !== 'string') {
+    const questionValidation = validateRequiredString(
+      req.body?.question,
+      'question',
+      MAX_QUESTION_LENGTH
+    )
+    if (!questionValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'Question is required and must be a string',
+        message: questionValidation.message,
       })
       return
     }
 
-    if (question.trim().length === 0) {
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'Question cannot be empty',
+        message: modelValidation.message,
       })
       return
     }
+
+    const question = questionValidation.value
+    const model = modelValidation.value
 
     console.log(`[API] POST /api/generate - Question: "${question.substring(0, 50)}..."`)
 
@@ -118,28 +289,61 @@ router.post('/api/generate', async (req: Request, res: Response) => {
  */
 router.post('/api/generate/compare', async (req: Request, res: Response) => {
   try {
-    const {
-      question,
-      leftModel,
-      rightModel,
-      leftPromptVariantId,
-      rightPromptVariantId,
-    } = req.body
-
-    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+    const questionValidation = validateRequiredString(
+      req.body?.question,
+      'question',
+      MAX_QUESTION_LENGTH
+    )
+    if (!questionValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'question is required and must be a non-empty string',
+        message: questionValidation.message,
+      })
+      return
+    }
+
+    const leftModelValidation = validateOptionalModel(req.body?.leftModel)
+    if (!leftModelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: leftModelValidation.message,
+      })
+      return
+    }
+
+    const rightModelValidation = validateOptionalModel(req.body?.rightModel)
+    if (!rightModelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: rightModelValidation.message,
+      })
+      return
+    }
+
+    const leftPromptVariantValidation = validateOptionalModel(req.body?.leftPromptVariantId)
+    if (!leftPromptVariantValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: leftPromptVariantValidation.message,
+      })
+      return
+    }
+
+    const rightPromptVariantValidation = validateOptionalModel(req.body?.rightPromptVariantId)
+    if (!rightPromptVariantValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: rightPromptVariantValidation.message,
       })
       return
     }
 
     const result = await compareQuestionGenerations(
-      question,
-      leftModel,
-      rightModel,
-      leftPromptVariantId,
-      rightPromptVariantId
+      questionValidation.value,
+      leftModelValidation.value,
+      rightModelValidation.value,
+      leftPromptVariantValidation.value,
+      rightPromptVariantValidation.value
     )
 
     res.json({
@@ -170,38 +374,44 @@ router.post('/api/generate/compare', async (req: Request, res: Response) => {
  */
 router.post('/api/chat', async (req: Request, res: Response) => {
   try {
-    const { rootQuestion, messages, model } = req.body
-
-    if (!rootQuestion || typeof rootQuestion !== 'string') {
+    const rootQuestionValidation = validateRequiredString(
+      req.body?.rootQuestion,
+      'rootQuestion',
+      MAX_QUESTION_LENGTH
+    )
+    if (!rootQuestionValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'rootQuestion is required and must be a string',
+        message: rootQuestionValidation.message,
       })
       return
     }
 
-    if (!messages || !Array.isArray(messages)) {
+    const messagesValidation = validateMessages(req.body?.messages)
+    if (!messagesValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'messages is required and must be an array',
+        message: messagesValidation.message,
       })
       return
     }
 
-    // Validate message format
-    for (const msg of messages) {
-      if (!msg.role || !msg.content) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Each message must have role and content',
-        })
-        return
-      }
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: modelValidation.message,
+      })
+      return
     }
+
+    const rootQuestion = rootQuestionValidation.value
+    const messages = messagesValidation.value
+    const model = modelValidation.value
 
     console.log(`[API] POST /api/chat - Question: "${rootQuestion.substring(0, 50)}..."`)
 
-    const result = await chat(rootQuestion, messages as ChatMessage[], model)
+    const result = await chat(rootQuestion, messages, model)
 
     res.json({
       success: true,
@@ -232,42 +442,40 @@ router.post('/api/chat', async (req: Request, res: Response) => {
  */
 router.post('/api/probe/chat', async (req: Request, res: Response) => {
   try {
-    const { messages, stashItems, model } = req.body
-
-    if (!messages || !Array.isArray(messages)) {
+    const messagesValidation = validateMessages(req.body?.messages)
+    if (!messagesValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'messages is required and must be an array',
+        message: messagesValidation.message,
       })
       return
     }
 
-    if (!stashItems || !Array.isArray(stashItems)) {
+    const stashItemsValidation = validateProbeStashItems(req.body?.stashItems)
+    if (!stashItemsValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'stashItems is required and must be an array',
+        message: stashItemsValidation.message,
       })
       return
     }
 
-    // Validate message format
-    for (const msg of messages) {
-      if (!msg.role || !msg.content) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Each message must have role and content',
-        })
-        return
-      }
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: modelValidation.message,
+      })
+      return
     }
+
+    const messages = messagesValidation.value
+    const stashItems = stashItemsValidation.value
+    const model = modelValidation.value
 
     console.log(`[API] POST /api/probe/chat - ${stashItems.length} stash items, ${messages.length} messages`)
 
-    const result = await probeChat(
-      messages as ChatMessage[],
-      stashItems as ProbeStashItem[],
-      model
-    )
+    const result = await probeChat(messages, stashItems, model)
 
     res.json({
       success: true,
@@ -288,25 +496,42 @@ router.post('/api/probe/chat', async (req: Request, res: Response) => {
  */
 router.post('/api/probe/brief', async (req: Request, res: Response) => {
   try {
-    const { stashItems, direction, model } = req.body
-
-    if (!stashItems || !Array.isArray(stashItems)) {
+    const stashItemsValidation = validateProbeStashItems(req.body?.stashItems)
+    if (!stashItemsValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'stashItems is required and must be an array',
+        message: stashItemsValidation.message,
       })
       return
     }
 
-    if (!direction || typeof direction !== 'string') {
+    const directionValidation = validateRequiredString(
+      req.body?.direction,
+      'direction',
+      MAX_CONTEXT_LENGTH
+    )
+    if (!directionValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'direction is required and must be a string',
+        message: directionValidation.message,
       })
       return
     }
 
-    const result = await generateProbeBrief(stashItems as ProbeStashItem[], direction, model)
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: modelValidation.message,
+      })
+      return
+    }
+
+    const result = await generateProbeBrief(
+      stashItemsValidation.value,
+      directionValidation.value,
+      modelValidation.value
+    )
 
     res.json({
       success: true,
@@ -326,28 +551,37 @@ router.post('/api/probe/brief', async (req: Request, res: Response) => {
  */
 router.post('/api/probe/experiments', async (req: Request, res: Response) => {
   try {
-    const { messages, stashItems, model } = req.body
-
-    if (!messages || !Array.isArray(messages)) {
+    const messagesValidation = validateMessages(req.body?.messages)
+    if (!messagesValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'messages is required and must be an array',
+        message: messagesValidation.message,
       })
       return
     }
 
-    if (!stashItems || !Array.isArray(stashItems)) {
+    const stashItemsValidation = validateProbeStashItems(req.body?.stashItems)
+    if (!stashItemsValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'stashItems is required and must be an array',
+        message: stashItemsValidation.message,
+      })
+      return
+    }
+
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: modelValidation.message,
       })
       return
     }
 
     const result = await suggestProbeExperiments(
-      messages as ChatMessage[],
-      stashItems as ProbeStashItem[],
-      model
+      messagesValidation.value,
+      stashItemsValidation.value,
+      modelValidation.value
     )
 
     res.json({
@@ -445,23 +679,26 @@ router.get('/api/models/performance', async (_req: Request, res: Response) => {
  */
 router.post('/api/concepts/extract', async (req: Request, res: Response) => {
   try {
-    const { text, model } = req.body
-
-    if (!text || typeof text !== 'string') {
+    const textValidation = validateRequiredString(req.body?.text, 'text', MAX_CONTEXT_LENGTH)
+    if (!textValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'text is required and must be a string',
+        message: textValidation.message,
       })
       return
     }
 
-    if (text.trim().length === 0) {
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'text cannot be empty',
+        message: modelValidation.message,
       })
       return
     }
+
+    const text = textValidation.value
+    const model = modelValidation.value
 
     console.log(`[API] POST /api/concepts/extract - Text: "${text.substring(0, 50)}..."`)
 
@@ -500,31 +737,50 @@ router.post('/api/concepts/extract', async (req: Request, res: Response) => {
  */
 router.post('/api/concepts/explain', async (req: Request, res: Response) => {
   try {
-    const { conceptId, conceptName, questionContext, model } = req.body
-
-    if (!conceptId || typeof conceptId !== 'string') {
+    const conceptIdValidation = validateRequiredString(req.body?.conceptId, 'conceptId', 200)
+    if (!conceptIdValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'conceptId is required and must be a string',
+        message: conceptIdValidation.message,
       })
       return
     }
 
-    if (!conceptName || typeof conceptName !== 'string') {
+    const conceptNameValidation = validateRequiredString(req.body?.conceptName, 'conceptName', 200)
+    if (!conceptNameValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'conceptName is required and must be a string',
+        message: conceptNameValidation.message,
       })
       return
     }
 
-    if (!questionContext || typeof questionContext !== 'string') {
+    const questionContextValidation = validateRequiredString(
+      req.body?.questionContext,
+      'questionContext',
+      MAX_CONTEXT_LENGTH
+    )
+    if (!questionContextValidation.ok) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'questionContext is required and must be a string',
+        message: questionContextValidation.message,
       })
       return
     }
+
+    const modelValidation = validateOptionalModel(req.body?.model)
+    if (!modelValidation.ok) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: modelValidation.message,
+      })
+      return
+    }
+
+    const conceptId = conceptIdValidation.value
+    const conceptName = conceptNameValidation.value
+    const questionContext = questionContextValidation.value
+    const model = modelValidation.value
 
     console.log(`[API] POST /api/concepts/explain - Concept: "${conceptName}"`)
 

@@ -200,6 +200,20 @@ export function QuestionNode({
     onSelect?.(node.id)
   }
 
+  const handleNodeKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.defaultPrevented) return
+
+    const target = e.target as HTMLElement
+    const isSelf = target === e.currentTarget
+    const isInteractiveChild = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'].includes(target.tagName)
+    if (!isSelf && isInteractiveChild) return
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+    }
+  }
+
   /**
    * Handles expand/collapse button click.
    * Stops propagation to prevent selecting the node.
@@ -535,6 +549,7 @@ export function QuestionNode({
       <div
         className={`${styles.node} ${isRoot ? styles.root : ''} ${isActive ? styles.active : ''} ${isBestBranch ? styles.bestBranch : ''}`}
         onClick={handleClick}
+        onKeyDown={handleNodeKeyDown}
         tabIndex={0}
         role="button"
         aria-label={`Question: ${node.text}`}

@@ -33,11 +33,15 @@ function getStoredViewMode(): ViewMode {
   // SSR safety check
   if (typeof window === 'undefined') return DEFAULT_VIEW_MODE
 
-  const stored = localStorage.getItem(GRAPH_VIEW_STORAGE_KEY)
+  try {
+    const stored = localStorage.getItem(GRAPH_VIEW_STORAGE_KEY)
 
-  // Validate stored value is a valid view mode
-  if (isValidViewMode(stored)) {
-    return stored
+    // Validate stored value is a valid view mode
+    if (isValidViewMode(stored)) {
+      return stored
+    }
+  } catch {
+    return DEFAULT_VIEW_MODE
   }
 
   return DEFAULT_VIEW_MODE
@@ -100,7 +104,11 @@ export function useViewMode(): UseViewModeReturn {
    */
   const setViewMode = useCallback((newMode: ViewMode) => {
     setViewModeState(newMode)
-    localStorage.setItem(GRAPH_VIEW_STORAGE_KEY, newMode)
+    try {
+      localStorage.setItem(GRAPH_VIEW_STORAGE_KEY, newMode)
+    } catch {
+      // Ignore storage errors (private mode/quota)
+    }
     applyViewMode(newMode)
   }, [])
 

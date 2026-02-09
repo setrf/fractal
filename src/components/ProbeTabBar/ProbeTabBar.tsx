@@ -60,6 +60,32 @@ export function ProbeTabBar() {
     setActiveProbeId(probeId)
   }, [renamingId, setActiveProbeId])
 
+  // Keyboard interaction for tab activation/navigation
+  const handleTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
+    const probe = probes[index]
+    if (!probe) return
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleTabClick(probe.id)
+      return
+    }
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      const nextProbe = probes[(index + 1) % probes.length]
+      if (nextProbe) setActiveProbeId(nextProbe.id)
+      return
+    }
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      const prevIndex = (index - 1 + probes.length) % probes.length
+      const prevProbe = probes[prevIndex]
+      if (prevProbe) setActiveProbeId(prevProbe.id)
+    }
+  }, [probes, handleTabClick, setActiveProbeId])
+
   // Handle double-click to rename
   const handleDoubleClick = useCallback((probe: Probe) => {
     setRenamingId(probe.id)
@@ -101,11 +127,12 @@ export function ProbeTabBar() {
 
   return (
     <div className={styles.tabBar}>
-      {probes.map((probe) => (
+      {probes.map((probe, index) => (
         <div
           key={probe.id}
           className={`${styles.tab} ${activeProbeId === probe.id ? styles.active : ''}`}
           onClick={() => handleTabClick(probe.id)}
+          onKeyDown={(e) => handleTabKeyDown(e, index)}
           onDoubleClick={() => handleDoubleClick(probe)}
           onContextMenu={(e) => handleContextMenu(e, probe.id)}
           role="tab"

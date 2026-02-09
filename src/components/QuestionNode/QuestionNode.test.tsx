@@ -218,6 +218,32 @@ describe('QuestionNode Component', () => {
       expect(mockOnSelect).toHaveBeenCalledTimes(1)
       expect(mockOnSelect).toHaveBeenCalledWith(testNode.id)
     })
+
+    it('should call onSelect when pressing Enter on the node', async () => {
+      const { user } = render(
+        <QuestionNode node={testNode} onSelect={mockOnSelect} />
+      )
+
+      const nodeButton = screen.getByRole('button', { name: /question:/i })
+      nodeButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(mockOnSelect).toHaveBeenCalledTimes(1)
+      expect(mockOnSelect).toHaveBeenCalledWith(testNode.id)
+    })
+
+    it('should call onSelect when pressing Space on the node', async () => {
+      const { user } = render(
+        <QuestionNode node={testNode} onSelect={mockOnSelect} />
+      )
+
+      const nodeButton = screen.getByRole('button', { name: /question:/i })
+      nodeButton.focus()
+      await user.keyboard(' ')
+
+      expect(mockOnSelect).toHaveBeenCalledTimes(1)
+      expect(mockOnSelect).toHaveBeenCalledWith(testNode.id)
+    })
   })
 
   // ============================================

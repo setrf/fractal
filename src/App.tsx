@@ -163,6 +163,8 @@ interface ReopenedExplanation {
  * The StashSidebar is available in all views.
  */
 function AppContent() {
+  const isTestMode = import.meta.env.MODE === 'test'
+
   // Get stash state for sidebar layout and items for graph
   const {
     isOpen: stashOpen,
@@ -341,7 +343,7 @@ function AppContent() {
 
   const onboarding = useOnboarding({
     totalSteps: onboardingSteps.length,
-    autoStart: true,
+    autoStart: !isTestMode,
     storageKey: 'fractal_onboarding_v1',
     version: 'v1',
   })
@@ -361,8 +363,9 @@ function AppContent() {
   }, [onboardingIsOpen, onboardingCurrentStep, activeOnboardingStep])
 
   useEffect(() => {
+    if (isTestMode) return
     void refreshEvalStats()
-  }, [refreshEvalStats])
+  }, [isTestMode, refreshEvalStats])
 
   useEffect(() => {
     if (!onboardingIsOpen || !activeOnboardingStep?.autoAdvance) return
@@ -1309,7 +1312,8 @@ function AppContent() {
                   </div>
                 )}
 
-                <div
+                <details
+                  open
                   style={{
                     width: 'min(960px, 100%)',
                     marginBottom: 'var(--space-3)',
@@ -1320,6 +1324,15 @@ function AppContent() {
                     color: 'var(--text-secondary)',
                   }}
                 >
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      marginBottom: 'var(--space-2)',
+                    }}
+                  >
+                    A/B Compare
+                  </summary>
                   <div
                     style={{
                       display: 'flex',
@@ -1328,7 +1341,6 @@ function AppContent() {
                       gap: 'var(--space-2)',
                     }}
                   >
-                    <strong>A/B Compare</strong>
                     <span>Target: {activeNode ? 'active node' : 'root node'}</span>
                     <select
                       value={compareRightModel ?? ''}
@@ -1432,16 +1444,38 @@ function AppContent() {
                       </div>
                     </div>
                   )}
-                </div>
+                </details>
 
-                <EvalPanel
-                  stats={evalStats}
-                  isLoading={evalStatsLoading}
-                  error={evalStatsError}
-                  onRefresh={() => {
-                    void refreshEvalStats()
+                <details
+                  open
+                  style={{
+                    width: 'min(960px, 100%)',
+                    marginBottom: 'var(--space-3)',
+                    border: 'var(--border-width) solid var(--border-primary)',
+                    padding: 'var(--space-3)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--text-secondary)',
                   }}
-                />
+                >
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      marginBottom: 'var(--space-2)',
+                    }}
+                  >
+                    Eval Telemetry
+                  </summary>
+                  <EvalPanel
+                    stats={evalStats}
+                    isLoading={evalStatsLoading}
+                    error={evalStatsError}
+                    onRefresh={() => {
+                      void refreshEvalStats()
+                    }}
+                  />
+                </details>
 
                 {/* Question tree visualization */}
                 <QuestionTree

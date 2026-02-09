@@ -49,14 +49,18 @@ function getSystemTheme(): 'light' | 'dark' {
 function getStoredTheme(): Theme {
   // SSR safety check
   if (typeof window === 'undefined') return 'system'
-  
-  const stored = localStorage.getItem(STORAGE_KEY)
-  
-  // Validate stored value is a valid theme
-  if (stored === 'light' || stored === 'dark' || stored === 'system') {
-    return stored
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+
+    // Validate stored value is a valid theme
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      return stored
+    }
+  } catch {
+    return 'system'
   }
-  
+
   return 'system'
 }
 
@@ -118,7 +122,11 @@ export function useTheme() {
    */
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme)
-    localStorage.setItem(STORAGE_KEY, newTheme)
+    try {
+      localStorage.setItem(STORAGE_KEY, newTheme)
+    } catch {
+      // Ignore storage errors (private mode/quota)
+    }
     applyTheme(newTheme)
   }, [])
   

@@ -7,7 +7,7 @@
  * then uses rehype-raw to parse and render them properly.
  */
 
-import { useCallback, useMemo } from 'react'
+import { Children, useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -100,27 +100,30 @@ function insertMarkElements(content: string, concepts: ExtractedConcept[]): stri
   
   // Sort concepts by text length (descending) so longer phrases match first
   const sortedConcepts = [...concepts].sort((a, b) => b.text.length - a.text.length)
-  
-  let result = content
-  const usedConcepts = new Set<string>()
-  
+
+  const lowerContent = content.toLowerCase()
+  const occupiedRanges: Array<{ start: number; end: number }> = []
+  const matches: Array<{ concept: ExtractedConcept; index: number }> = []
+
+  const isRangeAvailable = (start: number, end: number): boolean => {
+    return !occupiedRanges.some(range => start < range.end && end > range.start)
+  }
+
   for (const concept of sortedConcepts) {
-    // Skip if already used
-    if (usedConcepts.has(concept.id)) continue
-    
-    // Find the concept text in the content (case-insensitive)
-    const lowerContent = result.toLowerCase()
     const lowerText = concept.text.toLowerCase()
-    
-    // Find all occurrences
+
+    // Find the best non-overlapping occurrence closest to startIndex.
     let pos = 0
-    let matchIndex = -1
-    
-    // Find the occurrence closest to the original startIndex if provided
     let bestMatch = -1
     let bestDistance = Infinity
-    
+
     while ((pos = lowerContent.indexOf(lowerText, pos)) !== -1) {
+      const end = pos + concept.text.length
+      if (!isRangeAvailable(pos, end)) {
+        pos += 1
+        continue
+      }
+
       const distance = Math.abs(pos - concept.startIndex)
       if (distance < bestDistance) {
         bestDistance = distance
@@ -128,23 +131,24 @@ function insertMarkElements(content: string, concepts: ExtractedConcept[]): stri
       }
       pos += 1
     }
-    
-    matchIndex = bestMatch
-    
-    if (matchIndex === -1) continue
-    
-    // Get the actual text (preserving case) and escape it for safety
-    const actualText = escapeHtml(result.slice(matchIndex, matchIndex + concept.text.length))
-    
-    // Create the mark element as raw HTML
+
+    if (bestMatch !== -1) {
+      matches.push({ concept, index: bestMatch })
+      occupiedRanges.push({ start: bestMatch, end: bestMatch + concept.text.length })
+    }
+  }
+
+  // Apply replacements from right to left to keep indices stable.
+  const sortedMatches = matches.sort((a, b) => b.index - a.index)
+  let result = content
+
+  for (const { concept, index } of sortedMatches) {
+    const actualText = escapeHtml(content.slice(index, index + concept.text.length))
     const categoryClass = getCategoryClassName(concept.category)
     const markHtml = `<mark class="concept-highlight ${categoryClass}" data-concept-id="${escapeHtmlAttribute(concept.id)}" data-concept-name="${escapeHtmlAttribute(concept.normalizedName)}" data-concept-category="${escapeHtmlAttribute(concept.category)}">${actualText}</mark>`
-    
-    // Insert the mark
-    result = result.slice(0, matchIndex) + markHtml + result.slice(matchIndex + concept.text.length)
-    usedConcepts.add(concept.id)
+    result = result.slice(0, index) + markHtml + result.slice(index + concept.text.length)
   }
-  
+
   return result
 }
 
@@ -250,9 +254,33 @@ export function MarkdownWithHighlights({
         components={{
           // Custom renderer for mark elements to add remove buttons
           mark: ({ children, ...props }) => {
-            const conceptId = (props as Record<string, unknown>)['data-concept-id'] as string
+            const markProps = props as Record<string, unknown>
+            const explicitConceptId = (markProps['data-concept-id'] ?? markProps['dataConceptId']) as string | undefined
+            const conceptName = (markProps['data-concept-name'] ?? markProps['dataConceptName']) as string | undefined
+            const conceptCategory = (markProps['data-concept-category'] ?? markProps['dataConceptCategory']) as string | undefined
+
+            const markText = Children.toArray(children)
+              .map(child => (typeof child === 'string' ? child : ''))
+              .join('')
+              .replace('×', '')
+              .trim()
+
+            const fallbackConcept = concepts.find(c =>
+              (conceptName && c.normalizedName.toLowerCase() === conceptName.toLowerCase()) ||
+              (markText &&
+                (c.text.toLowerCase() === markText.toLowerCase() ||
+                  c.normalizedName.toLowerCase() === markText.toLowerCase()))
+            )
+
+            const conceptId = explicitConceptId || fallbackConcept?.id
             return (
-              <mark {...props} className={`${styles.highlight} ${(props as Record<string, unknown>)['className'] || ''}`}>
+              <mark
+                {...props}
+                className={`${styles.highlight} ${markProps['className'] || ''}`}
+                data-concept-id={conceptId}
+                data-concept-name={conceptName || fallbackConcept?.normalizedName}
+                data-concept-category={conceptCategory || fallbackConcept?.category}
+              >
                 {children}
                 {onConceptRemove && (
                   <button

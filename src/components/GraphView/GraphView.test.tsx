@@ -12,11 +12,13 @@ function renderGraph({
   nodeConcepts = {},
   stashItems = [],
   probes = [],
+  leftOffset,
 }: {
   includeRoot?: boolean
   nodeConcepts?: Record<string, ExtractedConcept[]>
   stashItems?: StashItem[]
   probes?: Probe[]
+  leftOffset?: number
 }) {
   let tree = createEmptyTree()
   if (includeRoot) {
@@ -31,7 +33,7 @@ function renderGraph({
       stashItems={stashItems}
       probes={probes}
     >
-      <GraphView />
+      <GraphView leftOffset={leftOffset} />
     </GraphProvider>
   )
 }
@@ -80,5 +82,35 @@ describe('GraphView', () => {
     expect(screen.getByText(/1 Concepts/i)).toBeInTheDocument()
     expect(screen.getByText(/1 Stash/i)).toBeInTheDocument()
     expect(screen.getByText(/1 Probes/i)).toBeInTheDocument()
+  })
+
+  it('shows and dismisses mobile warning when graph is viewed on mobile', async () => {
+    const previousWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    })
+
+    const { user } = renderGraph({ includeRoot: true })
+
+    expect(screen.getByText(/3D interaction is limited on mobile/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /dismiss warning/i }))
+
+    expect(screen.queryByText(/3D interaction is limited on mobile/i)).not.toBeInTheDocument()
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: previousWidth,
+    })
+  })
+
+  it('applies left offset to the graph stats panel', () => {
+    renderGraph({ includeRoot: true, leftOffset: 72 })
+
+    const questionsStat = screen.getByText(/1 Questions/i).closest('div')
+    expect(questionsStat).toHaveStyle('left: calc(72px + var(--space-4))')
   })
 })

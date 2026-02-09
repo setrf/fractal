@@ -69,4 +69,61 @@ describe('ProbeTabBar keyboard support', () => {
     await user.keyboard('{ArrowLeft}')
     expect(firstTab).toHaveAttribute('aria-selected', 'true')
   })
+
+  it('wraps keyboard navigation from first tab to last with ArrowLeft', async () => {
+    const { user } = render(<ProbeTabBar />)
+
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+    const secondTab = screen.getByRole('tab', { name: /probe 2/i })
+
+    firstTab.focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(secondTab).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('renames probe on double click + Enter', async () => {
+    const { user } = render(<ProbeTabBar />)
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+
+    await user.dblClick(firstTab)
+    const input = screen.getByDisplayValue('Probe 1')
+    await user.clear(input)
+    await user.type(input, 'Discovery Probe{Enter}')
+
+    expect(screen.getByRole('tab', { name: /discovery\s*probe/i })).toBeInTheDocument()
+  })
+
+  it('cancels rename on Escape', async () => {
+    const { user } = render(<ProbeTabBar />)
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+
+    await user.dblClick(firstTab)
+    const input = screen.getByDisplayValue('Probe 1')
+    await user.clear(input)
+    await user.type(input, 'Temp Name{Escape}')
+
+    expect(screen.getByRole('tab', { name: /probe 1/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /temp name/i })).not.toBeInTheDocument()
+  })
+
+  it('does not rename when submitted value is blank', async () => {
+    const { user } = render(<ProbeTabBar />)
+    const firstTab = screen.getByRole('tab', { name: /probe 1/i })
+
+    await user.dblClick(firstTab)
+    const input = screen.getByDisplayValue('Probe 1')
+    await user.clear(input)
+    await user.type(input, '   {Enter}')
+
+    expect(screen.getByRole('tab', { name: /probe 1/i })).toBeInTheDocument()
+  })
+
+  it('deletes a probe from delete button', async () => {
+    const { user } = render(<ProbeTabBar />)
+
+    await user.click(screen.getByRole('button', { name: /delete probe 2/i }))
+
+    expect(screen.queryByRole('tab', { name: /probe 2/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /probe 1/i })).toBeInTheDocument()
+  })
 })

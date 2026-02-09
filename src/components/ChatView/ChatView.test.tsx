@@ -56,4 +56,101 @@ describe('ChatView', () => {
 
     expect(await screen.findByText('Follow-up response')).toBeInTheDocument()
   })
+
+  it('shows an error message when the initial query fails', async () => {
+    const onSendMessage = vi.fn().mockRejectedValue(new Error('initial failure'))
+
+    render(
+      <ChatView
+        question="Why do we dream?"
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    expect(await screen.findByText(/Error: initial failure/i)).toBeInTheDocument()
+  })
+
+  it('shows an error message when a follow-up send fails', async () => {
+    const onSendMessage = vi
+      .fn()
+      .mockResolvedValueOnce('Initial assistant response')
+      .mockRejectedValueOnce(new Error('follow-up failure'))
+
+    const { user } = render(
+      <ChatView
+        question="Why do we dream?"
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    await screen.findByText('Initial assistant response')
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    )
+    await user.type(input, 'Tell me more{Enter}')
+
+    expect(await screen.findByText(/Error: follow-up failure/i)).toBeInTheDocument()
+  })
+
+  it('does not send on Shift+Enter and preserves multiline input', async () => {
+    const onSendMessage = vi.fn().mockResolvedValue('Initial assistant response')
+    const { user } = render(
+      <ChatView
+        question="Why do we dream?"
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    await screen.findByText('Initial assistant response')
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    ) as HTMLTextAreaElement
+
+    await user.type(input, 'line one{Shift>}{Enter}{/Shift}line two')
+
+    expect(onSendMessage).toHaveBeenCalledTimes(1)
+    expect(input.value).toContain('\n')
+  })
+
+  it('keeps send disabled for whitespace-only input', async () => {
+    const onSendMessage = vi.fn().mockResolvedValue('Initial assistant response')
+    const { user } = render(
+      <ChatView
+        question="Why do we dream?"
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    await screen.findByText('Initial assistant response')
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    )
+    const sendButton = screen.getByRole('button', { name: /send message/i })
+
+    await user.type(input, '   ')
+
+    expect(sendButton).toBeDisabled()
+    expect(onSendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls onBack when back button is clicked', async () => {
+    const onBack = vi.fn()
+    const onSendMessage = vi.fn().mockResolvedValue('Initial assistant response')
+    const { user } = render(
+      <ChatView
+        question="Why do we dream?"
+        onBack={onBack}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    const backButton = screen.getByRole('button', { name: /back to question tree/i })
+    await user.click(backButton)
+
+    expect(onBack).toHaveBeenCalledTimes(1)
+  })
 })

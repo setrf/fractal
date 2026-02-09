@@ -244,6 +244,19 @@ describe('QuestionNode Component', () => {
       expect(mockOnSelect).toHaveBeenCalledTimes(1)
       expect(mockOnSelect).toHaveBeenCalledWith(testNode.id)
     })
+
+    it('should not trigger node select when activating an interactive child', async () => {
+      const { user } = render(
+        <QuestionNode node={testNode} onSelect={mockOnSelect} />
+      )
+
+      const addButton = screen.getByRole('button', { name: /customize with your own question/i })
+      addButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(mockOnSelect).not.toHaveBeenCalled()
+      expect(screen.getByPlaceholderText(/what comes next/i)).toBeInTheDocument()
+    })
   })
 
   // ============================================
@@ -395,6 +408,58 @@ describe('QuestionNode Component', () => {
       console.log(`[TEST] tabIndex: ${nodeButton.getAttribute('tabindex')}`)
       
       expect(nodeButton).toHaveAttribute('tabindex', '0')
+    })
+  })
+
+  describe('Action Buttons And Metadata', () => {
+    it('should call onLockIn when lock in button is clicked', async () => {
+      const onLockIn = vi.fn()
+      const { user } = render(
+        <QuestionNode node={testNode} onLockIn={onLockIn} />
+      )
+
+      await user.click(screen.getByRole('button', { name: /chat about this question/i }))
+
+      expect(onLockIn).toHaveBeenCalledTimes(1)
+      expect(onLockIn).toHaveBeenCalledWith(testNode.id, testNode.text)
+    })
+
+    it('should disable AI generate button while generating', () => {
+      const onGenerateAI = vi.fn()
+      render(
+        <QuestionNode
+          node={testNode}
+          onGenerateAI={onGenerateAI}
+          isGenerating={true}
+        />
+      )
+
+      const deepDiveButton = screen.getByRole('button', { name: /generate ai suggestions/i })
+      expect(deepDiveButton).toBeDisabled()
+    })
+
+    it('should render branch and quality metadata badges when provided', () => {
+      const nodeWithMeta: QuestionNodeType = {
+        ...testNode,
+        meta: {
+          ...testNode.meta,
+          qualityScore: 8.5,
+          confidence: 0.92,
+          uncertainty: 0.12,
+        },
+      }
+
+      render(
+        <QuestionNode
+          node={nodeWithMeta}
+          isBestBranch={true}
+        />
+      )
+
+      expect(screen.getByText(/Best branch/i)).toBeInTheDocument()
+      expect(screen.getByText(/Quality 8.50 \/ 10/i)).toBeInTheDocument()
+      expect(screen.getByText(/Conf 92%/i)).toBeInTheDocument()
+      expect(screen.getByText(/Unc 12%/i)).toBeInTheDocument()
     })
   })
 })

@@ -203,9 +203,7 @@ export function useProbe(): UseProbeReturn {
   // Save to localStorage with debouncing
   useEffect(() => {
     // Clear any pending save
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-    }
+    clearTimeout(saveTimerRef.current as ReturnType<typeof setTimeout>)
 
     // Schedule new save
     saveTimerRef.current = setTimeout(() => {
@@ -214,9 +212,7 @@ export function useProbe(): UseProbeReturn {
 
     // Cleanup on unmount
     return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-      }
+      clearTimeout(saveTimerRef.current as ReturnType<typeof setTimeout>)
     }
   }, [probes])
 

@@ -22,6 +22,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { type ViewMode, GRAPH_VIEW_STORAGE_KEY, DEFAULT_VIEW_MODE, isValidViewMode } from '../types/graph'
 
+type ViewModeStorageLike = Pick<Storage, 'getItem' | 'setItem'>
+
+export function resolveViewModeStorage(): ViewModeStorageLike | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage
+}
+
 /**
  * Retrieves the stored view mode preference from localStorage.
  *
@@ -29,12 +36,9 @@ import { type ViewMode, GRAPH_VIEW_STORAGE_KEY, DEFAULT_VIEW_MODE, isValidViewMo
  *
  * @returns The stored view mode or 'traditional' as default
  */
-function getStoredViewMode(): ViewMode {
-  // SSR safety check
-  if (typeof window === 'undefined') return DEFAULT_VIEW_MODE
-
+export function getStoredViewMode(storage: ViewModeStorageLike | null = resolveViewModeStorage()): ViewMode {
   try {
-    const stored = localStorage.getItem(GRAPH_VIEW_STORAGE_KEY)
+    const stored = storage?.getItem(GRAPH_VIEW_STORAGE_KEY)
 
     // Validate stored value is a valid view mode
     if (isValidViewMode(stored)) {

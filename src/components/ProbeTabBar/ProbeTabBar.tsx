@@ -63,7 +63,6 @@ export function ProbeTabBar() {
   // Keyboard interaction for tab activation/navigation
   const handleTabKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     const probe = probes[index]
-    if (!probe) return
 
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -74,7 +73,7 @@ export function ProbeTabBar() {
     if (e.key === 'ArrowRight') {
       e.preventDefault()
       const nextProbe = probes[(index + 1) % probes.length]
-      if (nextProbe) setActiveProbeId(nextProbe.id)
+      setActiveProbeId(nextProbe.id)
       return
     }
 
@@ -82,7 +81,7 @@ export function ProbeTabBar() {
       e.preventDefault()
       const prevIndex = (index - 1 + probes.length) % probes.length
       const prevProbe = probes[prevIndex]
-      if (prevProbe) setActiveProbeId(prevProbe.id)
+      setActiveProbeId(prevProbe.id)
     }
   }, [probes, handleTabClick, setActiveProbeId])
 

@@ -199,9 +199,7 @@ export function ConceptHighlighter({
     (conceptId: string, event: React.MouseEvent) => {
       event.stopPropagation()
       event.preventDefault()
-      if (onConceptRemove) {
-        onConceptRemove(conceptId)
-      }
+      onConceptRemove?.(conceptId)
     },
     [onConceptRemove]
   )

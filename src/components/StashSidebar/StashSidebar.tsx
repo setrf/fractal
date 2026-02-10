@@ -137,7 +137,6 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
   // Handle creating a new note
   const handleCreateNote = useCallback(() => {
     const trimmedContent = noteContent.trim()
-    if (!trimmedContent) return
 
     addItem({
       type: 'note',
@@ -295,8 +294,7 @@ export function StashSidebar({ onItemClick }: StashSidebarProps = {}) {
     if (isInternalDrag && draggedItemId && draggedIndex !== null && draggedIndex !== toIndex) {
       e.preventDefault()
       e.stopPropagation()
-      const toItem = displayedItems[toIndex]
-      if (!toItem) return
+      const toItem = displayedItems[toIndex]!
 
       const fromIndex = allItems.findIndex(item => item.id === draggedItemId)
       const toIndexFull = allItems.findIndex(item => item.id === toItem.id)

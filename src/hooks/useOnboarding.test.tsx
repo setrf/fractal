@@ -4,7 +4,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useOnboarding } from './useOnboarding'
+import {
+  clearOnboardingStorage,
+  loadOnboardingFromStorage,
+  saveOnboardingToStorage,
+  useOnboarding,
+} from './useOnboarding'
 
 const STORAGE_KEY = 'fractal-onboarding-test'
 
@@ -121,6 +126,56 @@ describe('useOnboarding', () => {
 
     rerender({ version: 'v2' })
     expect(result.current.status).toBe('pending')
+  })
+
+  it('ignores persisted payloads that are not objects or that lack status', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify('not-an-object'))
+    const first = renderHook(() =>
+      useOnboarding({ totalSteps: 2, storageKey: STORAGE_KEY, autoStart: true, version: 'v1' })
+    )
+    expect(first.result.current.status).toBe('pending')
+    first.unmount()
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 'v1',
+        updatedAt: Date.now(),
+      })
+    )
+    const second = renderHook(() =>
+      useOnboarding({ totalSteps: 2, storageKey: STORAGE_KEY, autoStart: true, version: 'v1' })
+    )
+    expect(second.result.current.status).toBe('pending')
+    second.unmount()
+  })
+
+  it('covers no-window storage guards for load/save/clear paths', () => {
+    const savedWindow = (globalThis as { window?: unknown }).window
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+
+    try {
+      expect(loadOnboardingFromStorage(STORAGE_KEY, 'v1')).toBeNull()
+      expect(() =>
+        saveOnboardingToStorage(STORAGE_KEY, {
+          version: 'v1',
+          status: 'completed',
+          updatedAt: Date.now(),
+        })
+      ).not.toThrow()
+      expect(() => clearOnboardingStorage(STORAGE_KEY)).not.toThrow()
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        writable: true,
+        value: savedWindow,
+      })
+    }
   })
 
   it('supports open/close, step navigation, and clamped setStep', () => {

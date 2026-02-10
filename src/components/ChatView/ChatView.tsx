@@ -122,8 +122,6 @@ export function ChatView({
   const [messageConcepts, setMessageConcepts] = useState<Record<number, ExtractedConcept[]>>({})
   // Track which messages are currently extracting
   const [extractingMessages, setExtractingMessages] = useState<Set<number>>(new Set())
-  // Track ref for text selection
-  const messageRefs = useRef<Record<number, HTMLDivElement | null>>({})
   
   // Stash context for adding messages to stash
   const { addItem, hasItem } = useStashContext()
@@ -263,10 +261,9 @@ export function ChatView({
     /**
      * Find the occurrence closest to the target index.
      */
-    const findClosestOccurrence = (indices: number[], targetIndex: number): number | null => {
-      if (indices.length === 0) return null
+    const findClosestOccurrence = (indices: number[], targetIndex: number): number => {
       if (indices.length === 1) return indices[0]
-      
+
       return indices.reduce((closest, current) => {
         const currentDist = Math.abs(current - targetIndex)
         const closestDist = Math.abs(closest - targetIndex)
@@ -292,16 +289,14 @@ export function ChatView({
       if (allOccurrences.length > 0) {
         // Pick the occurrence closest to where the LLM thought it was
         const bestIndex = findClosestOccurrence(allOccurrences, concept.startIndex)
-        
-        if (bestIndex !== null) {
-          // Use the actual text from the source (preserving case)
-          const actualText = text.slice(bestIndex, bestIndex + concept.text.length)
-          return {
-            ...concept,
-            text: actualText,
-            startIndex: bestIndex,
-            endIndex: bestIndex + concept.text.length,
-          }
+
+        // Use the actual text from the source (preserving case)
+        const actualText = text.slice(bestIndex, bestIndex + concept.text.length)
+        return {
+          ...concept,
+          text: actualText,
+          startIndex: bestIndex,
+          endIndex: bestIndex + concept.text.length,
         }
       }
       
@@ -311,14 +306,12 @@ export function ChatView({
         const normalizedOccurrences = findAllOccurrences(textLower, normalizedLower)
         if (normalizedOccurrences.length > 0) {
           const bestIndex = findClosestOccurrence(normalizedOccurrences, concept.startIndex)
-          if (bestIndex !== null) {
-            const actualText = text.slice(bestIndex, bestIndex + concept.normalizedName.length)
-            return {
-              ...concept,
-              text: actualText,
-              startIndex: bestIndex,
-              endIndex: bestIndex + concept.normalizedName.length,
-            }
+          const actualText = text.slice(bestIndex, bestIndex + concept.normalizedName.length)
+          return {
+            ...concept,
+            text: actualText,
+            startIndex: bestIndex,
+            endIndex: bestIndex + concept.normalizedName.length,
           }
         }
       }
@@ -331,21 +324,20 @@ export function ChatView({
           const partialOccurrences = findAllOccurrences(textLower, firstWord)
           if (partialOccurrences.length > 0) {
             const bestIndex = findClosestOccurrence(partialOccurrences, concept.startIndex)
-            if (bestIndex !== null) {
-              // Extend to include the full phrase if possible
-              const potentialEnd = Math.min(bestIndex + concept.text.length, text.length)
-              const potentialText = text.slice(bestIndex, potentialEnd)
-              
-              // Only use if it looks like a reasonable match (at least 50% of words match)
-              const potentialWords = potentialText.toLowerCase().split(/\s+/)
-              const matchCount = words.filter(w => potentialWords.some(pw => pw.includes(w.toLowerCase()))).length
-              if (matchCount >= Math.ceil(words.length / 2)) {
-                return {
-                  ...concept,
-                  text: potentialText,
-                  startIndex: bestIndex,
-                  endIndex: potentialEnd,
-                }
+
+            // Extend to include the full phrase if possible
+            const potentialEnd = Math.min(bestIndex + concept.text.length, text.length)
+            const potentialText = text.slice(bestIndex, potentialEnd)
+
+            // Only use if it looks like a reasonable match (at least 50% of words match)
+            const potentialWords = potentialText.toLowerCase().split(/\s+/)
+            const matchCount = words.filter(w => potentialWords.some(pw => pw.includes(w.toLowerCase()))).length
+            if (matchCount >= Math.ceil(words.length / 2)) {
+              return {
+                ...concept,
+                text: potentialText,
+                startIndex: bestIndex,
+                endIndex: potentialEnd,
               }
             }
           }
@@ -388,13 +380,6 @@ export function ChatView({
       const delay = index === 1 ? 1000 : 500
       
       const timeout = setTimeout(() => {
-        // Double-check the message content hasn't changed
-        const currentMsg = messages[index]
-        if (!currentMsg || currentMsg.content !== contentToExtract) {
-          // Content changed, skip this extraction (will be retried)
-          return
-        }
-        
         setExtractingMessages(prev => new Set(prev).add(index))
         
         extractConcepts(contentToExtract).then(extracted => {
@@ -428,18 +413,17 @@ export function ChatView({
   /**
    * Handles generating AI highlights for a specific message.
    */
-  const handleGenerateHighlights = useCallback(async (messageIndex: number) => {
-    if (!extractConcepts || extractingMessages.has(messageIndex)) return
-    
-    const msg = messages[messageIndex]
-    if (!msg) return
-    
+  const handleGenerateHighlights = useCallback(async (
+    messageIndex: number,
+    messageContent: string,
+    extractor: (text: string) => Promise<ExtractedConcept[]>
+  ) => {
     setExtractingMessages(prev => new Set(prev).add(messageIndex))
     
     try {
-      const extracted = await extractConcepts(msg.content)
+      const extracted = await extractor(messageContent)
       // Validate and fix indices
-      const fixedConcepts = validateAndFixConcepts(msg.content, extracted)
+      const fixedConcepts = validateAndFixConcepts(messageContent, extracted)
       setMessageConcepts(prev => ({ ...prev, [messageIndex]: fixedConcepts }))
     } finally {
       setExtractingMessages(prev => {
@@ -448,7 +432,7 @@ export function ChatView({
         return next
       })
     }
-  }, [extractConcepts, messages, extractingMessages, validateAndFixConcepts])
+  }, [extractingMessages, validateAndFixConcepts])
 
   /**
    * Handles adding a user-created concept highlight via text selection.
@@ -476,7 +460,7 @@ export function ChatView({
   /**
    * Handles text selection to create a manual highlight.
    */
-  const handleTextSelection = useCallback((messageIndex: number) => {
+  const handleTextSelection = useCallback((messageIndex: number, messageContent: string, messageEl: HTMLDivElement) => {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed) return
     
@@ -484,17 +468,9 @@ export function ChatView({
     const selectedText = rawSelectedText.trim()
     if (!selectedText || selectedText.length < 2) return
     
-    // Get the message element
-    const messageEl = messageRefs.current[messageIndex]
-    if (!messageEl) return
-    
     // Check if selection is within this message
     const range = selection.getRangeAt(0)
     if (!messageEl.contains(range.commonAncestorContainer)) return
-    
-    // Calculate indices relative to the message content
-    const msg = messages[messageIndex]
-    if (!msg) return
     
     const getTextOffset = (container: Node, offset: number): number | null => {
       let node: Node | null = container
@@ -562,7 +538,7 @@ export function ChatView({
       return bestIndex
     }
 
-    const fullText = msg.content
+    const fullText = messageContent
     const startIndex = findClosestOccurrence(fullText, selectedText, startIndexApprox)
     if (startIndex === -1) return
     
@@ -594,7 +570,7 @@ export function ChatView({
     
     // Also trigger explanation fetch if callback exists
     onConceptClick?.(newConcept, question)
-  }, [messages, messageConcepts, handleAddUserConcept, onConceptClick, question])
+  }, [messageConcepts, handleAddUserConcept, onConceptClick, question])
 
   /**
    * Handle sending a message.
@@ -911,7 +887,7 @@ export function ChatView({
                     {extractConcepts && (
                       <button
                         className={styles.generateBtn}
-                        onClick={() => handleGenerateHighlights(index)}
+                        onClick={() => handleGenerateHighlights(index, msg.content, extractConcepts)}
                         disabled={isExtracting}
                         title={isExtracting ? 'Extracting concepts...' : 'Generate AI highlights'}
                         aria-label="Generate AI highlights"
@@ -929,8 +905,7 @@ export function ChatView({
                 </div>
                 <div 
                   className={styles.messageContent}
-                  ref={(el) => { messageRefs.current[index] = el }}
-                  onMouseUp={() => handleTextSelection(index)}
+                  onMouseUp={(event) => handleTextSelection(index, msg.content, event.currentTarget)}
                 >
                   {/* Always render markdown, with or without highlights */}
                   <MarkdownWithHighlights

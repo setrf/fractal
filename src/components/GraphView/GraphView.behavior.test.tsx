@@ -17,6 +17,8 @@ const fgHarness = vi.hoisted(() => ({
   linkDistances: [] as number[],
   linkStrengths: [] as number[],
   cameraPos: { x: 10, y: 0, z: 0 },
+  cameraUnavailable: false,
+  disableLinkDistance: false,
 }))
 
 let graphContext: any
@@ -71,10 +73,10 @@ vi.mock('react-force-graph-3d', async () => {
 
     ReactModule.useImperativeHandle(ref, () => ({
       zoomToFit: fgHarness.zoomToFit,
-      camera: () => ({ position: fgHarness.cameraPos }),
+      camera: () => (fgHarness.cameraUnavailable ? undefined : { position: fgHarness.cameraPos }),
       cameraPosition: fgHarness.cameraPosition,
       d3Force: (name: string) => {
-        if (name === 'link') return linkForce
+        if (name === 'link') return fgHarness.disableLinkDistance ? {} : linkForce
         if (name === 'charge') return { strength: fgHarness.chargeStrength }
         if (name === 'center') return { strength: fgHarness.centerStrength }
         return undefined
@@ -100,6 +102,12 @@ vi.mock('react-force-graph-3d', async () => {
           onClick={() => props.onNodeClick?.(props.graphData.nodes[0], { clientX: 11, clientY: 22 })}
         >
           click node
+        </button>
+        <button
+          aria-label="Trigger coordless node click"
+          onClick={() => props.onNodeClick?.(props.graphData.nodes[1], { clientX: 7, clientY: 8 })}
+        >
+          click coordless node
         </button>
         <button aria-label="Trigger background click" onClick={() => props.onBackgroundClick?.()}>
           click background
@@ -154,11 +162,56 @@ function createGraphData(): GraphData {
         group: 'g1',
       },
       {
+        id: 's2',
+        type: 'stash',
+        label: 'Fallback stash color',
+        data: {} as any,
+        color: '',
+        size: 1,
+        group: 'g1',
+      },
+      {
         id: 'p1',
         type: 'probe',
         label: 'Probe 1',
         data: {} as any,
         color: 'var(--missing-token)',
+        size: 1,
+        group: 'g1',
+      },
+      {
+        id: 'c3',
+        type: 'concept',
+        label: 'invalid oklch arity',
+        data: {} as any,
+        color: 'oklch(0.67 0.13)',
+        size: 1,
+        group: 'g1',
+      },
+      {
+        id: 'c4',
+        type: 'concept',
+        label: 'invalid oklch number',
+        data: {} as any,
+        color: 'oklch(foo 0.13 250)',
+        size: 1,
+        group: 'g1',
+      },
+      {
+        id: 'q-long',
+        type: 'question',
+        label: 'This is an intentionally long graph label designed to exceed sixty characters and trigger truncation behavior in node tags',
+        data: {} as any,
+        color: '#336699',
+        size: 1,
+        group: 'g1',
+      },
+      {
+        id: 'c-empty',
+        type: 'concept',
+        label: '',
+        data: {} as any,
+        color: '#664499',
         size: 1,
         group: 'g1',
       },
@@ -169,6 +222,7 @@ function createGraphData(): GraphData {
       { source: 'q1', target: 'p1', type: 'probe-stash', strength: 0.7 },
       { source: 'c1', target: 'q1', type: 'concept-related', strength: 0.3 },
       { source: 'q1', target: 'q1', type: 'question-child', strength: 1 },
+      { source: 'q1', target: 'c2', type: 'unknown-edge' as any, strength: 0.5 },
     ],
   }
 }
@@ -184,6 +238,8 @@ describe('GraphView behavior', () => {
     fgHarness.linkDistances = []
     fgHarness.linkStrengths = []
     fgHarness.cameraPos = { x: 10, y: 0, z: 0 }
+    fgHarness.cameraUnavailable = false
+    fgHarness.disableLinkDistance = false
     isMobile = false
 
     document.documentElement.style.setProperty('--graph-question', 'oklch(70% 0.14 250)')
@@ -251,6 +307,20 @@ describe('GraphView behavior', () => {
     expect(fgHarness.zoomToFit).toHaveBeenCalledWith(600, 80)
   })
 
+  it('no-ops imperative zoom controls when camera is unavailable', () => {
+    const ref = createRef<GraphViewHandle>()
+    fgHarness.cameraUnavailable = true
+    render(<GraphView ref={ref} />)
+
+    fgHarness.cameraPosition.mockClear()
+    act(() => {
+      ref.current?.zoomIn()
+      ref.current?.zoomOut()
+    })
+
+    expect(fgHarness.cameraPosition).not.toHaveBeenCalled()
+  })
+
   it('shows and dismisses the mobile warning', () => {
     isMobile = true
     render(<GraphView />)
@@ -271,5 +341,38 @@ describe('GraphView behavior', () => {
 
     expect(screen.getByText(/No entities to visualize yet/i)).toBeInTheDocument()
     expect(screen.queryByTestId('force-graph')).not.toBeInTheDocument()
+  })
+
+  it('covers fallback branches for unknown edge styles, invalid colors, and coordless clicks', () => {
+    render(<GraphView />)
+
+    expect(fgHarness.linkColors).toContain('#666666')
+    expect(fgHarness.linkWidths).toContain(1)
+    expect(fgHarness.nodeColors.filter((c) => c === '#aa66cc').length).toBeGreaterThan(0)
+    expect(fgHarness.nodeColors.filter((c) => c === '#44aa88').length).toBeGreaterThan(0)
+
+    fgHarness.cameraPosition.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: /Trigger coordless node click/i }))
+    expect(fgHarness.cameraPosition).not.toHaveBeenCalled()
+  })
+
+  it('handles background clicks as an explicit no-op', () => {
+    render(<GraphView />)
+    fireEvent.click(screen.getByRole('button', { name: /Trigger background click/i }))
+    expect(fgHarness.cameraPosition).not.toHaveBeenCalled()
+  })
+
+  it('skips link-distance configuration when link force has no distance function', () => {
+    fgHarness.disableLinkDistance = true
+    graphContext = {
+      ...graphContext,
+      visualScale: 0,
+    }
+
+    render(<GraphView />)
+
+    expect(fgHarness.linkDistances).toHaveLength(0)
+    expect(fgHarness.chargeStrength).toHaveBeenCalled()
+    expect(fgHarness.centerStrength).toHaveBeenCalled()
   })
 })

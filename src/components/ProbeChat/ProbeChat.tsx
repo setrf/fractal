@@ -97,10 +97,9 @@ export function ProbeChat({ probe }: ProbeChatProps) {
     if (!isResizing) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!inputAreaRef.current) return
-      const rect = inputAreaRef.current.getBoundingClientRect()
+      const bottom = (inputAreaRef.current as HTMLDivElement).getBoundingClientRect().bottom
       // Dragging up increases height. Current mouse Y vs bottom of input area.
-      const newHeight = rect.bottom - e.clientY - 24 // 24 for padding
+      const newHeight = bottom - e.clientY - 24 // 24 for padding
       setInputHeight(Math.max(100, Math.min(600, newHeight)))
     }
 
@@ -140,7 +139,6 @@ export function ProbeChat({ probe }: ProbeChatProps) {
   }, [probe.id, stashItems, synthesizePrompt])
 
   const handleExportBrief = useCallback(async () => {
-    if (selectedItems.length === 0 || exportingBrief) return
     const direction = extractProbeDirection(input) || 'Generate a PM brief from this exploration context.'
     setExportingBrief(true)
     setBriefStatus(null)
@@ -159,7 +157,7 @@ export function ProbeChat({ probe }: ProbeChatProps) {
     } finally {
       setExportingBrief(false)
     }
-  }, [selectedItems, exportingBrief, input, selectedModel, addMessage, probe.id])
+  }, [selectedItems, input, selectedModel, addMessage, probe.id])
 
   // Handle sending a message
   const handleSend = useCallback(async () => {

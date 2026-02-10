@@ -203,6 +203,26 @@ describe('StashSidebar', () => {
     expect(screen.queryByPlaceholderText('Write your note...')).not.toBeInTheDocument()
   })
 
+  it('keeps note-save disabled for blank content and supports untitled note metadata fallback', () => {
+    render(<StashSidebar />)
+
+    fireEvent.click(screen.getByLabelText('Add a note'))
+    const body = screen.getByPlaceholderText('Write your note...')
+    const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
+
+    fireEvent.change(body, { target: { value: '   ' } })
+    expect(save).toBeDisabled()
+
+    fireEvent.change(body, { target: { value: 'saved without title' } })
+    fireEvent.click(save)
+
+    expect(stashContextState.current.addItem).toHaveBeenCalledWith({
+      type: 'note',
+      content: 'saved without title',
+      metadata: { title: undefined },
+    })
+  })
+
   it('exports and clears stash items from footer actions', () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const createUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test')
@@ -252,13 +272,38 @@ describe('StashSidebar', () => {
     expect(consoleError).toHaveBeenCalled()
   })
 
+  it('ignores non-external drag events and empty dropped payloads', () => {
+    const { container } = render(<StashSidebar />)
+    const aside = container.querySelector('aside') as HTMLElement
+    const internalTransfer = {
+      types: ['text/x-stash-reorder'],
+      dropEffect: 'none',
+      getData: vi.fn(() => ''),
+    }
+
+    fireEvent.dragOver(aside, { dataTransfer: internalTransfer })
+    expect(screen.queryByText('Drop to stash')).not.toBeInTheDocument()
+
+    fireEvent.dragLeave(aside, { dataTransfer: internalTransfer })
+    expect(screen.queryByText('Drop to stash')).not.toBeInTheDocument()
+
+    fireEvent.drop(aside, { dataTransfer: internalTransfer })
+    expect(stashContextState.current.addItem).not.toHaveBeenCalled()
+  })
+
   it('handles external drag leave transitions and item-level external drag over', () => {
     const { container } = render(<StashSidebar />)
     const aside = container.querySelector('aside') as HTMLElement
     const externalTransfer = {
       types: ['application/json'],
       dropEffect: 'none',
-      getData: vi.fn(() => ''),
+      getData: vi.fn(() =>
+        JSON.stringify({
+          type: 'note',
+          content: 'external item drop',
+          metadata: {},
+        })
+      ),
     }
 
     fireEvent.dragOver(aside, { dataTransfer: externalTransfer })
@@ -292,6 +337,14 @@ describe('StashSidebar', () => {
     const dragOverEvent = createEvent.dragOver(wrapper)
     Object.defineProperty(dragOverEvent, 'dataTransfer', { value: externalTransfer })
     fireEvent(wrapper, dragOverEvent)
+
+    fireEvent.drop(wrapper, { dataTransfer: externalTransfer })
+    fireEvent.dragLeave(wrapper, { dataTransfer: externalTransfer })
+    expect(stashContextState.current.addItem).toHaveBeenCalledWith({
+      type: 'note',
+      content: 'external item drop',
+      metadata: {},
+    })
   })
 
   it('handles internal drag reorder and remove-on-drop-outside flow', () => {
@@ -339,6 +392,28 @@ describe('StashSidebar', () => {
     expect(probeContextState.current.setExternalDragHover).toHaveBeenCalledWith(false)
   })
 
+  it('covers drag/drop guard paths when reorder targets are invalid', () => {
+    const allItems = [createItem('s1')]
+    const displayedItems = [createItem('s1'), createItem('s2')]
+    setContext({ items: allItems, displayedItems })
+
+    render(<StashSidebar />)
+    const firstWrapper = screen.getByTestId('mock-stash-item-s1').closest('[draggable="true"]') as HTMLElement
+    const secondWrapper = screen.getByTestId('mock-stash-item-s2').closest('[draggable="true"]') as HTMLElement
+
+    const internalTransfer = {
+      types: ['text/x-stash-reorder'],
+      setData: vi.fn(),
+      getData: vi.fn(() => ''),
+    }
+
+    fireEvent.dragStart(firstWrapper, { dataTransfer: internalTransfer })
+    fireEvent.dragOver(firstWrapper, { dataTransfer: internalTransfer })
+    fireEvent.drop(secondWrapper, { dataTransfer: internalTransfer })
+
+    expect(stashContextState.current.reorderItem).not.toHaveBeenCalled()
+  })
+
   it('does not remove dragged item when ending drag over probe sidebar', () => {
     setContext({
       items: [createItem('s1')],
@@ -371,6 +446,73 @@ describe('StashSidebar', () => {
     fireEvent.dragEnd(firstWrapper, { clientX: 900, clientY: 100 })
 
     expect(stashContextState.current.removeItem).not.toHaveBeenCalled()
+  })
+
+  it('covers probe-hit testing short-circuit branches and drag-end no-op without active drag item', () => {
+    setContext({
+      items: [createItem('s1')],
+      displayedItems: [createItem('s1')],
+    })
+    const { container } = render(<StashSidebar />)
+    const aside = container.querySelector('aside') as HTMLElement
+    aside.getBoundingClientRect = vi.fn(() => ({
+      left: 100,
+      top: 100,
+      right: 300,
+      bottom: 400,
+      width: 200,
+      height: 300,
+      x: 100,
+      y: 100,
+      toJSON: () => ({}),
+    } as DOMRect))
+
+    const probeSidebar = document.createElement('div')
+    probeSidebar.setAttribute('data-probe-sidebar', 'true')
+    probeSidebar.getBoundingClientRect = vi.fn(() => ({
+      left: 800,
+      top: 100,
+      right: 1000,
+      bottom: 300,
+      width: 200,
+      height: 200,
+      x: 800,
+      y: 100,
+      toJSON: () => ({}),
+    } as DOMRect))
+    document.body.appendChild(probeSidebar)
+
+    const firstWrapper = screen.getByTestId('mock-stash-item-s1').closest('[draggable="true"]') as HTMLElement
+    const internalTransfer = {
+      types: ['text/x-stash-reorder'],
+      setData: vi.fn(),
+      getData: vi.fn(() => ''),
+    }
+
+    fireEvent.dragStart(firstWrapper, { dataTransfer: internalTransfer })
+    const endXRight = createEvent.dragEnd(firstWrapper)
+    Object.defineProperty(endXRight, 'clientX', { value: 1200 })
+    Object.defineProperty(endXRight, 'clientY', { value: 200 })
+    fireEvent(firstWrapper, endXRight) // x > probe.right
+
+    fireEvent.dragStart(firstWrapper, { dataTransfer: internalTransfer })
+    const endYTop = createEvent.dragEnd(firstWrapper)
+    Object.defineProperty(endYTop, 'clientX', { value: 900 })
+    Object.defineProperty(endYTop, 'clientY', { value: 50 })
+    fireEvent(firstWrapper, endYTop) // y < probe.top
+
+    fireEvent.dragStart(firstWrapper, { dataTransfer: internalTransfer })
+    const endYBottom = createEvent.dragEnd(firstWrapper)
+    Object.defineProperty(endYBottom, 'clientX', { value: 900 })
+    Object.defineProperty(endYBottom, 'clientY', { value: 350 })
+    fireEvent(firstWrapper, endYBottom) // y > probe.bottom
+
+    const endNoDrag = createEvent.dragEnd(firstWrapper)
+    Object.defineProperty(endNoDrag, 'clientX', { value: 0 })
+    Object.defineProperty(endNoDrag, 'clientY', { value: 0 })
+    fireEvent(firstWrapper, endNoDrag) // no active dragged item
+
+    expect(stashContextState.current.removeItem).toHaveBeenCalledTimes(3)
   })
 
   it('shows overlay when external hover state is already true', () => {

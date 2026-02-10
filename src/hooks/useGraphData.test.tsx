@@ -480,4 +480,183 @@ describe('useGraphData Hook', () => {
       expect(result.current.graphData.edges).toBe(result.current.edges)
     })
   })
+
+  describe('Branch Fallbacks', () => {
+    it('uses fallback grouping and concept color defaults when root/category metadata are missing', () => {
+      let tree = createEmptyTree()
+      const rootNode = createQuestionNode('Fallback root')
+      tree = addNodeToTree(tree, rootNode)
+      tree.rootId = null
+
+      const nodeConcepts: Record<string, ExtractedConcept[]> = {
+        [rootNode.id]: [
+          {
+            id: 'c_fallback',
+            text: 'Fallback',
+            normalizedName: 'fallback',
+            category: 'unknown' as unknown as ExtractedConcept['category'],
+            startIndex: 0,
+            endIndex: 8,
+          },
+        ],
+      }
+
+      const { result } = renderHook(() =>
+        useGraphData({
+          tree,
+          nodeConcepts,
+          stashItems: [],
+          probes: [],
+        })
+      )
+
+      const questionNode = result.current.nodes.find((node) => node.type === 'question')
+      const conceptNode = result.current.nodes.find((node) => node.type === 'concept')
+      expect(questionNode?.group).toBe(rootNode.id)
+      expect(conceptNode?.group).toBe(rootNode.id)
+      expect(conceptNode?.color).toBe('#aa66cc')
+    })
+
+    it('skips stash node creation entirely when stash filter is disabled', () => {
+      const stashItems: StashItem[] = [
+        {
+          id: 's_skip',
+          type: 'note',
+          content: 'skip me',
+          metadata: {},
+          createdAt: Date.now(),
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useGraphData({
+          tree: createEmptyTree(),
+          nodeConcepts: {},
+          stashItems,
+          probes: [],
+          filters: {
+            showQuestions: true,
+            showConcepts: true,
+            showStashItems: false,
+            showProbes: true,
+          },
+        })
+      )
+
+      expect(result.current.counts.stash).toBe(0)
+      expect(result.current.nodes.some((node) => node.id === 's_skip')).toBe(false)
+    })
+
+    it('does not create stash-source edges when highlight concepts cannot be resolved', () => {
+      const stashItems: StashItem[] = [
+        {
+          id: 's_orphan_highlight',
+          type: 'highlight',
+          content: 'orphan',
+          metadata: { normalizedName: 'does-not-exist' },
+          createdAt: Date.now(),
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useGraphData({
+          tree: createEmptyTree(),
+          nodeConcepts: {},
+          stashItems,
+          probes: [],
+        })
+      )
+
+      expect(result.current.edges.some((edge) => edge.type === 'stash-source')).toBe(false)
+    })
+
+    it('covers probe filter/color and stash-edge guard fallbacks', () => {
+      const stashItems: StashItem[] = [
+        {
+          id: 's_real',
+          type: 'note',
+          content: 'real stash',
+          metadata: {},
+          createdAt: Date.now(),
+        },
+      ]
+      const probes: Probe[] = [
+        {
+          id: 'p_unknown',
+          name: 'Unknown color probe',
+          color: 'neon' as Probe['color'],
+          messages: [],
+          selectedStashItemIds: ['s_missing'],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ]
+
+      const hiddenProbe = renderHook(() =>
+        useGraphData({
+          tree: createEmptyTree(),
+          nodeConcepts: {},
+          stashItems,
+          probes,
+          filters: {
+            showQuestions: true,
+            showConcepts: true,
+            showStashItems: true,
+            showProbes: false,
+          },
+        })
+      )
+      expect(hiddenProbe.result.current.counts.probe).toBe(0)
+
+      const visibleProbe = renderHook(() =>
+        useGraphData({
+          tree: createEmptyTree(),
+          nodeConcepts: {},
+          stashItems,
+          probes,
+          filters: {
+            showQuestions: true,
+            showConcepts: true,
+            showStashItems: false,
+            showProbes: true,
+          },
+        })
+      )
+
+      const probeNode = visibleProbe.result.current.nodes.find((node) => node.type === 'probe')
+      expect(probeNode?.color).toBe('#dd8844')
+      expect(visibleProbe.result.current.edges.some((edge) => edge.type === 'probe-stash')).toBe(false)
+    })
+
+    it('skips probe-stash edges when selected stash IDs do not exist while stash links are enabled', () => {
+      const probes: Probe[] = [
+        {
+          id: 'p_missing_stash',
+          name: 'Probe with missing stash links',
+          color: 'blue',
+          messages: [],
+          selectedStashItemIds: ['stash-does-not-exist'],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useGraphData({
+          tree: createEmptyTree(),
+          nodeConcepts: {},
+          stashItems: [],
+          probes,
+          filters: {
+            showQuestions: true,
+            showConcepts: true,
+            showStashItems: true,
+            showProbes: true,
+          },
+        })
+      )
+
+      expect(result.current.edges.some((edge) => edge.type === 'probe-stash')).toBe(false)
+    })
+  })
 })

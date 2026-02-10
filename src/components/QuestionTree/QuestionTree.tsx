@@ -196,9 +196,7 @@ function TreeBranch({
     
     const childrenEl = childrenRef.current
     const branches = childrenEl.querySelectorAll(':scope > .' + styles.branch)
-    
-    if (branches.length === 0) return
-    
+
     const lastBranch = branches[branches.length - 1] as HTMLElement
     // The horizontal connector is at var(--space-4) + 2px = 18px from top of branch
     const horizontalConnectorOffset = 18

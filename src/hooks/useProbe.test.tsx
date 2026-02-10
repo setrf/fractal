@@ -52,6 +52,15 @@ describe('useProbe', () => {
     expect(result.current.activeProbe?.name).toBe('First')
   })
 
+  it('ignores non-array payloads from localStorage', () => {
+    localStorage.setItem(PROBE_STORAGE_KEY, JSON.stringify({ invalid: true }))
+
+    const { result } = renderHook(() => useProbe())
+
+    expect(result.current.probes).toEqual([])
+    expect(result.current.activeProbeId).toBeNull()
+  })
+
   it('creates probes with unique colors and updates active probe', () => {
     const { result } = renderHook(() => useProbe())
 
@@ -247,6 +256,125 @@ describe('useProbe', () => {
     })
 
     expect(result.current.synthesizePrompt(probeId, [], 'Direction only')).toBe('Direction only')
+    expect(result.current.synthesizePrompt(probeId, [], undefined)).toBe('')
+  })
+
+  it('covers fallback prompt composition paths and defaults', () => {
+    const { result } = renderHook(() => useProbe())
+
+    expect(result.current.synthesizePrompt('missing', [], undefined)).toBe('')
+
+    let probeId = ''
+    act(() => {
+      probeId = result.current.createProbe()!.id
+      result.current.selectStashItems(probeId, ['h1', 'e1', 'n1', 'c1'])
+    })
+
+    const stashItems: StashItem[] = [
+      {
+        id: 'h1',
+        type: 'highlight',
+        content: 'Signal',
+        metadata: {},
+        createdAt: Date.now(),
+      },
+      {
+        id: 'e1',
+        type: 'explanation',
+        content: 'Fallback explanation text',
+        metadata: {},
+        createdAt: Date.now(),
+      },
+      {
+        id: 'n1',
+        type: 'note',
+        content: 'Untitled note body',
+        metadata: {},
+        createdAt: Date.now(),
+      },
+      {
+        id: 'c1',
+        type: 'chat-message',
+        content: 'short user message',
+        metadata: { role: 'user' },
+        createdAt: Date.now(),
+      },
+    ]
+
+    const prompt = result.current.synthesizePrompt(probeId, stashItems)
+    expect(prompt).toContain('## Context from your exploration:')
+    expect(prompt).toContain('- **Signal**')
+    expect(prompt).toContain('Fallback explanation text')
+    expect(prompt).toContain('- Untitled note body')
+    expect(prompt).toContain('- [You]: "short user message"')
+    expect(prompt).not.toContain('...')
+    expect(prompt).toContain('[Enter your question or direction here]')
+  })
+
+  it('omits optional prompt sections when selected stash items only include questions', () => {
+    const { result } = renderHook(() => useProbe())
+    let probeId = ''
+
+    act(() => {
+      probeId = result.current.createProbe()!.id
+      result.current.selectStashItems(probeId, ['q-only'])
+    })
+
+    const prompt = result.current.synthesizePrompt(
+      probeId,
+      [
+        {
+          id: 'q-only',
+          type: 'question',
+          content: 'What pattern links these notes?',
+          metadata: {},
+          createdAt: Date.now(),
+        },
+      ],
+      undefined
+    )
+
+    expect(prompt).toContain('### Questions Explored')
+    expect(prompt).not.toContain('### Key Concepts')
+    expect(prompt).not.toContain('### Explanations')
+    expect(prompt).not.toContain('### Your Notes')
+    expect(prompt).not.toContain('### Relevant Chat Excerpts')
+    expect(prompt).toContain('[Enter your question or direction here]')
+  })
+
+  it('updates only target probes and preserves non-target probe state across operations', () => {
+    const { result } = renderHook(() => useProbe())
+    let targetId = ''
+    let otherId = ''
+
+    act(() => {
+      targetId = result.current.createProbe()!.id
+      otherId = result.current.createProbe()!.id
+    })
+
+    const otherBefore = result.current.probes.find((probe) => probe.id === otherId)
+    expect(otherBefore).toBeTruthy()
+
+    act(() => {
+      result.current.addMessage(targetId, { role: 'user', content: 'hello target' })
+      result.current.updateLastMessage(otherId, 'no-op for empty thread')
+      result.current.selectStashItems(targetId, ['s_1'])
+      result.current.addStashItemToProbe(targetId, 's_2')
+      result.current.removeStashItemFromProbe(targetId, 's_2')
+      result.current.toggleStashItemForProbe(targetId, 's_3')
+      result.current.clearMessages(targetId)
+      result.current.deleteProbe('missing-id')
+    })
+
+    const target = result.current.probes.find((probe) => probe.id === targetId)
+    const other = result.current.probes.find((probe) => probe.id === otherId)
+    expect(target).toBeTruthy()
+    expect(other).toBeTruthy()
+    expect(target?.messages).toEqual([])
+    expect(target?.selectedStashItemIds).toEqual(['s_1', 's_3'])
+    expect(other?.messages).toEqual(otherBefore?.messages ?? [])
+    expect(other?.selectedStashItemIds).toEqual(otherBefore?.selectedStashItemIds ?? [])
+    expect(result.current.isStashItemSelectedForProbe('does-not-exist', 's_1')).toBe(false)
   })
 
   it('persists probe updates after debounce interval', () => {

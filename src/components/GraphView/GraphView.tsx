@@ -66,7 +66,7 @@ const EDGE_COLORS: Record<string, string> = {
  */
 const colorCache = new Map<string, string>()
 
-function parseOklchToRgb(color: string): string | null {
+export function parseOklchToRgb(color: string): string | null {
   const match = color.trim().match(/^oklch\((.+)\)$/i)
   if (!match) return null
 
@@ -83,8 +83,8 @@ function parseOklchToRgb(color: string): string | null {
   }
 
   const L = parseChannel(parts[0], true)
-  const C = parseFloat(parts[1])
-  const H = parseFloat(parts[2])
+  const C = parseChannel(parts[1])
+  const H = parseChannel(parts[2])
   if (Number.isNaN(L) || Number.isNaN(C) || Number.isNaN(H)) return null
 
   const hr = (H / 180) * Math.PI
@@ -120,7 +120,7 @@ function parseOklchToRgb(color: string): string | null {
   return `rgb(${r255}, ${g255}, ${b255})`
 }
 
-function resolveNodeColor(node: GraphNode): string {
+export function resolveNodeColor(node: GraphNode): string {
   const fallback = getHexFromNodeType(node.type)
   const color = (node.color || fallback).trim()
   const needsResolve = color.includes('oklch') || color.startsWith('var(')
@@ -155,7 +155,7 @@ function resolveNodeColor(node: GraphNode): string {
 /**
  * Creates a "Swiss Design" tag node object.
  */
-function createNodeObject(node: GraphNode): THREE.Object3D {
+export function createNodeObject(node: GraphNode): THREE.Object3D {
   const color = resolveNodeColor(node)
 
   // Wrap and truncate long labels for the 3D tag
@@ -216,7 +216,7 @@ function createNodeObject(node: GraphNode): THREE.Object3D {
 /**
  * Helper to wrap text into multiple lines.
  */
-function wrapLabel(text: string, maxLineLength: number): string {
+export function wrapLabel(text: string, maxLineLength: number): string {
   if (!text) return ''
   const words = text.split(' ')
   const lines: string[] = []
@@ -303,12 +303,13 @@ export const GraphView = forwardRef<GraphViewHandle, GraphViewProps>(function Gr
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: width || containerRef.current.clientWidth,
-          height: height || containerRef.current.clientHeight,
-        })
-      }
+      const container = containerRef.current as HTMLDivElement
+      const containerWidth = container.clientWidth
+      const containerHeight = container.clientHeight
+      setDimensions({
+        width: width || containerWidth,
+        height: height || containerHeight,
+      })
     }
     updateDimensions()
     window.addEventListener('resize', updateDimensions)

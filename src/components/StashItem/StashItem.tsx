@@ -134,9 +134,7 @@ export function StashItem({
   // Handle checkbox click for probe selection
   const handleCheckboxClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    if (activeProbeId) {
-      toggleStashItemForProbe(activeProbeId, item.id)
-    }
+    toggleStashItemForProbe(activeProbeId as string, item.id)
   }, [activeProbeId, item.id, toggleStashItemForProbe])
 
   const handleDelete = useCallback(

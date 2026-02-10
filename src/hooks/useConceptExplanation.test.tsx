@@ -214,6 +214,34 @@ describe('useConceptExplanation cache scoping', () => {
     expect(result.current.explanation).toBeNull()
   })
 
+  it('uses fallback error text when explanation fetch rejects with a non-Error value', async () => {
+    mockedExplainConcept.mockRejectedValue('non-error failure')
+    const { result } = renderHook(() => useConceptExplanation())
+
+    await act(async () => {
+      const response = await result.current.fetchExplanation('c9', 'failure', 'bad context')
+      expect(response).toBeNull()
+    })
+
+    expect(result.current.error).toBe('Failed to fetch explanation')
+    expect(result.current.getLoadingState('c9')).toEqual({
+      isLoading: false,
+      error: 'Failed to fetch explanation',
+    })
+  })
+
+  it('uses default model scope when model is omitted', async () => {
+    mockedExplainConcept.mockResolvedValue(makeExplanation('default model response'))
+    const { result } = renderHook(() => useConceptExplanation())
+
+    await act(async () => {
+      await result.current.fetchExplanation('c1', 'dreams', 'default model context')
+    })
+
+    expect(hasExplanationCached('dreams', 'default model context')).toBe(true)
+    expect(result.current.getExplanation('c1')?.summary).toBe('default model response')
+  })
+
   it('hydrates from localStorage cache for a new concept id in the same scope', async () => {
     mockedExplainConcept.mockResolvedValue(makeExplanation('cached from api'))
     const { result } = renderHook(() => useConceptExplanation())
@@ -263,8 +291,9 @@ describe('useConceptExplanation cache scoping', () => {
 
   it('handles malformed cache payloads and storage write warnings', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const malformedKey = cacheKeyFor('dreams', 'bad context', 'model-a')
     const getItemSpy = vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
-      if (key === 'fractal_explanation_cache_dreams_bad_context_model-a') {
+      if (key === malformedKey) {
         return '{bad-json'
       }
       return null
@@ -345,5 +374,28 @@ describe('useConceptExplanation cache scoping', () => {
 
     expect(warnSpy).toHaveBeenCalledWith('[useConceptExplanation] Failed to clear cache')
     warnSpy.mockRestore()
+  })
+
+  it('clearAllCached only removes explanation-prefixed keys and skips null/other keys', () => {
+    const removeItemSpy = vi.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {})
+    const lengthSpy = vi.spyOn(window.localStorage, 'length', 'get').mockReturnValue(3)
+    const keySpy = vi.spyOn(window.localStorage, 'key').mockImplementation((index: number) => {
+      if (index === 0) return 'not_explanation_key'
+      if (index === 1) return 'fractal_concept_explanation_hit'
+      return null
+    })
+
+    const { result } = renderHook(() => useConceptExplanation())
+
+    act(() => {
+      result.current.clearAllCached()
+    })
+
+    expect(removeItemSpy).toHaveBeenCalledTimes(1)
+    expect(removeItemSpy).toHaveBeenCalledWith('fractal_concept_explanation_hit')
+
+    removeItemSpy.mockRestore()
+    lengthSpy.mockRestore()
+    keySpy.mockRestore()
   })
 })

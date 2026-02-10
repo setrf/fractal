@@ -186,6 +186,21 @@ describe('useAIQuestions Hook', () => {
       expect(questions).toEqual([])
     })
 
+    it('should use fallback error text when generation rejects with a non-Error value', async () => {
+      vi.mocked(api.generateQuestions).mockRejectedValueOnce('non-error failure')
+
+      const { result } = renderHook(() => useAIQuestions())
+
+      await act(async () => {
+        const response = await result.current.generate('non-error?')
+        expect(response.questions).toEqual([])
+        expect(response.meta).toBeNull()
+      })
+
+      expect(result.current.error).toBe('Unknown error')
+      expect(result.current.isAvailable).toBe(false)
+    })
+
     it('should set isAvailable to false on failure', async () => {
       console.log('[TEST] Testing isAvailable after failure')
       
@@ -260,6 +275,40 @@ describe('useAIQuestions Hook', () => {
       expect(result.current.error).toBeNull()
       expect(result.current.isAvailable).toBe(true)
     })
+
+    it('should ignore stale failures from older requests', async () => {
+      const firstRequest = createDeferred<{ questions: string[]; meta: null }>()
+      const secondRequest = createDeferred<{ questions: string[]; meta: null }>()
+      vi.mocked(api.generateQuestions)
+        .mockImplementationOnce(() => firstRequest.promise)
+        .mockImplementationOnce(() => secondRequest.promise)
+
+      const { result } = renderHook(() => useAIQuestions())
+
+      let firstPromise: Promise<unknown> = Promise.resolve()
+      let secondPromise: Promise<unknown> = Promise.resolve()
+
+      act(() => {
+        firstPromise = result.current.generate('Older request')
+      })
+      act(() => {
+        secondPromise = result.current.generate('Newer request')
+      })
+
+      await act(async () => {
+        secondRequest.resolve({ questions: ['new'], meta: null })
+        await secondPromise
+      })
+
+      await act(async () => {
+        firstRequest.reject(new Error('stale failure'))
+        await firstPromise
+      })
+
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.error).toBeNull()
+      expect(result.current.isAvailable).toBe(true)
+    })
   })
 
   describe('checkAvailability()', () => {
@@ -293,6 +342,38 @@ describe('useAIQuestions Hook', () => {
       
       console.log('[TEST] isAvailable when API down:', result.current.isAvailable)
       expect(result.current.isAvailable).toBe(false)
+    })
+
+    it('should ignore stale availability checks from older requests', async () => {
+      const firstRequest = createDeferred<boolean>()
+      const secondRequest = createDeferred<boolean>()
+      vi.mocked(api.isApiAvailable)
+        .mockImplementationOnce(() => firstRequest.promise)
+        .mockImplementationOnce(() => secondRequest.promise)
+
+      const { result } = renderHook(() => useAIQuestions())
+
+      let firstCheck: Promise<boolean> = Promise.resolve(false)
+      let secondCheck: Promise<boolean> = Promise.resolve(false)
+
+      act(() => {
+        firstCheck = result.current.checkAvailability()
+      })
+      act(() => {
+        secondCheck = result.current.checkAvailability()
+      })
+
+      await act(async () => {
+        secondRequest.resolve(true)
+        await secondCheck
+      })
+
+      await act(async () => {
+        firstRequest.resolve(false)
+        await firstCheck
+      })
+
+      expect(result.current.isAvailable).toBe(true)
     })
   })
 })

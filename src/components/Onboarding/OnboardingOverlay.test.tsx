@@ -125,6 +125,26 @@ describe('OnboardingOverlay', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('ignores non-Escape keyboard events', () => {
+    const onClose = vi.fn()
+    render(
+      <OnboardingOverlay
+        isOpen={true}
+        step={{ id: 'keyboard', title: 'Keyboard', body: 'Body' }}
+        stepIndex={0}
+        totalSteps={1}
+        onNext={vi.fn()}
+        onPrev={vi.fn()}
+        onSkip={vi.fn()}
+        onRestart={vi.fn()}
+        onClose={onClose}
+      />
+    )
+
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('shows finish label on the last step', () => {
     const step: OnboardingStep = {
       id: 'last',
@@ -208,6 +228,10 @@ describe('OnboardingOverlay', () => {
     expect(card).toHaveAttribute('data-placement', 'bottom')
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
     expect(document.querySelector('div[style*="width"]')).toBeInTheDocument()
+
+    fireEvent.scroll(window)
+    fireEvent.resize(window)
+    expect(scrollIntoView).toHaveBeenCalled()
   })
 
   it('clears target rect when selector is missing or has zero-size rect', () => {

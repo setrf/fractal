@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useViewMode } from './useViewMode'
+import { getStoredViewMode, resolveViewModeStorage, useViewMode } from './useViewMode'
 import { GRAPH_VIEW_STORAGE_KEY } from '../types/graph'
 
 describe('useViewMode', () => {
@@ -32,6 +32,24 @@ describe('useViewMode', () => {
     const { result } = renderHook(() => useViewMode())
 
     expect(result.current.viewMode).toBe('traditional')
+  })
+
+  it('covers no-window storage fallback helper path', () => {
+    const originalWindow = window
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      expect(resolveViewModeStorage()).toBeNull()
+      expect(getStoredViewMode()).toBe('traditional')
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow,
+      })
+    }
   })
 
   it('restores a valid persisted graph mode', () => {

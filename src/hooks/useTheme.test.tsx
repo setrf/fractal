@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useTheme } from './useTheme'
+import { getStoredTheme, getSystemTheme, resolveThemeWindow, useTheme } from './useTheme'
 
 function createMediaQueryList(matches: boolean): MediaQueryList {
   return {
@@ -45,6 +45,30 @@ describe('useTheme', () => {
 
     expect(result.current.theme).toBe('system')
     expect(result.current.effectiveTheme).toBe('light')
+  })
+
+  it('resolves dark system theme when media query matches', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue(createMediaQueryList(true))
+    expect(getSystemTheme()).toBe('dark')
+  })
+
+  it('covers no-window guards for theme helper functions', () => {
+    const originalWindow = window
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      expect(resolveThemeWindow()).toBeNull()
+      expect(getSystemTheme()).toBe('light')
+      expect(getStoredTheme()).toBe('system')
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow,
+      })
+    }
   })
 
   it('restores a valid persisted theme from localStorage', () => {
@@ -102,6 +126,7 @@ describe('useTheme', () => {
   })
 
   it('toggles from system/light to dark based on effective theme', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue(createMediaQueryList(false))
     const { result } = renderHook(() => useTheme())
 
     act(() => {
@@ -135,6 +160,32 @@ describe('useTheme', () => {
 
     unmount()
     expect(mediaQuery.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+  })
+
+  it('reapplies system theme when the media query change callback fires', () => {
+    const mediaQuery = createMediaQueryList(false)
+    let changeHandler: (() => void) | null = null
+
+    vi.spyOn(mediaQuery, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'change') {
+        changeHandler = handler as () => void
+      }
+    })
+
+    vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery)
+    const { result, rerender } = renderHook(() => useTheme())
+
+    expect(document.documentElement.getAttribute('data-theme')).toBeNull()
+    expect(result.current.effectiveTheme).toBe('light')
+
+    mediaQuery.matches = true
+    act(() => {
+      changeHandler?.()
+      rerender()
+    })
+
+    expect(document.documentElement.getAttribute('data-theme')).toBeNull()
+    expect(result.current.effectiveTheme).toBe('dark')
   })
 
   it('does not subscribe to system changes when an explicit theme is selected', () => {

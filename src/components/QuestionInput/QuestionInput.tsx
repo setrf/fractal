@@ -77,10 +77,9 @@ export function QuestionInput({
    * First expands width up to max-width, then expands height.
    */
   const autoResize = useCallback(() => {
-    const textarea = textareaRef.current
-    const wrapper = wrapperRef.current
-    const sizer = sizerRef.current
-    if (!textarea || !wrapper || !sizer) return
+    const textarea = textareaRef.current as HTMLTextAreaElement
+    const wrapper = wrapperRef.current as HTMLDivElement
+    const sizer = sizerRef.current as HTMLSpanElement
 
     // Measure text width using the hidden sizer element
     const textToMeasure = value || placeholder

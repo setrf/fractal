@@ -128,6 +128,23 @@ describe('API Client', () => {
       }
     })
 
+    it('should allow requests when timeout is explicitly disabled', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            questions: ['No timeout'],
+            model: 'test-model',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          },
+        }),
+      })
+
+      const result = await generateQuestions('No timeout?', undefined, { timeoutMs: 0 })
+      expect(result.questions).toEqual(['No timeout'])
+    })
+
     it('should support caller-driven abort signals', async () => {
       const controller = new AbortController()
       controller.abort()
@@ -175,6 +192,40 @@ describe('API Client', () => {
       await expect(pending).rejects.toThrow('Request cancelled')
       expect(addListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function), { once: true })
       expect(removeListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    })
+
+    it('treats DOM TimeoutError rejections as cancelled requests', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('Timed out', 'TimeoutError'))
+
+      await expect(
+        generateQuestions('timeout-error path', undefined, { timeoutMs: 0 })
+      ).rejects.toThrow('Request cancelled')
+    })
+
+    it('uses error field from API error payloads when message is absent', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({
+          error: 'Generated from error field',
+        }),
+      })
+
+      await expect(generateQuestions('error field')).rejects.toThrow('Generated from error field')
+    })
+
+    it('falls back to default error text when API error payload has no message fields', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({}),
+      })
+
+      await expect(generateQuestions('missing message fields')).rejects.toThrow('Failed to generate questions')
+    })
+
+    it('wraps non-Error fetch failures with fallback messages', async () => {
+      mockFetch.mockRejectedValueOnce('raw failure')
+
+      await expect(generateQuestions('non-error fetch failure')).rejects.toThrow('Failed to generate questions')
     })
   })
 

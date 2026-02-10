@@ -551,8 +551,6 @@ export function ConceptPopup({
    * Called when user clicks the "✦" button.
    */
   const handleExtractConcepts = useCallback(async () => {
-    if (!explanation || isExtracting) return
-    
     setIsExtracting(true)
     setExtractionError(null)
     
@@ -582,7 +580,7 @@ export function ConceptPopup({
     } finally {
       setIsExtracting(false)
     }
-  }, [explanation, isExtracting, combinedText, summaryLength])
+  }, [combinedText, summaryLength])
 
   /**
    * Handles clicking on a concept within the popup content.
@@ -600,7 +598,7 @@ export function ConceptPopup({
    */
   const handleContentMouseUp = useCallback(() => {
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !contentRef.current) {
+    if (!selection || selection.isCollapsed || !contentRef.current || !explanation) {
       return
     }
 
@@ -618,14 +616,14 @@ export function ConceptPopup({
 
     const resolveSection = (node: Node): { element: HTMLElement; type: 'summary' | 'context' } | null => {
       const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
-      if (!element) return null
+      const sectionRoot = element ?? contentRef.current!
 
-      const summaryEl = element.closest(`.${styles.summary}`)
+      const summaryEl = sectionRoot.closest(`.${styles.summary}`)
       if (summaryEl && contentRef.current?.contains(summaryEl)) {
         return { element: summaryEl as HTMLElement, type: 'summary' }
       }
 
-      const contextEl = element.closest(`.${styles.context}`)
+      const contextEl = sectionRoot.closest(`.${styles.context}`)
       if (contextEl && contentRef.current?.contains(contextEl)) {
         return { element: contextEl as HTMLElement, type: 'context' }
       }
@@ -672,10 +670,10 @@ export function ConceptPopup({
       let current = walker.nextNode()
       while (current) {
         if (current === node) {
-          const length = current.textContent?.length || 0
+          const length = current.textContent!.length
           return total + Math.min(nodeOffset, length)
         }
-        total += current.textContent?.length || 0
+        total += current.textContent!.length
         current = walker.nextNode()
       }
       return null
@@ -704,9 +702,9 @@ export function ConceptPopup({
     }
 
     const sectionText = startSection.type === 'summary'
-      ? explanation?.summary || ''
-      : explanation?.context || ''
-    const selectedSlice = sectionText.slice(localStartIndex, localStartIndex + (endIndex - startIndex))
+      ? explanation.summary
+      : explanation.context
+    const highlightText = sectionText.slice(localStartIndex, localStartIndex + (endIndex - startIndex))
     
     // Check for overlap with existing concepts
     const allConcepts = [...popupConcepts, ...userHighlights]
@@ -720,8 +718,8 @@ export function ConceptPopup({
     // Create new user highlight
     const newHighlight: ExtractedConcept = {
       id: `user_popup_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      text: selectedSlice || selectedText,
-      normalizedName: (selectedSlice || selectedText).toLowerCase(),
+      text: highlightText,
+      normalizedName: highlightText.toLowerCase(),
       category: 'abstract' as ConceptCategory,
       startIndex,
       endIndex,
@@ -743,15 +741,13 @@ export function ConceptPopup({
    * Stashes the current explanation to the Stash and closes the popup.
    */
   const handleStashExplanation = useCallback(() => {
-    if (!concept || !explanation) return
-    
     addItem({
       type: 'explanation',
       content: concept.normalizedName,
       metadata: {
-        summary: explanation.summary,
-        context: explanation.context,
-        relatedConcepts: explanation.relatedConcepts,
+        summary: explanation!.summary,
+        context: explanation!.context,
+        relatedConcepts: explanation!.relatedConcepts,
         conceptCategory: concept.category,
         normalizedName: concept.normalizedName,
       },

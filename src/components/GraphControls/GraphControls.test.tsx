@@ -157,4 +157,26 @@ describe('GraphControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Expand controls' }))
     expect(screen.getByRole('button', { name: 'Collapse controls' })).toBeInTheDocument()
   })
+
+  it('uses muted filter color styles when a node type is hidden', () => {
+    mockUseGraphContext.mockReturnValue(
+      createContextValue(spies)
+    )
+    mockUseGraphContext.mockReturnValueOnce({
+      ...createContextValue(spies),
+      filters: {
+        showQuestions: false,
+        showConcepts: true,
+        showStashItems: true,
+        showProbes: true,
+      },
+    })
+
+    render(<GraphControls />)
+
+    const firstCheckbox = screen.getAllByRole('checkbox')[0] as HTMLInputElement
+    expect(firstCheckbox.checked).toBe(false)
+    const shape = firstCheckbox.closest('label')?.querySelector('span') as HTMLElement
+    expect(shape.style.color).toBe('var(--text-tertiary)')
+  })
 })

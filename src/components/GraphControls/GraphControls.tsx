@@ -78,18 +78,12 @@ export function GraphControls({
 
   // Get filter state key for a type
   const getFilterKey = (type: GraphNodeType): boolean => {
-    switch (type) {
-      case 'question':
-        return filters.showQuestions
-      case 'concept':
-        return filters.showConcepts
-      case 'stash':
-        return filters.showStashItems
-      case 'probe':
-        return filters.showProbes
-      default:
-        return true
-    }
+    return {
+      question: filters.showQuestions,
+      concept: filters.showConcepts,
+      stash: filters.showStashItems,
+      probe: filters.showProbes,
+    }[type]
   }
 
   return (

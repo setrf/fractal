@@ -100,9 +100,7 @@ export function OnboardingOverlay({
 
   useLayoutEffect(() => {
     if (!isOpen || !step) return
-    if (!cardRef.current) return
-
-    const cardRect = cardRef.current.getBoundingClientRect()
+    const cardRect = cardRef.current!.getBoundingClientRect()
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const isMobile = viewportWidth <= 768

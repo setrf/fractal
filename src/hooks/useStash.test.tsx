@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useStash } from './useStash'
-import { STASH_MAX_ITEMS, type StashItem, type StashItemInput } from '../types/stash'
+import { STASH_MAX_ITEMS, STASH_STORAGE_KEY, type StashItem, type StashItemInput } from '../types/stash'
 
 // localStorage store that persists across mock calls
 let mockStore: Record<string, string> = {}
@@ -51,6 +51,7 @@ describe('useStash', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllEnvs()
   })
 
   describe('initialization', () => {
@@ -77,6 +78,15 @@ describe('useStash', () => {
       const { result } = renderHook(() => useStash())
 
       expect(result.current.items).toEqual([])
+    })
+
+    it('should return empty when stored JSON is not an array', () => {
+      localStorageMock.getItem.mockReturnValueOnce(JSON.stringify({ invalid: true }))
+
+      const { result } = renderHook(() => useStash())
+
+      expect(result.current.items).toEqual([])
+      expect(result.current.count).toBe(0)
     })
   })
 
@@ -239,6 +249,34 @@ describe('useStash', () => {
 
       expect(result.current.items[0].content).toBe('updated content')
       expect(result.current.items[0].metadata.title).toBe('Updated Title')
+    })
+
+    it('should keep non-target items unchanged when updating one item', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        result.current.addItem({
+          type: 'note',
+          content: 'first note',
+          metadata: { title: 'First' },
+        })
+        result.current.addItem({
+          type: 'note',
+          content: 'second note',
+          metadata: { title: 'Second' },
+        })
+      })
+
+      const [newer, older] = result.current.items
+      act(() => {
+        result.current.updateItem(newer.id, {
+          content: 'updated second note',
+          metadata: { title: 'Second Updated' },
+        })
+      })
+
+      expect(result.current.items.find((item) => item.id === newer.id)?.content).toBe('updated second note')
+      expect(result.current.items.find((item) => item.id === older.id)?.content).toBe('first note')
     })
   })
 
@@ -427,6 +465,30 @@ describe('useStash', () => {
       expect(success).toBe(false)
     })
 
+    it('should reject non-array JSON import payloads', () => {
+      const { result } = renderHook(() => useStash())
+
+      let success = true
+      act(() => {
+        success = result.current.importFromJSON(JSON.stringify({ invalid: true }))
+      })
+
+      expect(success).toBe(false)
+      expect(result.current.items).toEqual([])
+    })
+
+    it('should reject imports that have no valid stash items', () => {
+      const { result } = renderHook(() => useStash())
+
+      let success = true
+      act(() => {
+        success = result.current.importFromJSON(JSON.stringify([{ invalid: true }]))
+      })
+
+      expect(success).toBe(false)
+      expect(result.current.items).toEqual([])
+    })
+
     it('should skip duplicate items on import', () => {
       const existingItem: StashItem = {
         id: 's_existing',
@@ -447,6 +509,43 @@ describe('useStash', () => {
 
       expect(result2.current.items.length).toBe(1)
     })
+
+    it('should merge imports with existing items while filtering duplicate ids', () => {
+      const { result } = renderHook(() => useStash())
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'existing note', metadata: {} })
+      })
+
+      const existingId = result.current.items[0].id
+      const importPayload: StashItem[] = [
+        {
+          id: existingId,
+          type: 'note',
+          content: 'duplicate existing note',
+          metadata: {},
+          createdAt: Date.now(),
+        },
+        {
+          id: 's_import_unique',
+          type: 'highlight',
+          content: 'unique import',
+          metadata: { normalizedName: 'unique import' },
+          createdAt: Date.now() + 1,
+        },
+      ]
+
+      let success = false
+      act(() => {
+        success = result.current.importFromJSON(JSON.stringify(importPayload))
+      })
+
+      expect(success).toBe(true)
+      expect(result.current.items.some((item) => item.id === existingId)).toBe(true)
+      expect(result.current.items.some((item) => item.id === 's_import_unique')).toBe(true)
+      expect(result.current.items.length).toBe(2)
+    })
+
   })
 
   describe('sidebar toggle', () => {
@@ -588,6 +687,168 @@ describe('useStash', () => {
       })
 
       expect(result.current.items.map((item) => item.id)).toEqual(expected)
+    })
+  })
+
+  describe('storage error branches', () => {
+    it('returns empty for non-array payloads persisted in localStorage store', () => {
+      mockStore[STASH_STORAGE_KEY] = JSON.stringify({ invalid: true })
+
+      const { result } = renderHook(() => useStash())
+
+      expect(result.current.items).toEqual([])
+      expect(result.current.count).toBe(0)
+    })
+
+    it('swallows load/save storage errors in test mode without logging', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockStore[STASH_STORAGE_KEY] = '{bad-json'
+      localStorageMock.setItem.mockImplementationOnce(() => {
+        throw new Error('write failure')
+      })
+
+      const { result } = renderHook(() => useStash())
+      expect(result.current.items).toEqual([])
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'save-failure', metadata: {} })
+      })
+      act(() => {
+        vi.runAllTimers()
+      })
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('handles cleanup when debounce timer handle is unavailable', () => {
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(() => null as any)
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+
+      const { result, unmount } = renderHook(() => useStash())
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'timerless', metadata: {} })
+      })
+
+      unmount()
+
+      expect(clearTimeoutSpy).not.toHaveBeenCalled()
+      setTimeoutSpy.mockRestore()
+      clearTimeoutSpy.mockRestore()
+    })
+
+    it('logs load/save/import errors outside test mode', async () => {
+      vi.resetModules()
+      vi.stubEnv('MODE', 'development')
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const noisyStorage = {
+        ...localStorageMock,
+        getItem: vi.fn(() => '{invalid-json'),
+        setItem: vi.fn(() => {
+          throw new Error('save-failure')
+        }),
+      }
+      Object.defineProperty(window, 'localStorage', {
+        value: noisyStorage,
+        writable: true,
+      })
+
+      const { useStash: useStashDevMode } = await import('./useStash')
+      const { result } = renderHook(() => useStashDevMode())
+
+      let success = true
+      act(() => {
+        success = result.current.importFromJSON(JSON.stringify({ invalid: true }))
+      })
+      expect(success).toBe(false)
+
+      act(() => {
+        success = result.current.importFromJSON(JSON.stringify([{ invalid: true }]))
+      })
+      expect(success).toBe(false)
+
+      act(() => {
+        success = result.current.importFromJSON('{invalid')
+      })
+      expect(success).toBe(false)
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'save-error-dev', metadata: {} })
+      })
+      act(() => {
+        vi.runAllTimers()
+      })
+
+      expect(consoleErrorSpy).toHaveBeenCalled()
+      consoleErrorSpy.mockRestore()
+
+      Object.defineProperty(window, 'localStorage', {
+        value: localStorageMock,
+        writable: true,
+      })
+    })
+
+    it('suppresses load/save error logging when the module is loaded in test mode', async () => {
+      vi.resetModules()
+      vi.stubEnv('MODE', 'test')
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const quietFailingStorage = {
+        ...localStorageMock,
+        getItem: vi.fn(() => {
+          throw new Error('read-failure-test-mode')
+        }),
+        setItem: vi.fn(() => {
+          throw new Error('write-failure-test-mode')
+        }),
+      }
+      Object.defineProperty(window, 'localStorage', {
+        value: quietFailingStorage,
+        writable: true,
+      })
+
+      const { useStash: useStashTestMode } = await import('./useStash')
+      const { result } = renderHook(() => useStashTestMode())
+      expect(result.current.items).toEqual([])
+
+      act(() => {
+        result.current.addItem({ type: 'note', content: 'quiet-failure', metadata: {} })
+      })
+      act(() => {
+        vi.runAllTimers()
+      })
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+      consoleErrorSpy.mockRestore()
+
+      Object.defineProperty(window, 'localStorage', {
+        value: localStorageMock,
+        writable: true,
+      })
+    })
+
+    it('returns empty for non-array storage payloads when loading a fresh module instance', async () => {
+      vi.resetModules()
+      vi.stubEnv('MODE', 'test')
+
+      const nonArrayStorage = {
+        ...localStorageMock,
+        getItem: vi.fn(() => JSON.stringify({ not: 'an-array' })),
+      }
+      Object.defineProperty(window, 'localStorage', {
+        value: nonArrayStorage,
+        writable: true,
+      })
+
+      const { useStash: useStashTestMode } = await import('./useStash')
+      const { result } = renderHook(() => useStashTestMode())
+      expect(result.current.items).toEqual([])
+
+      Object.defineProperty(window, 'localStorage', {
+        value: localStorageMock,
+        writable: true,
+      })
     })
   })
 })

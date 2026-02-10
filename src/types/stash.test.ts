@@ -122,6 +122,61 @@ describe('stash utilities', () => {
       const invalidTags = { ...validItem, tags: ['ok', 123] }
       expect(isValidStashItem(invalidTags)).toBe(false)
     })
+
+    it('should reject invalid assignedProbeIds array entries', () => {
+      const invalidProbeIds = { ...validItem, assignedProbeIds: ['p_1', 42] }
+      expect(isValidStashItem(invalidProbeIds)).toBe(false)
+    })
+
+    it('should validate all optional metadata field types', () => {
+      const validMetadataItem: StashItem = {
+        ...validItem,
+        type: 'chat-message',
+        metadata: {
+          relatedConcepts: ['memory', 'sleep'],
+          conceptCategory: 'science',
+          role: 'assistant',
+          messageIndex: 3,
+          treeDepth: 2,
+          questionId: 'q_1',
+          parentQuestion: 'Why do we dream?',
+          sourceQuestion: 'What is sleep?',
+          normalizedName: 'dream',
+          summary: 'Summary text',
+          context: 'Context text',
+          questionContext: 'Conversation root',
+          linkedItemId: 's_123',
+          title: 'My note title',
+        },
+      }
+
+      expect(isValidStashItem(validMetadataItem)).toBe(true)
+
+      const cases: Array<{ name: string; metadata: Record<string, unknown> }> = [
+        { name: 'relatedConcepts must be string[]', metadata: { relatedConcepts: ['ok', 1] } },
+        { name: 'conceptCategory must be valid enum', metadata: { conceptCategory: 'invalid' } },
+        { name: 'role must be user/assistant', metadata: { role: 'system' } },
+        { name: 'messageIndex must be number', metadata: { messageIndex: '3' } },
+        { name: 'treeDepth must be number', metadata: { treeDepth: '2' } },
+        { name: 'questionId must be string', metadata: { questionId: 99 } },
+        { name: 'parentQuestion must be string', metadata: { parentQuestion: 99 } },
+        { name: 'sourceQuestion must be string', metadata: { sourceQuestion: 99 } },
+        { name: 'normalizedName must be string', metadata: { normalizedName: 99 } },
+        { name: 'summary must be string', metadata: { summary: 99 } },
+        { name: 'context must be string', metadata: { context: 99 } },
+        { name: 'questionContext must be string', metadata: { questionContext: 99 } },
+        { name: 'linkedItemId must be string', metadata: { linkedItemId: 99 } },
+        { name: 'title must be string', metadata: { title: 99 } },
+      ]
+
+      for (const testCase of cases) {
+        const item = {
+          ...validItem,
+          metadata: testCase.metadata,
+        }
+        expect(isValidStashItem(item), testCase.name).toBe(false)
+      }
+    })
   })
 
   describe('sortStashByDate', () => {

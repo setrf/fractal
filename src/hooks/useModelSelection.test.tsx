@@ -73,6 +73,24 @@ describe('useModelSelection Hook', () => {
     expect(localStorage.getItem('fractal_selected_model')).toBe('model-a')
   })
 
+  it('normalizes blank model selections to null and clears persisted value', async () => {
+    vi.mocked(api.listModels).mockResolvedValue(['model-a'])
+    localStorage.setItem('fractal_selected_model', 'model-a')
+
+    const { result } = renderHook(() => useModelSelection())
+
+    await waitFor(() => {
+      expect(result.current.models).toEqual(['model-a'])
+    })
+
+    act(() => {
+      result.current.setSelectedModel('   ')
+    })
+
+    expect(result.current.selectedModel).toBeNull()
+    expect(localStorage.getItem('fractal_selected_model')).toBeNull()
+  })
+
   it('should ignore stale refresh responses from older requests', async () => {
     const firstRequest = createDeferred<string[]>()
     const secondRequest = createDeferred<string[]>()
@@ -145,6 +163,32 @@ describe('useModelSelection Hook', () => {
 
     expect(result.current.models).toEqual(['model-b'])
     expect(result.current.error).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('stores refresh errors for the latest request', async () => {
+    vi.mocked(api.listModels).mockRejectedValueOnce(new Error('models failed'))
+
+    const { result } = renderHook(() => useModelSelection({ autoLoad: false }))
+
+    await act(async () => {
+      await result.current.refreshModels()
+    })
+
+    expect(result.current.error).toBe('models failed')
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('uses fallback error text when refresh rejects with a non-Error value', async () => {
+    vi.mocked(api.listModels).mockRejectedValueOnce('non-error failure')
+
+    const { result } = renderHook(() => useModelSelection({ autoLoad: false }))
+
+    await act(async () => {
+      await result.current.refreshModels()
+    })
+
+    expect(result.current.error).toBe('Failed to fetch models')
     expect(result.current.isLoading).toBe(false)
   })
 })

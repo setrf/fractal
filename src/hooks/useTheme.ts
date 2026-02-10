@@ -25,18 +25,24 @@ import { useState, useEffect, useCallback } from 'react'
 /** Available theme modes */
 type Theme = 'light' | 'dark' | 'system'
 
+type ThemeMediaWindowLike = Pick<Window, 'matchMedia'>
+type ThemeStorageLike = Pick<Storage, 'getItem' | 'setItem'>
+
 /** localStorage key for persisting theme preference */
 const STORAGE_KEY = 'fractal-theme'
+
+export function resolveThemeWindow(): Window | null {
+  if (typeof window === 'undefined') return null
+  return window
+}
 
 /**
  * Detects the current system color scheme preference.
  * 
  * @returns 'dark' if system prefers dark mode, 'light' otherwise
  */
-function getSystemTheme(): 'light' | 'dark' {
-  // SSR safety check
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+export function getSystemTheme(themeWindow: ThemeMediaWindowLike | null = resolveThemeWindow()): 'light' | 'dark' {
+  return themeWindow?.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 /**
@@ -46,12 +52,9 @@ function getSystemTheme(): 'light' | 'dark' {
  * 
  * @returns The stored theme or 'system' as default
  */
-function getStoredTheme(): Theme {
-  // SSR safety check
-  if (typeof window === 'undefined') return 'system'
-
+export function getStoredTheme(storage: ThemeStorageLike | null = resolveThemeWindow()?.localStorage ?? null): Theme {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = storage?.getItem(STORAGE_KEY)
 
     // Validate stored value is a valid theme
     if (stored === 'light' || stored === 'dark' || stored === 'system') {

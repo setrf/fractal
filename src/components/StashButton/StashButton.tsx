@@ -69,15 +69,13 @@ export function StashButton({
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation() // Prevent event bubbling
 
-      if (disabled || isStashed) return
-
       // Trigger animation
       setIsAnimating(true)
       setTimeout(() => setIsAnimating(false), 300)
 
       onClick(e)
     },
-    [onClick, disabled, isStashed]
+    [onClick]
   )
 
   const tooltipText = tooltip || (isStashed ? 'Already in Stash' : 'Add to Stash')

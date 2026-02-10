@@ -61,6 +61,37 @@ describe('GraphNodePopup', () => {
     expect(onChat).toHaveBeenCalledWith(question.id, question.text)
   })
 
+  it('renders confidence/uncertainty metrics and best-branch marker when provided', () => {
+    setWindowSize(1280, 900)
+    const question = createQuestionNode('Best branch question')
+    question.meta.qualityScore = 9.1
+    question.meta.confidence = 0.67
+    question.meta.uncertainty = 0.12
+
+    const node: GraphNode = {
+      id: question.id,
+      type: 'question',
+      label: question.text,
+      data: question,
+      color: '#4488dd',
+      size: 1,
+      group: question.id,
+    }
+
+    render(
+      <GraphNodePopup
+        node={node}
+        position={{ x: 120, y: 120 }}
+        onClose={() => {}}
+        isBestBranch={true}
+      />
+    )
+
+    expect(screen.getByText('Conf 67%')).toBeInTheDocument()
+    expect(screen.getByText('Unc 12%')).toBeInTheDocument()
+    expect(screen.getByText('Best branch')).toBeInTheDocument()
+  })
+
   it('renders concept details and fires stash callback', () => {
     setWindowSize(1280, 900)
     const concept: ExtractedConcept = {
@@ -124,6 +155,29 @@ describe('GraphNodePopup', () => {
     expect(screen.getByText(/\.{3}$/)).toBeInTheDocument()
   })
 
+  it('renders short stash content without truncation', () => {
+    setWindowSize(1280, 900)
+    const stash: StashItem = {
+      id: 's_2',
+      type: 'note',
+      content: 'Short note',
+      metadata: {},
+      createdAt: Date.now(),
+    }
+    const node: GraphNode = {
+      id: stash.id,
+      type: 'stash',
+      label: 'Short stash',
+      data: stash,
+      color: '#44aa88',
+      size: 0.4,
+      group: 'q_1',
+    }
+
+    render(<GraphNodePopup node={node} position={{ x: 40, y: 40 }} onClose={() => {}} />)
+    expect(screen.getByText('Short note')).toBeInTheDocument()
+  })
+
   it('renders probe details with message and selected item counts', () => {
     setWindowSize(1280, 900)
     const probe: Probe = {
@@ -153,6 +207,41 @@ describe('GraphNodePopup', () => {
     expect(screen.getByText('Probe Alpha')).toBeInTheDocument()
     expect(screen.getByText('2 messages')).toBeInTheDocument()
     expect(screen.getByText('3 items selected')).toBeInTheDocument()
+  })
+
+  it('maps probe popup accent styles across color branches', () => {
+    setWindowSize(1280, 900)
+    const colorCases: Array<{ color: Probe['color']; cssVar: string }> = [
+      { color: 'blue', cssVar: 'var(--chart-1)' },
+      { color: 'yellow', cssVar: 'var(--chart-3)' },
+      { color: 'purple', cssVar: 'var(--chart-4)' },
+      { color: 'orange', cssVar: 'var(--chart-5)' },
+    ]
+
+    colorCases.forEach(({ color, cssVar }) => {
+      const probe: Probe = {
+        id: `p_${color}`,
+        name: `Probe ${color}`,
+        color,
+        messages: [],
+        selectedStashItemIds: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const node: GraphNode = {
+        id: probe.id,
+        type: 'probe',
+        label: probe.name,
+        data: probe,
+        color: '#000',
+        size: 1,
+        group: 'probe',
+      }
+
+      const { unmount } = render(<GraphNodePopup node={node} position={{ x: 16, y: 24 }} onClose={() => {}} />)
+      expect(screen.getByText('Probe')).toHaveStyle({ color: cssVar })
+      unmount()
+    })
   })
 
   it('falls back to generic rendering when node data does not match expected shape', () => {

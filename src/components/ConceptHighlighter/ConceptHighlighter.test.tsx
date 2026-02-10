@@ -6,10 +6,16 @@
  * Covers text segmentation, rendering, and interaction handling.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ConceptHighlighter, validateConcepts } from './ConceptHighlighter'
 import type { ExtractedConcept } from '../../api'
+
+const mobileState = { value: false }
+
+vi.mock('../../hooks/useIsMobile', () => ({
+  useIsMobile: () => mobileState.value,
+}))
 
 // Helper to create test concepts
 function createConcept(
@@ -27,6 +33,10 @@ function createConcept(
 }
 
 describe('ConceptHighlighter', () => {
+  beforeEach(() => {
+    mobileState.value = false
+  })
+
   describe('rendering', () => {
     it('should render plain text when no concepts provided', () => {
       render(<ConceptHighlighter text="Hello world" concepts={[]} />)
@@ -73,6 +83,26 @@ describe('ConceptHighlighter', () => {
 
       const conceptElement = container.querySelector('[data-concept-category="science"]')
       expect(conceptElement).toBeInTheDocument()
+    })
+
+    it('falls back to abstract class for unknown categories', () => {
+      const { container } = render(
+        <ConceptHighlighter
+          text="mystery text"
+          concepts={[
+            createConcept({
+              id: 'c_unknown',
+              category: 'unknown' as unknown as ExtractedConcept['category'],
+              startIndex: 0,
+              endIndex: 7,
+            }),
+          ]}
+        />
+      )
+
+      const conceptElement = container.querySelector('[data-concept-id="c_unknown"]')
+      expect(conceptElement).toBeInTheDocument()
+      expect(conceptElement?.className).toContain('categoryAbstract')
     })
 
     it('should render multiple concepts in correct order', () => {
@@ -204,6 +234,44 @@ describe('ConceptHighlighter', () => {
       const conceptElement = screen.getByText('test')
       fireEvent.keyDown(conceptElement, { key: 'Enter' })
       expect(onClick).toHaveBeenCalled()
+    })
+
+    it('does not trigger keyboard click handler for non-activation keys', () => {
+      const onClick = vi.fn()
+      const concept = createConcept({ startIndex: 0, endIndex: 4 })
+
+      render(
+        <ConceptHighlighter
+          text="test text"
+          concepts={[concept]}
+          onConceptClick={onClick}
+        />
+      )
+
+      fireEvent.keyDown(screen.getByText('test'), { key: 'Escape' })
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('suppresses hover/leave callbacks on mobile', () => {
+      mobileState.value = true
+      const onHover = vi.fn()
+      const onLeave = vi.fn()
+      const concept = createConcept({ startIndex: 0, endIndex: 4 })
+
+      render(
+        <ConceptHighlighter
+          text="test text"
+          concepts={[concept]}
+          onConceptHover={onHover}
+          onConceptLeave={onLeave}
+        />
+      )
+
+      const conceptElement = screen.getByText('test')
+      fireEvent.mouseEnter(conceptElement)
+      fireEvent.mouseLeave(conceptElement)
+      expect(onHover).not.toHaveBeenCalled()
+      expect(onLeave).not.toHaveBeenCalled()
     })
 
     it('should invoke onConceptRemove from remove button', () => {

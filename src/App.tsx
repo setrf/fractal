@@ -97,7 +97,7 @@ const GraphView = lazy(async () => {
   return { default: module.GraphView }
 })
 
-function normalizeWeaveScore(score: number | null | undefined): number | null {
+export function normalizeWeaveScore(score: number | null | undefined): number | null {
   if (typeof score !== 'number' || !Number.isFinite(score)) return null
   const normalized = Math.max(0, score)
   return normalized >= QUALITY_SCORE_MAX
@@ -105,13 +105,13 @@ function normalizeWeaveScore(score: number | null | undefined): number | null {
     : normalized
 }
 
-function computeChildQualityScore(parentScore: number, baseScore: number | null): number {
+export function computeChildQualityScore(parentScore: number, baseScore: number | null): number {
   const minHigher = parentScore + (QUALITY_SCORE_MAX - parentScore) * QUALITY_SCORE_IMPROVEMENT_RATIO
   if (baseScore === null) return minHigher
   return Math.max(baseScore, minHigher)
 }
 
-function computeBestBranchNodeIds(tree: { rootId: string | null; nodes: Record<string, { id: string; childIds: string[]; meta: { qualityScore: number | null } }> }): Set<string> {
+export function computeBestBranchNodeIds(tree: { rootId: string | null; nodes: Record<string, { id: string; childIds: string[]; meta: { qualityScore: number | null } }> }): Set<string> {
   if (!tree.rootId || !tree.nodes[tree.rootId]) return new Set()
 
   let bestPath: string[] = [tree.rootId]
@@ -466,8 +466,7 @@ function AppContent() {
   }, [generate, addChildQuestion, tree.nodes, updateNodeMeta, activeModel, recordReplayEvent, refreshEvalStats])
 
   const handleRunCompare = useCallback(async () => {
-    const targetNode = activeNode ?? rootNode
-    if (!targetNode) return
+    const targetNode = (activeNode ?? rootNode)!
     setCompareLoading(true)
     setCompareError(null)
     recordReplayEvent('compare', 'Started A/B compare', targetNode.text)
@@ -493,10 +492,8 @@ function AppContent() {
   }, [addChildQuestion, recordReplayEvent])
 
   const handleApplyCompareResult = useCallback((side: 'left' | 'right') => {
-    if (!compareResult) return
-    const targetNode = activeNode ?? rootNode
-    if (!targetNode) return
-    const selected = side === 'left' ? compareResult.left : compareResult.right
+    const targetNode = (activeNode ?? rootNode)!
+    const selected = side === 'left' ? compareResult!.left : compareResult!.right
     const parentScore = normalizeWeaveScore(tree.nodes[targetNode.id]?.meta.qualityScore) ?? 0
     const selectedScore = normalizeWeaveScore(selected.meta?.qualityScore ?? null)
     const childScore = computeChildQualityScore(parentScore, selectedScore)
@@ -548,10 +545,9 @@ function AppContent() {
    * Sends a chat message and returns the response.
    */
   const handleSendChatMessage = useCallback(async (messages: ChatMessage[]): Promise<string> => {
-    if (!chatState) throw new Error('No chat state')
     const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     recordReplayEvent('chat', 'Sent chat message', lastUserMessage?.content.slice(0, 140))
-    return sendChatMessage(chatState.question, messages, activeModel)
+    return sendChatMessage(chatState!.question, messages, activeModel)
   }, [chatState, activeModel, recordReplayEvent])
 
   /**

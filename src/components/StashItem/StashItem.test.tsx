@@ -94,6 +94,18 @@ describe('StashItem', () => {
     expect(onClick).toHaveBeenCalledTimes(2)
   })
 
+  it('ignores non-activation keys on keyboard interactions', () => {
+    const onClick = vi.fn()
+    const item = makeItem()
+
+    render(<StashItem item={item} onDelete={vi.fn()} onClick={onClick} />)
+
+    const node = screen.getByRole('button', { name: /highlight/i })
+    fireEvent.keyDown(node, { key: 'Escape' })
+
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
   it('deletes without triggering the item click callback', () => {
     const onClick = vi.fn()
     const onDelete = vi.fn()
@@ -242,6 +254,93 @@ describe('StashItem', () => {
     expect(onDragStart).toHaveBeenCalled()
     expect(onDragStart).toHaveBeenCalledWith(expect.any(Object), item)
     expect(screen.getByText('⋮⋮')).toBeInTheDocument()
+  })
+
+  it('supports draggable rendering without a drag-start callback', () => {
+    const item = makeItem()
+
+    render(<StashItem item={item} onDelete={vi.fn()} draggable={true} />)
+
+    const node = screen.getByRole('button', { name: /highlight/i })
+    fireEvent.dragStart(node)
+
+    expect(screen.getByText('⋮⋮')).toBeInTheDocument()
+  })
+
+  it('covers fallback display/secondary-info branches and unknown item-type defaults', () => {
+    const { rerender } = render(
+      <StashItem
+        item={makeItem({
+          type: 'explanation',
+          content: 'Explanation fallback content',
+          metadata: {
+            context: '',
+          },
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Explanation fallback content')).toBeInTheDocument()
+    expect(screen.queryByText(/^from:/i)).not.toBeInTheDocument()
+
+    rerender(
+      <StashItem
+        item={makeItem({
+          type: 'note',
+          content: 'Untitled note content',
+          metadata: {},
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Untitled note content')).toBeInTheDocument()
+    expect(screen.queryByText('linked note')).not.toBeInTheDocument()
+
+    rerender(
+      <StashItem
+        item={makeItem({
+          type: 'highlight',
+          metadata: {},
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(/^from:/i)).not.toBeInTheDocument()
+
+    rerender(
+      <StashItem
+        item={makeItem({
+          type: 'question',
+          metadata: {},
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(/^parent:/i)).not.toBeInTheDocument()
+
+    rerender(
+      <StashItem
+        item={makeItem({
+          type: 'chat-message',
+          metadata: {},
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText('AI')).not.toBeInTheDocument()
+    expect(screen.queryByText('You')).not.toBeInTheDocument()
+
+    rerender(
+      <StashItem
+        item={makeItem({
+          // Exercise type-class and secondary-info switch defaults.
+          type: 'unknown-type' as any,
+          metadata: {},
+        })}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getByText(/A very long line of content/)).toBeInTheDocument()
   })
 
   it('formats timestamps for just-now/minute/hour/day and older-date branches', () => {

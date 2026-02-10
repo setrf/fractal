@@ -276,6 +276,26 @@ describe('QuestionInput Component', () => {
       
       expect(input).not.toHaveFocus()
     })
+
+    it('should auto-resize when viewport is under the mobile breakpoint', async () => {
+      const originalWidth = window.innerWidth
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: 360,
+      })
+
+      const { container, user } = render(<QuestionInput onSubmit={mockOnSubmit} />)
+      const input = screen.getByRole('textbox')
+      await user.type(input, 'Mobile width branch')
+
+      const wrapper = container.querySelector('[data-onboarding="question-input"]') as HTMLElement
+      expect(parseInt(wrapper.style.width, 10)).toBeGreaterThan(0)
+
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalWidth,
+      })
+    })
   })
 
   // ============================================

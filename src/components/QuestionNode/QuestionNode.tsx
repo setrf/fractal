@@ -500,18 +500,16 @@ export function QuestionNode({
     }
 
     // Automatically create the highlight (no intermediate step)
-    if (onAddUserConcept) {
-      const selectedSlice = node.text.slice(startIndex, endIndex)
-      const newConcept: ExtractedConcept = {
-        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-        text: selectedSlice,
-        normalizedName: selectedSlice.toLowerCase(),
-        category: 'abstract' as ConceptCategory,
-        startIndex,
-        endIndex,
-      }
-      onAddUserConcept(node.id, newConcept)
+    const selectedSlice = node.text.slice(startIndex, endIndex)
+    const newConcept: ExtractedConcept = {
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      text: selectedSlice,
+      normalizedName: selectedSlice.toLowerCase(),
+      category: 'abstract' as ConceptCategory,
+      startIndex,
+      endIndex,
     }
+    onAddUserConcept?.(node.id, newConcept)
 
     // Clear the selection
     window.getSelection()?.removeAllRanges()

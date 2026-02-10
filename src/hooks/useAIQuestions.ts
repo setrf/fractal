@@ -12,8 +12,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { generateQuestions, isApiAvailable, type GenerateQuestionsResponse } from '../api'
 
-const isTestMode = import.meta.env.MODE === 'test'
-
 interface UseAIQuestionsResult {
   /** Generate related questions for a given question */
   generate: (question: string, model?: string) => Promise<{
@@ -91,9 +89,7 @@ export function useAIQuestions(): UseAIQuestionsResult {
       return { questions, meta }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      if (!isTestMode) {
-        console.error('[AI] Generation failed:', errorMessage)
-      }
+      console.error('[AI] Generation failed:', errorMessage)
       if (latestGenerateRequestId.current === requestId) {
         setError(errorMessage)
         setIsAvailable(false)

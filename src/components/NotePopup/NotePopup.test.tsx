@@ -100,6 +100,31 @@ describe('NotePopup', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps stash action disabled for blank content and supports untitled metadata fallback', () => {
+    const onClose = vi.fn()
+    render(
+      <NotePopup
+        {...defaultProps}
+        onClose={onClose}
+        initialTitle="  "
+        initialContent="   "
+      />
+    )
+
+    const stashButton = screen.getByLabelText('Add to Stash') as HTMLButtonElement
+    expect(stashButton).toBeDisabled()
+
+    fireEvent.change(screen.getByPlaceholderText('Write your note here...'), {
+      target: { value: 'body without title' },
+    })
+    fireEvent.click(screen.getByLabelText('Add to Stash'))
+    expect(stashContextState.current.addItem).toHaveBeenCalledWith({
+      type: 'note',
+      content: 'body without title',
+      metadata: { title: undefined },
+    })
+  })
+
   it('disables stash button when content is empty or already stashed', () => {
     const { rerender } = render(<NotePopup {...defaultProps} initialContent="   " />)
     expect(screen.getByLabelText('Add to Stash')).toBeDisabled()
@@ -199,6 +224,65 @@ describe('NotePopup', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('covers drag guards (resizing/no-stash-drop) and untitled drag-stash metadata fallback', () => {
+    const onClose = vi.fn()
+    const { container, unmount } = render(
+      <NotePopup
+        {...defaultProps}
+        onClose={onClose}
+        initialTitle="Drag title"
+        initialContent="drag body"
+      />
+    )
+
+    const header = screen.getByText('Note').closest('div') as HTMLElement
+    const resizeSE = container.querySelector('[class*="resizeSE"]') as HTMLElement
+    fireEvent.mouseDown(resizeSE, { clientX: 320, clientY: 260 })
+    fireEvent.mouseDown(header, { clientX: 140, clientY: 150 }) // ignored while resizing
+    expect(stashContextState.current.setExternalDragHover).not.toHaveBeenCalledWith(true)
+    fireEvent.mouseUp(document)
+
+    fireEvent.mouseDown(header, { clientX: 160, clientY: 180 }) // drag without stash sidebar
+    fireEvent.mouseMove(document, { clientX: 200, clientY: 220 })
+    fireEvent.mouseUp(document, { clientX: 210, clientY: 230 })
+    expect(stashContextState.current.addItem).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    const stashSidebar = document.createElement('aside')
+    stashSidebar.setAttribute('data-stash-sidebar', 'true')
+    stashSidebar.getBoundingClientRect = vi.fn(() => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 300,
+      width: 300,
+      height: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect))
+    document.body.appendChild(stashSidebar)
+
+    unmount()
+    render(
+      <NotePopup
+        {...defaultProps}
+        onClose={onClose}
+        initialTitle="   "
+        initialContent="drag untitled"
+      />
+    )
+    const rerenderedHeader = screen.getByText('Note').closest('div') as HTMLElement
+    fireEvent.mouseDown(rerenderedHeader, { clientX: 120, clientY: 120 })
+    fireEvent.mouseUp(document, { clientX: 100, clientY: 100 })
+
+    expect(stashContextState.current.addItem).toHaveBeenCalledWith({
+      type: 'note',
+      content: 'drag untitled',
+      metadata: { title: undefined },
+    })
+  })
+
   it('does not add duplicate when dropped over stash if already stashed', () => {
     stashContextState.current.hasItem = vi.fn(() => true)
     const onClose = vi.fn()
@@ -254,6 +338,8 @@ describe('NotePopup', () => {
     const northEast = container.querySelector('[class*="resizeNE"]')
     const southWest = container.querySelector('[class*="resizeSW"]')
     const southEast = container.querySelector('[class*="resizeSE"]')
+    const southOnly = container.querySelector('[class*="resizeS"]') as HTMLElement
+    const eastOnly = container.querySelector('[class*="resizeE"]') as HTMLElement
 
     expect(north).toBeInTheDocument()
     expect(south).toBeInTheDocument()
@@ -271,7 +357,51 @@ describe('NotePopup', () => {
     fireEvent.mouseMove(document, { clientX: 260, clientY: 210 })
     fireEvent.mouseUp(document)
 
+    fireEvent.mouseDown(southOnly, { clientX: 320, clientY: 280 })
+    fireEvent.mouseUp(document)
+    fireEvent.mouseDown(eastOnly, { clientX: 320, clientY: 280 })
+    fireEvent.mouseUp(document)
+    fireEvent.mouseDown(northEast as HTMLElement, { clientX: 320, clientY: 260 })
+    fireEvent.mouseUp(document)
+    fireEvent.mouseDown(southWest as HTMLElement, { clientX: 280, clientY: 320 })
+    fireEvent.mouseUp(document)
+
     expect(parseInt(popup.style.left, 10)).toBeLessThanOrEqual(initialLeft)
     expect(parseInt(popup.style.top, 10)).toBeLessThanOrEqual(initialTop)
+  })
+
+  it('keeps west/north resize position when shrinking below minimum size thresholds', () => {
+    const { container } = render(<NotePopup {...defaultProps} initialContent="min guards" />)
+    const popup = container.querySelector('[role="dialog"]') as HTMLElement
+    const resizeW = container.querySelector('[class*="resizeW"]') as HTMLElement
+    const resizeN = container.querySelector('[class*="resizeN"]') as HTMLElement
+
+    const initialWidth = parseInt(popup.style.width, 10)
+    const initialHeight = parseInt(popup.style.height, 10)
+    const initialLeft = parseInt(popup.style.left, 10)
+    const initialTop = parseInt(popup.style.top, 10)
+
+    fireEvent.mouseDown(resizeW, { clientX: 200, clientY: 200 })
+    fireEvent.mouseMove(document, { clientX: 600, clientY: 200 })
+    fireEvent.mouseUp(document)
+
+    expect(parseInt(popup.style.width, 10)).toBe(initialWidth)
+    expect(parseInt(popup.style.left, 10)).toBe(initialLeft)
+
+    fireEvent.mouseDown(resizeN, { clientX: 200, clientY: 200 })
+    fireEvent.mouseMove(document, { clientX: 200, clientY: 700 })
+    fireEvent.mouseUp(document)
+
+    expect(parseInt(popup.style.height, 10)).toBe(initialHeight)
+    expect(parseInt(popup.style.top, 10)).toBe(initialTop)
+  })
+
+  it('ignores non-Escape keyboard events for close handling', () => {
+    const onClose = vi.fn()
+    render(<NotePopup {...defaultProps} onClose={onClose} initialContent="keyboard" />)
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

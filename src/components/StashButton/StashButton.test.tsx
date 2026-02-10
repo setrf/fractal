@@ -9,11 +9,15 @@
  * - Animation on click
  */
 
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { StashButton } from './StashButton'
 
 describe('StashButton', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   describe('rendering', () => {
     it('should render with empty star when not stashed', () => {
       render(<StashButton onClick={() => {}} />)
@@ -101,6 +105,22 @@ describe('StashButton', () => {
       expect(handleClick).not.toHaveBeenCalled()
     })
 
+    it('keeps native disabled behavior for disabled and stashed states', () => {
+      const handleClick = vi.fn()
+      const { rerender } = render(<StashButton onClick={handleClick} disabled={true} />)
+
+      const disabledButton = screen.getByRole('button') as HTMLButtonElement
+      disabledButton.disabled = false
+      fireEvent.click(disabledButton)
+      expect(handleClick).not.toHaveBeenCalled()
+
+      rerender(<StashButton onClick={handleClick} isStashed={true} />)
+      const stashedButton = screen.getByRole('button') as HTMLButtonElement
+      stashedButton.disabled = false
+      fireEvent.click(stashedButton)
+      expect(handleClick).not.toHaveBeenCalled()
+    })
+
     it('should stop event propagation', () => {
       const handleClick = vi.fn()
       const handleParentClick = vi.fn()
@@ -115,6 +135,20 @@ describe('StashButton', () => {
       
       expect(handleClick).toHaveBeenCalled()
       expect(handleParentClick).not.toHaveBeenCalled()
+    })
+
+    it('applies and clears animation state after timeout', () => {
+      vi.useFakeTimers()
+      render(<StashButton onClick={() => {}} />)
+
+      const button = screen.getByRole('button')
+      fireEvent.click(button)
+      expect(button.className).toMatch(/animating/)
+
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(button.className).not.toMatch(/animating/)
     })
   })
 

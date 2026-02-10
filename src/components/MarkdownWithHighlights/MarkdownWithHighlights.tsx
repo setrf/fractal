@@ -58,7 +58,7 @@ function getCategoryClassName(category: ConceptCategory): string {
 const highlightSanitizeSchema = {
   ...defaultSchema,
   tagNames: [
-    ...(defaultSchema.tagNames || []),
+    ...(defaultSchema.tagNames as string[]),
     'mark',
   ],
   attributes: {
@@ -191,8 +191,7 @@ export function MarkdownWithHighlights({
   }, [concepts])
 
   const handleClick = useCallback((event: React.MouseEvent) => {
-    if (!(event.target instanceof Element)) return
-    const mark = event.target.closest('mark.concept-highlight')
+    const mark = (event.target as Element).closest('mark.concept-highlight')
     if (!mark) return
 
     const concept = resolveConceptFromMark(mark)
@@ -205,8 +204,7 @@ export function MarkdownWithHighlights({
   
   // Handle hover on highlight marks
   const handleMouseOver = useCallback((event: React.MouseEvent) => {
-    if (!(event.target instanceof Element)) return
-    const mark = event.target.closest('mark.concept-highlight')
+    const mark = (event.target as Element).closest('mark.concept-highlight')
     if (!mark) return
 
     const concept = resolveConceptFromMark(mark)
@@ -217,8 +215,7 @@ export function MarkdownWithHighlights({
   
   // Handle mouse leave on highlight marks
   const handleMouseOut = useCallback((event: React.MouseEvent) => {
-    if (!(event.target instanceof Element)) return
-    const mark = event.target.closest('mark.concept-highlight')
+    const mark = (event.target as Element).closest('mark.concept-highlight')
     if (!mark) return
 
     const concept = resolveConceptFromMark(mark)
@@ -229,13 +226,10 @@ export function MarkdownWithHighlights({
   
   // Handle remove button clicks (on dynamically added buttons)
   const handleRemoveClick = useCallback((event: React.MouseEvent) => {
-    const target = event.target as HTMLElement
-    if (!target.classList.contains(styles.removeBtn)) return
-    
     event.preventDefault()
     event.stopPropagation()
     
-    const conceptId = target.getAttribute('data-remove-concept')
+    const conceptId = (event.currentTarget as HTMLElement).getAttribute('data-remove-concept')
     if (conceptId && onConceptRemove) {
       onConceptRemove(conceptId)
     }
@@ -258,6 +252,7 @@ export function MarkdownWithHighlights({
             const explicitConceptId = (markProps['data-concept-id'] ?? markProps['dataConceptId']) as string | undefined
             const conceptName = (markProps['data-concept-name'] ?? markProps['dataConceptName']) as string | undefined
             const conceptCategory = (markProps['data-concept-category'] ?? markProps['dataConceptCategory']) as string | undefined
+            const normalizedConceptName = conceptName?.toLowerCase() ?? ''
 
             const markText = Children.toArray(children)
               .map(child => (typeof child === 'string' ? child : ''))
@@ -266,7 +261,7 @@ export function MarkdownWithHighlights({
               .trim()
 
             const fallbackConcept = concepts.find(c =>
-              (conceptName && c.normalizedName.toLowerCase() === conceptName.toLowerCase()) ||
+              c.normalizedName.toLowerCase() === normalizedConceptName ||
               (markText &&
                 (c.text.toLowerCase() === markText.toLowerCase() ||
                   c.normalizedName.toLowerCase() === markText.toLowerCase()))

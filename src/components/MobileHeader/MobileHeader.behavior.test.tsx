@@ -171,4 +171,21 @@ describe('MobileHeader behavior', () => {
     expect(screen.getByText('Light Mode')).toBeInTheDocument()
     expect(screen.getByLabelText('Model:')).toBeDisabled()
   })
+
+  it('renders graph-mode icon state and active probe toggle styling', () => {
+    probeContext = {
+      ...probeContext,
+      isOpen: true,
+    }
+    viewModeContext = {
+      ...viewModeContext,
+      isGraphView: true,
+    }
+
+    render(<MobileHeader {...defaultProps} />)
+
+    expect(screen.getByText('⌘')).toBeInTheDocument()
+    const probeButton = screen.getByLabelText('Toggle probe')
+    expect(probeButton.className).toMatch(/active/)
+  })
 })

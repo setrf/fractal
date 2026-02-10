@@ -177,6 +177,83 @@ describe('useConceptExtraction', () => {
     expect(result.current.concepts).toEqual([])
   })
 
+  it('uses fallback error text when extraction rejects with a non-Error value', async () => {
+    mockedExtractConcepts.mockRejectedValueOnce('non-error rejection')
+    const { result } = renderHook(() => useConceptExtraction())
+
+    await act(async () => {
+      const response = await result.current.extract('Fallback error case', 'model-a')
+      expect(response).toEqual([])
+    })
+
+    expect(result.current.error).toBe('Failed to extract concepts')
+    expect(result.current.concepts).toEqual([])
+  })
+
+  it('keeps loading active when a stale request settles before the latest pending request', async () => {
+    const firstRequest = createDeferred<ExtractedConcept[]>()
+    const secondRequest = createDeferred<ExtractedConcept[]>()
+    mockedExtractConcepts
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+
+    const { result } = renderHook(() => useConceptExtraction())
+
+    let firstPromise: Promise<ExtractedConcept[]> = Promise.resolve([])
+    let secondPromise: Promise<ExtractedConcept[]> = Promise.resolve([])
+
+    act(() => {
+      firstPromise = result.current.extract('Older pending', 'model-a')
+    })
+    act(() => {
+      secondPromise = result.current.extract('Latest pending', 'model-a')
+    })
+
+    await act(async () => {
+      firstRequest.reject(new Error('stale failure'))
+      await firstPromise
+    })
+
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.error).toBeNull()
+
+    await act(async () => {
+      secondRequest.resolve([makeConcept('latest', 'c-latest')])
+      await secondPromise
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.sourceText).toBe('Latest pending')
+    expect(result.current.concepts[0]?.text).toBe('latest')
+  })
+
+  it('handles reset while a request is in flight without leaving stale pending markers', async () => {
+    const pending = createDeferred<ExtractedConcept[]>()
+    mockedExtractConcepts.mockImplementationOnce(() => pending.promise)
+
+    const { result } = renderHook(() => useConceptExtraction())
+
+    let requestPromise: Promise<ExtractedConcept[]> = Promise.resolve([])
+
+    act(() => {
+      requestPromise = result.current.extract('Reset mid-flight', 'model-a')
+    })
+
+    act(() => {
+      result.current.reset()
+    })
+
+    await act(async () => {
+      pending.resolve([makeConcept('late', 'c-late')])
+      await requestPromise
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(result.current.concepts).toEqual([])
+    expect(result.current.sourceText).toBeNull()
+  })
+
   it('exposes cache helpers and cache clearing behavior', async () => {
     mockedExtractConcepts.mockResolvedValue([makeConcept('cached', 'c-cache')])
     const { result } = renderHook(() => useConceptExtraction())

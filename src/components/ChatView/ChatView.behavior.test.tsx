@@ -94,6 +94,9 @@ vi.mock('../MarkdownWithHighlights', () => ({
           </button>
         </>
       )}
+      <button aria-label="remove-missing-concept" onClick={() => onConceptRemove?.('missing-concept')}>
+        remove missing concept
+      </button>
     </div>
   ),
 }))
@@ -175,6 +178,7 @@ describe('ChatView behavior', () => {
     const concepts = [
       makeConcept('c1', 'ideas', 7, 12),
       makeConcept('c2', 'learning', 27, 35),
+      makeConcept('c3', 'systems', 36, 43),
     ]
     const onConceptHover = vi.fn()
     const onConceptClick = vi.fn()
@@ -194,6 +198,7 @@ describe('ChatView behavior', () => {
 
     const firstConcept = screen.getByRole('button', { name: 'concept-c1' })
     fireEvent.mouseEnter(firstConcept, { clientX: 40, clientY: 50 })
+    fireEvent.mouseLeave(firstConcept)
     expect(onConceptHover).toHaveBeenCalledWith(concepts[0], question)
     expect(screen.getAllByTestId('popup-card')).toHaveLength(1)
 
@@ -204,8 +209,15 @@ describe('ChatView behavior', () => {
     expect(onConceptClick).toHaveBeenCalledWith(concepts[1], question)
     expect(screen.getAllByTestId('popup-card')).toHaveLength(2)
 
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'concept-c3' }), { clientX: 90, clientY: 100 })
+    expect(screen.getAllByTestId('popup-card')).toHaveLength(3)
+
+    fireEvent.click(screen.getByRole('button', { name: 'concept-c2' }), { clientX: 81, clientY: 91 })
+    expect(screen.getAllByTestId('popup-card')).toHaveLength(3)
+
     fireEvent.click(screen.getByRole('button', { name: 'minimize-popup-c1' }))
     expect(screen.getByText('Stack:c2:1')).toBeInTheDocument()
+    expect(screen.getByText('Stack:c3:1')).toBeInTheDocument()
 
     rerender(
       <ChatView
@@ -226,6 +238,10 @@ describe('ChatView behavior', () => {
       expect.objectContaining({ normalizedName: 'related idea' }),
       question
     )
+
+    const popupCountAfterFirstRelated = screen.getAllByTestId('popup-card').length
+    fireEvent.click(screen.getByRole('button', { name: 'related-popup-c1' }))
+    expect(screen.getAllByTestId('popup-card')).toHaveLength(popupCountAfterFirstRelated)
 
     fireEvent.click(screen.getByRole('button', { name: 'close-popup-c2' }))
     expect(screen.queryByText(/Popup:c2:/)).not.toBeInTheDocument()
@@ -415,6 +431,45 @@ describe('ChatView behavior', () => {
     })
   })
 
+  it('sorts multiple manual highlights by start index when added out of order', async () => {
+    const onConceptClick = vi.fn()
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue('Assistant response')}
+        onConceptClick={onConceptClick}
+      />
+    )
+
+    await screen.findByText('Assistant response')
+
+    const promptText = screen.getByText(initialPrompt)
+    const promptTextNode = promptText.firstChild as Text
+
+    // Add later phrase first.
+    selectText(promptTextNode, 20, 30)
+    fireEvent.mouseUp(promptText)
+
+    await waitFor(() => {
+      expect(onConceptClick).toHaveBeenCalledTimes(1)
+    })
+
+    // Add earlier phrase second; reducer should sort both highlights.
+    selectText(promptTextNode, 8, 15)
+    fireEvent.mouseUp(promptText)
+
+    await waitFor(() => {
+      expect(onConceptClick).toHaveBeenCalledTimes(2)
+      const promptBlock = screen
+        .getAllByTestId('markdown-block')
+        .find((block) => within(block).queryByText(initialPrompt))
+      expect(promptBlock).toBeDefined()
+      expect(within(promptBlock as HTMLElement).getByText(/explore@8-15\|understand@20-30/)).toBeInTheDocument()
+    })
+  })
+
   it('resolves closest occurrence when concept text appears multiple times', async () => {
     const assistantContent = 'Alpha beta gamma beta delta'
     const extractConcepts = vi.fn().mockResolvedValue([
@@ -476,5 +531,402 @@ describe('ChatView behavior', () => {
     selection?.addRange(range)
     fireEvent.mouseUp(promptText)
     expect(onConceptClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('guards send/selection edge cases and ignores selections missing from message content', async () => {
+    const followUpDeferred = (() => {
+      let resolve!: (value: string) => void
+      const promise = new Promise<string>((res) => {
+        resolve = res
+      })
+      return { promise, resolve }
+    })()
+
+    const onSendMessage = vi
+      .fn()
+      .mockResolvedValueOnce('Assistant response')
+      .mockImplementationOnce(() => followUpDeferred.promise)
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    await screen.findByText('Assistant response')
+
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    ) as HTMLTextAreaElement
+    const sendButton = screen.getByRole('button', { name: /send message/i })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSendMessage).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(input, { target: { value: 'second request' } })
+    fireEvent.click(sendButton)
+    fireEvent.click(sendButton)
+    expect(onSendMessage).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      followUpDeferred.resolve('Second response')
+      await Promise.resolve()
+    })
+
+    const promptText = screen.getByText(initialPrompt)
+    const promptTextNode = promptText.firstChild as Text
+
+    selectText(promptTextNode, 0, 1)
+    fireEvent.mouseUp(promptText)
+
+    const outsideText = document.createTextNode('outside selection')
+    document.body.appendChild(outsideText)
+    const outsideRange = document.createRange()
+    outsideRange.setStart(outsideText, 0)
+    outsideRange.setEnd(outsideText, 7)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(outsideRange)
+    fireEvent.mouseUp(promptText)
+
+    const markdownBlocks = screen.getAllByTestId('markdown-block')
+    const noConcepts = within(markdownBlocks[0]).getByText('no-concepts')
+    const noConceptsNode = noConcepts.firstChild as Text
+    selectText(noConceptsNode, 0, noConceptsNode.length)
+    fireEvent.mouseUp(promptText)
+
+    const block = markdownBlocks[0]
+    const nonTextRange = document.createRange()
+    nonTextRange.setStart(block, 1)
+    nonTextRange.setEnd(promptTextNode, 3)
+    selection?.removeAllRanges()
+    selection?.addRange(nonTextRange)
+    fireEvent.mouseUp(promptText)
+  })
+
+  it('shows fallback error text for non-Error failures in initial and follow-up sends', async () => {
+    const onSendMessage = vi
+      .fn()
+      .mockRejectedValueOnce('initial failed')
+      .mockRejectedValueOnce({ reason: 'follow-up failed' })
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={onSendMessage}
+      />
+    )
+
+    await screen.findByText('Error: Failed to get response')
+
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    )
+    fireEvent.change(input, { target: { value: 'follow up question' } })
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Error: Failed to get response').length).toBeGreaterThanOrEqual(2)
+    })
+    expect(onSendMessage).toHaveBeenCalledTimes(2)
+  })
+
+  it('covers validation fallback branches for invalid indices and partial-match rejection', async () => {
+    const assistantContent = 'beta beta alpha zzz'
+    const extractConcepts = vi.fn().mockResolvedValue([
+      makeConcept('closest-late', 'beta', 999, 1003),
+      makeConcept('normalized-miss', 'ghost', 10, 15, 'phantom'),
+      makeConcept('short-first-word', 'AI model', 2, 10),
+      makeConcept('partial-none', 'quantum field', 3, 16),
+      makeConcept('partial-fail-threshold', 'alpha beta gamma', 8, 24),
+    ])
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue(assistantContent)}
+        extractConcepts={extractConcepts}
+      />
+    )
+
+    await screen.findByText(assistantContent)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
+
+    await waitFor(() => {
+      expect(extractConcepts).toHaveBeenCalledWith(assistantContent)
+      expect(screen.getByText(/beta@5-9/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/ghost@/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/AI model@/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/quantum field@/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/alpha beta gamma@/i)).not.toBeInTheDocument()
+  })
+
+  it('uses 500ms extraction delay for later assistant messages and supports legacy popup fallback props', async () => {
+    const headerConcept = makeConcept('legacy-c1', 'ideas', 7, 12)
+    const followupResponse = 'repeat repeat repeat'
+    const extractConcepts = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeConcept('repeat', 'repeat', 0, 6)])
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValueOnce('Assistant response').mockResolvedValueOnce(followupResponse)}
+        extractConcepts={extractConcepts}
+        concepts={[headerConcept]}
+        conceptExplanation={{
+          conceptId: headerConcept.id,
+          normalizedName: headerConcept.normalizedName,
+          definition: 'legacy explanation',
+          category: 'abstract',
+          confidence: 0.5,
+          relatedConcepts: [],
+        }}
+        isConceptLoading
+        conceptError="legacy error"
+      />
+    )
+
+    await screen.findByText('Assistant response')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
+    await waitFor(() => {
+      expect(extractConcepts).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: `concept-${headerConcept.id}` }), { clientX: 11, clientY: 22 })
+    expect(screen.getByText('Loading:true')).toBeInTheDocument()
+    expect(screen.getByText('Error:legacy error')).toBeInTheDocument()
+
+    const input = screen.getByPlaceholderText(
+      /type your message... \(enter to send, shift\+enter for new line\)/i
+    )
+    fireEvent.change(input, { target: { value: 'another prompt' } })
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }))
+    await screen.findByText(followupResponse)
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450))
+    })
+    expect(extractConcepts).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    })
+    await waitFor(() => {
+      expect(extractConcepts).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('guards manual selection for non-text/button ranges and exercises overlap variants', async () => {
+    const assistantContent = 'Alpha Beta Gamma Delta'
+    const extractConcepts = vi.fn().mockResolvedValueOnce([makeConcept('beta', 'Beta', 6, 10)])
+    const onConceptClick = vi.fn()
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue(assistantContent)}
+        extractConcepts={extractConcepts}
+        onConceptClick={onConceptClick}
+      />
+    )
+
+    await screen.findByText(assistantContent)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
+    await waitFor(() => {
+      expect(screen.getByText(/Beta@6-10/)).toBeInTheDocument()
+    })
+
+    const blocks = screen.getAllByTestId('markdown-block')
+    const assistantBlock = blocks.find((block) => within(block).queryByText(assistantContent))
+    expect(assistantBlock).toBeDefined()
+    const assistantTextNode = within(assistantBlock!).getByText(assistantContent).firstChild as Text
+
+    const selection = window.getSelection()
+    const contentContainer = assistantBlock!.closest('[class*="messageContent"]') as HTMLElement
+    expect(contentContainer).toBeTruthy()
+
+    // Start container is element whose child at offset is non-text -> getTextOffset returns null.
+    const nonTextRange = document.createRange()
+    nonTextRange.setStart(contentContainer, 0)
+    nonTextRange.setEnd(assistantTextNode, 5)
+    selection?.removeAllRanges()
+    selection?.addRange(nonTextRange)
+    fireEvent.mouseUp(contentContainer)
+
+    // Select inside button text (tree walker should reject button text nodes).
+    const hoverBtnText = within(assistantBlock!).getByRole('button', { name: /^hover-markdown-beta$/i }).firstChild as Text
+    const buttonRange = document.createRange()
+    buttonRange.setStart(hoverBtnText, 0)
+    buttonRange.setEnd(hoverBtnText, hoverBtnText.length)
+    selection?.removeAllRanges()
+    selection?.addRange(buttonRange)
+    fireEvent.mouseUp(contentContainer)
+
+    // Overlap variant where end lands inside existing concept.
+    selectText(assistantTextNode, 0, 8) // "Alpha Be"
+    fireEvent.mouseUp(contentContainer)
+
+    // Overlap variant where new range fully covers existing concept.
+    selectText(assistantTextNode, 0, 12) // "Alpha Beta G"
+    fireEvent.mouseUp(contentContainer)
+
+    // Exercise remove path when no concepts exist for message index.
+    fireEvent.click(within(screen.getAllByTestId('markdown-block')[0]).getByRole('button', { name: 'remove-missing-concept' }))
+
+    // All manual attempts above are guarded; no concept callback should fire.
+    expect(onConceptClick).not.toHaveBeenCalled()
+  })
+
+  it('covers repeated-occurrence distance fallback and empty-text-node offset branches in manual highlights', async () => {
+    const onConceptClick = vi.fn()
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue('repeat repeat repeat')}
+        onConceptClick={onConceptClick}
+      />
+    )
+
+    await screen.findByText('repeat repeat repeat')
+
+    const blocks = screen.getAllByTestId('markdown-block')
+    const assistantBlock = blocks.find((block) => within(block).queryByText('repeat repeat repeat'))
+    expect(assistantBlock).toBeDefined()
+
+    const contentContainer = assistantBlock!.closest('[class*="messageContent"]') as HTMLElement
+    const assistantTextNode = within(assistantBlock!).getByText('repeat repeat repeat').firstChild as Text
+    const selection = window.getSelection()
+    expect(contentContainer).toBeTruthy()
+
+    // Start on an empty text node to force the textContent-length fallback arms.
+    const emptyNode = document.createTextNode('')
+    contentContainer.insertBefore(emptyNode, contentContainer.firstChild)
+    const emptyStartRange = document.createRange()
+    emptyStartRange.setStart(emptyNode, 0)
+    emptyStartRange.setEnd(assistantTextNode, 6)
+    selection?.removeAllRanges()
+    selection?.addRange(emptyStartRange)
+    fireEvent.mouseUp(contentContainer)
+    await waitFor(() => {
+      expect(onConceptClick).toHaveBeenCalledTimes(1)
+    })
+
+    // Remove the just-added concept and re-add from the first occurrence.
+    fireEvent.click(within(assistantBlock!).getByRole('button', { name: 'remove-first-concept' }))
+    onConceptClick.mockClear()
+
+    // "repeat" appears multiple times; later occurrences exercise non-improving distance branch.
+    selectText(assistantTextNode, 0, 6)
+    fireEvent.mouseUp(contentContainer)
+    await waitFor(() => {
+      expect(onConceptClick).toHaveBeenCalledTimes(1)
+      expect(onConceptClick).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'repeat', startIndex: 0, endIndex: 6 }),
+        question
+      )
+    })
+  })
+
+  it('guards manual selection when adjusted indices collapse to an empty range', async () => {
+    const onConceptClick = vi.fn()
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue('Assistant response')}
+        onConceptClick={onConceptClick}
+      />
+    )
+
+    await screen.findByText('Assistant response')
+
+    const block = screen.getAllByTestId('markdown-block')[0]
+    const contentContainer = block.closest('[class*="messageContent"]') as HTMLElement
+    const textNode = within(block).getByText(initialPrompt).firstChild as Text
+
+    const realGetSelection = window.getSelection
+    const syntheticRange = document.createRange()
+    syntheticRange.setStart(textNode, 4)
+    syntheticRange.setEnd(textNode, 4)
+    const syntheticSelection = {
+      isCollapsed: false,
+      toString: () => 'ab',
+      getRangeAt: () => syntheticRange,
+      removeAllRanges: vi.fn(),
+    } as unknown as Selection
+
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: () => syntheticSelection,
+    })
+    fireEvent.mouseUp(contentContainer)
+    Object.defineProperty(window, 'getSelection', {
+      configurable: true,
+      value: realGetSelection,
+    })
+
+    expect(onConceptClick).not.toHaveBeenCalled()
+  })
+
+  it('ignores highlight generation requests while a message extraction is already in progress', async () => {
+    const extractionDeferred = (() => {
+      let resolve!: (value: ExtractedConcept[]) => void
+      const promise = new Promise<ExtractedConcept[]>((res) => {
+        resolve = res
+      })
+      return { promise, resolve }
+    })()
+
+    const extractConcepts = vi
+      .fn()
+      .mockReturnValueOnce(extractionDeferred.promise)
+      .mockResolvedValue([makeConcept('never-used', 'repeat', 0, 6)])
+
+    render(
+      <ChatView
+        question={question}
+        onBack={vi.fn()}
+        onSendMessage={vi.fn().mockResolvedValue('repeat repeat repeat')}
+        extractConcepts={extractConcepts}
+      />
+    )
+
+    await screen.findByText('repeat repeat repeat')
+
+    const generateButtons = screen.getAllByRole('button', { name: /generate ai highlights/i })
+    const assistantGenerate = generateButtons[1] as HTMLButtonElement
+    fireEvent.click(assistantGenerate)
+
+    await waitFor(() => {
+      expect(extractConcepts).toHaveBeenCalledTimes(1)
+      expect(assistantGenerate).toBeDisabled()
+    })
+
+    // Force-click to execute handler while extracting flag is still set.
+    assistantGenerate.disabled = false
+    fireEvent.click(assistantGenerate)
+    expect(extractConcepts).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      extractionDeferred.resolve([])
+      await Promise.resolve()
+    })
   })
 })

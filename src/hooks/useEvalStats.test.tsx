@@ -60,6 +60,19 @@ describe('useEvalStats', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it('uses fallback error text when API rejects with a non-Error value', async () => {
+    mockedGetEvalStats.mockRejectedValue('non-error failure' as never)
+    const { result } = renderHook(() => useEvalStats())
+
+    await act(async () => {
+      const response = await result.current.refresh()
+      expect(response).toBeNull()
+    })
+
+    expect(result.current.error).toBe('Failed to fetch eval stats')
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('ignores stale responses from earlier requests', async () => {
     const first = createDeferred<any>()
     const second = createDeferred<any>()
@@ -98,6 +111,47 @@ describe('useEvalStats', () => {
       await firstPromise
     })
 
+    expect(result.current.stats).toEqual(
+      expect.objectContaining({
+        leaderboard: [{ modelId: 'model-new' }],
+      })
+    )
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('ignores stale failures from earlier requests', async () => {
+    const first = createDeferred<any>()
+    const second = createDeferred<any>()
+    mockedGetEvalStats
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise)
+
+    const { result } = renderHook(() => useEvalStats())
+
+    let firstPromise: Promise<unknown> = Promise.resolve()
+    let secondPromise: Promise<unknown> = Promise.resolve()
+
+    act(() => {
+      firstPromise = result.current.refresh()
+      secondPromise = result.current.refresh()
+    })
+
+    await act(async () => {
+      second.resolve({
+        leaderboard: [{ modelId: 'model-new' }],
+        recentRuns: [],
+        coverage: { totalPrompts: 1, uniquePrompts: 1 },
+        summary: { totalRuns: 1 },
+      })
+      await secondPromise
+    })
+
+    await act(async () => {
+      first.reject(new Error('stale failure'))
+      await firstPromise
+    })
+
+    expect(result.current.error).toBeNull()
     expect(result.current.stats).toEqual(
       expect.objectContaining({
         leaderboard: [{ modelId: 'model-new' }],

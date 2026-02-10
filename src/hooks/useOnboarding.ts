@@ -44,7 +44,7 @@ export interface UseOnboardingReturn {
 const DEFAULT_STORAGE_KEY = 'fractal_onboarding_v1'
 const DEFAULT_VERSION = 'v1'
 
-function loadFromStorage(storageKey: string, version: string): OnboardingStorage | null {
+export function loadOnboardingFromStorage(storageKey: string, version: string): OnboardingStorage | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem(storageKey)
@@ -59,7 +59,7 @@ function loadFromStorage(storageKey: string, version: string): OnboardingStorage
   }
 }
 
-function saveToStorage(storageKey: string, value: OnboardingStorage) {
+export function saveOnboardingToStorage(storageKey: string, value: OnboardingStorage) {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(storageKey, JSON.stringify(value))
@@ -68,7 +68,7 @@ function saveToStorage(storageKey: string, value: OnboardingStorage) {
   }
 }
 
-function clearStorage(storageKey: string) {
+export function clearOnboardingStorage(storageKey: string) {
   if (typeof window === 'undefined') return
   try {
     localStorage.removeItem(storageKey)
@@ -83,7 +83,7 @@ export function useOnboarding({
   autoStart = true,
   version = DEFAULT_VERSION,
 }: UseOnboardingOptions): UseOnboardingReturn {
-  const stored = useMemo(() => loadFromStorage(storageKey, version), [storageKey, version])
+  const stored = useMemo(() => loadOnboardingFromStorage(storageKey, version), [storageKey, version])
   const [status, setStatus] = useState<OnboardingStatus>(stored?.status || 'pending')
   const [currentStep, setCurrentStep] = useState(0)
   const [isOpen, setIsOpen] = useState(() => autoStart && (stored?.status ?? 'pending') === 'pending')
@@ -97,7 +97,7 @@ export function useOnboarding({
         status: nextStatus,
         updatedAt: Date.now(),
       }
-      saveToStorage(storageKey, payload)
+      saveOnboardingToStorage(storageKey, payload)
     },
     [storageKey, version]
   )
@@ -124,7 +124,7 @@ export function useOnboarding({
   }, [persistStatus])
 
   const restart = useCallback(() => {
-    clearStorage(storageKey)
+    clearOnboardingStorage(storageKey)
     setStatus('pending')
     setCurrentStep(0)
     setIsOpen(true)

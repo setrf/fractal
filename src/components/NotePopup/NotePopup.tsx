@@ -187,9 +187,7 @@ export function NotePopup({
   // Handle minimize toggle
   const handleMinimizeToggle = useCallback(() => {
     if (isMinimized) {
-      if (preMinimizePosition) {
-        setPopupPosition(preMinimizePosition)
-      }
+      setPopupPosition(preMinimizePosition!)
       setPopupSize({ width: preMinimizeWidth, height: preMinimizeHeight })
       setIsMinimized(false)
       onMinimizeChange?.(id, false)
@@ -214,8 +212,6 @@ export function NotePopup({
   
   // Handle stash - adds note to stash and closes the popup
   const handleStash = useCallback(() => {
-    if (!content.trim()) return
-    
     addItem({
       type: 'note',
       content: content.trim(),
@@ -235,8 +231,7 @@ export function NotePopup({
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     if (isResizing) return
     
-    const rect = popupRef.current?.getBoundingClientRect()
-    if (!rect) return
+    const rect = popupRef.current!.getBoundingClientRect()
     
     setIsDragging(true)
     setExternalDragHover(true)
